@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Researcher Dashboard | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}" class="is-active">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+
+            <!-- Batches Dropdown (Admin only) or Simple Link (Researcher) -->
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem">
+                        <span>My Batches</span>
+                    </a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem">
+                        <span>All Batches</span>
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main">
+        <div class="page-head">
+            <h1>Dashboard Overview</h1>
+            <p>{{ generated_at|date:"M d, Y h:i A" }}</p>
+        </div>
+
+        <section class="welcome-header surface-card">
+            <p class="welcome-kicker">Coral Monitoring Workspace</p>
+            <h1>Welcome back, {{ user.get_full_name|default:user.username }}</h1>
+            <p>Last activity snapshot captured on {{ generated_at|date:"M d, Y h:i A" }}.</p>
+        </section>
+
+        <section class="stats-grid" aria-label="Monitoring summary">
+            <article class="stat-card surface-card">
+                <div class="stat-icon" aria-hidden="true"><i data-lucide="images"></i></div>
+                <p class="stat-label">Total Images</p>
+                <p class="stat-value">{{ total_images|default:0 }}</p>
+                <p class="stat-sub">Processed this cycle</p>
+            </article>
+            <article class="stat-card surface-card">
+                <div class="stat-icon" aria-hidden="true"><i data-lucide="line-chart"></i></div>
+                <p class="stat-label">Avg Coverage</p>
+                <p class="stat-value">{{ avg_coverage|default_if_none:"--"|floatformat:0 }}%</p>
+                <p class="stat-sub">Across monitored reefs</p>
+            </article>
+            <article class="stat-card surface-card">
+                <div class="stat-icon" aria-hidden="true"><i data-lucide="leaf"></i></div>
+                <p class="stat-label">Healthy Reefs</p>
+                <p class="stat-value">{{ healthy_reefs|default:0 }}</p>
+                <p class="stat-sub">Class A performance</p>
+            </article>
+            <article class="stat-card surface-card">
+                <div class="stat-icon" aria-hidden="true"><i data-lucide="map-pin"></i></div>
+                <p class="stat-label">Locations</p>
+                <p class="stat-value">{{ locations|default:0 }}</p>
+                <p class="stat-sub">Active survey sites</p>
+            </article>
+        </section>
+
+        <section class="charts-grid charts-grid-enhanced">
+            <article class="surface-card chart-card">
+                <div class="card-header">
+                    <h2>Coverage Trend Over Time</h2>
+                    <a href="#" class="ghost-link">Yearly</a>
+                </div>
+                <canvas id="coverageTrendChart" height="180"></canvas>
+            </article>
+
+            <article class="surface-card insight-card">
+                <div class="card-header">
+                    <h2>Total Reef Health</h2>
+                </div>
+
+                <p class="insight-value">{{ insight_total|default_if_none:"--"|floatformat:0 }}%</p>
+                <p class="insight-sub">Average coverage across batches</p>
+
+                <div class="insight-list">
+                    {% for item in insight_items %}
+                    <div class="insight-item">
+                        <div class="insight-label-row">
+                            <span>{{ item.label }}</span>
+                            <span>{{ item.value }}%</span>
+                        </div>
+                        <div class="insight-bar"><span style="--bar: {{ item.value }}%"></span></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </article>
+        </section>
+
+        <section class="surface-card recent-batches">
+            <div class="card-header">
+                <h2>Latest Transactions</h2>
+                <a href="#" class="ghost-link">View all</a>
+            </div>
+
+            <div class="batch-list">
+                {% for row in recent_submissions %}
+                <article class="batch-row">
+                    <div class="batch-meta">
+                        <h3>{{ row.area|default:row.name }}</h3>
+                        <p>{{ row.name }} · {{ row.date|date:"M d, Y" }} · {{ row.image_count }} images</p>
+                    </div>
+
+                    <div class="batch-right">
+                        <div class="batch-status">
+                            {% if row.avg_coverage is not None %}
+                            {% with coverage_class=row.coverage_class|default:"pending"|lower %}
+                            <span class="coverage-badge coverage-class coverage-{{ coverage_class }}">
+                                Class {{ row.coverage_class|default:"Pending" }} • {{ row.avg_coverage|floatformat:0 }}%
+                            </span>
+                            {% endwith %}
+                            {% else %}
+                            <span class="coverage-badge coverage-class coverage-pending">Coverage Pending</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="batch-actions">
+                            <a href="{% url 'batch_detail' row.id %}" class="action-outline">Details</a>
+                            <a href="#" class="action-outline">Export</a>
+                        </div>
+                    </div>
+                </article>
+                {% empty %}
+                <article class="batch-row empty">
+                    <div class="batch-meta">
+                        <h3>No recent batches</h3>
+                        <p>Upload your first field batch to start tracking insights.</p>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+</div>
+
+{{ chart_data|json_script:"dashboard-chart-data" }}
+
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/researcher_dashboard.js' %}"></script>
+{% endblock %}

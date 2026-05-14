@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ report.title }} | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<style>
+    .report-view-container {
+        display: flex;
+        height: 100%;
+    }
+
+    .report-view-main {
+        flex: 1;
+        background: #ffffff;
+        padding: 3rem 2rem;
+        overflow-y: auto;
+    }
+
+    .report-view-header {
+        margin-bottom: 2rem;
+        border-bottom: 2px solid rgba(28, 95, 109, 0.1);
+        padding-bottom: 1.5rem;
+    }
+
+    .report-view-header h1 {
+        color: #1c5f6d;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+    }
+
+    .report-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .meta-card {
+        background: #f8fcfc;
+        border: 1px solid rgba(28, 95, 109, 0.14);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .meta-label {
+        font-size: 0.85rem;
+        color: #6a8893;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .meta-value {
+        font-size: 1.1rem;
+        color: #1c5f6d;
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+
+    .report-content {
+        background: #ffffff;
+    }
+
+    .report-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(28, 95, 109, 0.14);
+        border-radius: 8px;
+    }
+
+    .report-section h2 {
+        color: #1c5f6d;
+        margin-bottom: 1rem;
+        font-size: 1.3rem;
+        border-bottom: 2px solid #2a8793;
+        padding-bottom: 0.5rem;
+    }
+
+    .report-section p {
+        color: #446b77;
+        line-height: 1.6;
+        margin-bottom: 0.75rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid rgba(28, 95, 109, 0.1);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #1c5f6d 0%, #2a8793 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(42, 135, 147, 0.3);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #1c5f6d;
+        border: 2px solid #1c5f6d;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(28, 95, 109, 0.05);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-completed {
+        background: rgba(34, 139, 34, 0.1);
+        color: #228822;
+    }
+
+    .status-pending {
+        background: rgba(255, 165, 0, 0.1);
+        color: #ff9900;
+    }
+
+    .status-processing {
+        background: rgba(42, 135, 147, 0.1);
+        color: #2a8793;
+    }
+
+    .status-failed {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    @media (max-width: 768px) {
+        .report-view-main {
+            padding: 1.5rem 1rem;
+        }
+
+        .report-view-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'reports' %}" class="is-active">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main report-view-main">
+        <!-- Report Header -->
+        <div class="report-view-header">
+            <h1>{{ report.title }}</h1>
+            <p style="color: #6a8893;">{{ report.get_report_type_display }}</p>
+            <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
+        </div>
+
+        <!-- Report Metadata -->
+        <div class="report-meta">
+            <div class="meta-card">
+                <div class="meta-label">Report Type</div>
+                <div class="meta-value">{{ report.get_report_type_display }}</div>
+            </div>
+            <div class="meta-card">
+                <div class="meta-label">Author</div>
+                <div class="meta-value">{{ report.author }}</div>
+            </div>
+            <div class="meta-card">
+                <div class="meta-label">Format</div>
+                <div class="meta-value">{{ report.export_format|upper }}</div>
+            </div>
+            <div class="meta-card">
+                <div class="meta-label">File Size</div>
+                <div class="meta-value">{{ report.file_size_mb|default:"N/A" }} MB</div>
+            </div>
+            <div class="meta-card">
+                <div class="meta-label">Created</div>
+                <div class="meta-value">{{ report.created_at|date:"M d, Y g:i A" }}</div>
+            </div>
+            <div class="meta-card">
+                <div class="meta-label">Status</div>
+                <div class="meta-value" style="text-transform: capitalize;">{{ report.status }}</div>
+            </div>
+        </div>
+
+        <!-- Report Content -->
+        <div class="report-content">
+            {% if report.status == 'completed' %}
+            <div class="report-section">
+                <h2>Report Information</h2>
+                <p><strong>Title:</strong> {{ report.title }}</p>
+                <p><strong>Type:</strong> {{ report.get_report_type_display }}</p>
+                <p><strong>Author/Organization:</strong> {{ report.author }}</p>
+                <p><strong>Export Format:</strong> {{ report.export_format|upper }}</p>
+                <p><strong>Generated at:</strong> {{ generated_at|date:"M d, Y g:i A" }}</p>
+            </div>
+
+            <div class="report-section">
+                <h2>Data Configuration</h2>
+                <p>Configuration details are stored in the report configuration.</p>
+                {% if report.config %}
+                <details style="margin-top: 1rem; cursor: pointer;">
+                    <summary style="color: #2a8793; font-weight: 600;">View Configuration Details</summary>
+                    <pre
+                        style="margin-top: 1rem; background: #f8fcfc; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem;">{{ report.config|safe }}</pre>
+                </details>
+                {% endif %}
+            </div>
+
+            {% elif report.status == 'processing' %}
+            <div class="report-section" style="background: rgba(42, 135, 147, 0.05); border-color: #2a8793;">
+                <h2 style="color: #2a8793;">Report Processing</h2>
+                <p>This report is currently being generated. Please check back in a few moments.</p>
+                <p style="margin-top: 1rem; color: #6a8893; font-size: 0.9rem;">You will receive an email notification
+                    when the report is ready.</p>
+            </div>
+
+            {% elif report.status == 'failed' %}
+            <div class="report-section" style="background: rgba(220, 53, 69, 0.05); border-color: #dc3545;">
+                <h2 style="color: #dc3545;">Report Generation Failed</h2>
+                <p>The report generation encountered an error:</p>
+                <p
+                    style="margin-top: 1rem; color: #dc3545; font-family: monospace; background: white; padding: 1rem; border-radius: 4px; border-left: 4px solid #dc3545;">
+                    {{ report.error_message|default:"Unknown error occurred" }}
+                </p>
+            </div>
+
+            {% else %}
+            <div class="report-section">
+                <h2>Report Pending</h2>
+                <p>This report is queued for generation. Please check back later.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="{% url 'reports' %}" class="btn-secondary">
+                <i data-lucide="arrow-left" aria-hidden="true"></i>
+                <span>Back to Reports</span>
+            </a>
+            {% if report.status == 'completed' and report.file %}
+            <a href="{% url 'download_report' report.id %}" class="btn-primary" download>
+                <i data-lucide="download" aria-hidden="true"></i>
+                <span>Download Report</span>
+            </a>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/reports.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,923 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reports | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}" class="is-active">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main reports-main">
+        <!-- Page Header -->
+        <section class="surface-card reports-page-head" aria-label="Reports header">
+            <p class="reports-kicker">Report Generation</p>
+            <h1>Generate Reports</h1>
+            <p>Create professional reports from your survey data</p>
+        </section>
+
+        <!-- Reports Content Container -->
+        <div class="reports-container">
+            <!-- Left Panel: Report Builder (40%) -->
+            <aside class="report-builder" aria-label="Report builder panel">
+                <form id="report-form" method="POST" action="{% url 'generate_report' %}">
+                    {% csrf_token %}
+
+                    <!-- Section 1: Report Type Selection -->
+                    <section class="report-section" id="section-1" aria-label="Report type selection">
+                        <div class="section-title ">
+                            <span class="section-number">1</span>
+                            <h2>Report Type</h2>
+                        </div>
+
+                        <div class="report-type-options">
+                            <label class="report-type-option">
+                                <input type="radio" name="report_type" value="summary" checked data-report-type>
+                                <div class="option-content">
+                                    <p class="option-title">Summary Report</p>
+                                    <p class="option-desc">Overview of all your surveys with key metrics</p>
+                                    <p class="option-use">Best for: Executive summaries, presentations</p>
+                                </div>
+                            </label>
+
+                            <label class="report-type-option">
+                                <input type="radio" name="report_type" value="batch-specific" data-report-type>
+                                <div class="option-content">
+                                    <p class="option-title">Batch-Specific Report</p>
+                                    <p class="option-desc">Detailed analysis of a single survey batch</p>
+                                    <p class="option-use">Best for: Field notes, individual site analysis</p>
+                                </div>
+                            </label>
+
+                            <label class="report-type-option">
+                                <input type="radio" name="report_type" value="trend-analysis" data-report-type>
+                                <div class="option-content">
+                                    <p class="option-title">Trend Analysis Report</p>
+                                    <p class="option-desc">Coverage changes over time with charts</p>
+                                    <p class="option-use">Best for: Monitoring, conservation planning</p>
+                                </div>
+                            </label>
+
+                            <label class="report-type-option">
+                                <input type="radio" name="report_type" value="location-comparison" data-report-type>
+                                <div class="option-content">
+                                    <p class="option-title">Location Comparison Report</p>
+                                    <p class="option-desc">Compare multiple survey sites side-by-side</p>
+                                    <p class="option-use">Best for: Site selection, impact assessment</p>
+                                </div>
+                            </label>
+
+                            <label class="report-type-option">
+                                <input type="radio" name="report_type" value="biodiversity" data-report-type>
+                                <div class="option-content">
+                                    <p class="option-title">Biodiversity Distribution Report</p>
+                                    <p class="option-desc">Class A/B/C breakdown with spatial analysis</p>
+                                    <p class="option-use">Best for: Research papers, grant proposals</p>
+                                </div>
+                            </label>
+
+                            <label class="report-type-option">
+                                <input type="radio" name="report_type" value="custom" data-report-type>
+                                <div class="option-content">
+                                    <p class="option-title">Custom Report (Advanced)</p>
+                                    <p class="option-desc">Build your own report with selected sections</p>
+                                    <p class="option-use">Best for: Specific research questions</p>
+                                </div>
+                            </label>
+                        </div>
+                    </section>
+
+                    <!-- Section 2: Data Selection -->
+                    <section class="report-section" id="section-2" aria-label="Data selection">
+                        <div class="section-title">
+                            <span class="section-number">2</span>
+                            <h2>Data Selection</h2>
+                        </div>
+
+                        <!-- A) Summary Report Data Selection (Default) -->
+                        <div class="data-selection-form" id="data-summary-report" style="display: block;">
+                            <!-- Date Range -->
+                            <div class="form-group">
+                                <label for="date-from" class="form-label">Date Range</label>
+                                <div class="date-range-inputs">
+                                    <div class="input-wrapper">
+                                        <label class="input-label">From:</label>
+                                        <input type="date" id="date-from" name="date_from" class="form-control"
+                                            aria-label="Start date">
+                                    </div>
+                                    <div class="input-wrapper">
+                                        <label class="input-label">To:</label>
+                                        <input type="date" id="date-to" name="date_to" class="form-control"
+                                            aria-label="End date">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Include Options -->
+                            <div class="form-group">
+                                <label class="form-label">Include</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="include_all" value="all" checked
+                                            data-include-option aria-label="Include all batches">
+                                        <span>All my batches</span>
+                                        <span class="option-meta">({{ total_surveys }} batches)</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="specific_locations" value="locations"
+                                            data-include-option aria-label="Specific locations only">
+                                        <span>Specific locations only</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="specific_classes" value="classes"
+                                            data-include-option aria-label="Specific biodiversity classes">
+                                        <span>Specific biodiversity classes only</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Data Summary -->
+                            <div class="data-summary">
+                                <p class="summary-text">
+                                    <strong>Show:</strong>
+                                    <span id="summary-batches">{{ total_surveys }}</span> batches,
+                                    <span id="summary-images">{{ total_images }}</span> images
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- B) Batch-Specific Report Data Selection -->
+                        <div class="data-selection-form" id="data-batch-specific" style="display: none;">
+                            <!-- Search Batches -->
+                            <div class="form-group">
+                                <label for="batch-search" class="form-label">Search Batches</label>
+                                <div class="search-input-wrapper">
+                                    <i data-lucide="search" aria-hidden="true"></i>
+                                    <input type="text" id="batch-search" name="batch_search" class="form-control"
+                                        placeholder="Search batches..." aria-label="Search batches">
+                                </div>
+                            </div>
+
+                            <!-- Recent Batches Selection -->
+                            <div class="form-group">
+                                <label class="form-label">Select Batch</label>
+                                <div class="batch-list">
+                                    {% for batch in recent_batches %}
+                                    {% if batch.image_count > 0 %}
+                                    <label class="batch-option">
+                                        <input type="radio" name="selected_batch" value="batch-{{ batch.id }}"
+                                            aria-label="{{ batch.name }}">
+                                        <div class="batch-info">
+                                            <p class="batch-name">{{ batch.name }}</p>
+                                            <p class="batch-meta">{{ batch.survey_date|date:"M d, Y" }} •
+                                                {{ batch.image_count }} image{{ batch.image_count|add:0|pluralize }} •
+                                                {{ batch.avg_coverage|floatformat:1 }}% coverage</p>
+                                            <p class="batch-classes">
+                                                {% with classes=batch.get_class_distribution %}
+                                                <span class="class-label">Classes:</span>
+                                                <span class="class-badge class-a">A</span> {{ classes.A }} |
+                                                <span class="class-badge class-b">B</span> {{ classes.B }} |
+                                                <span class="class-badge class-c">C</span> {{ classes.C }}
+                                                {% endwith %}
+                                            </p>
+                                        </div>
+                                    </label>
+                                    {% endif %}
+                                    {% empty %}
+                                    <p style="color: #999; font-size: 0.9rem;">No batches available. <a
+                                            href="{% url 'upload_batch' %}">Upload your first batch →</a></p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- View All Batches Link -->
+                            <div class="form-group">
+                                <a href="{% url 'batches' %}" class="view-all-link">View All Batches →</a>
+                            </div>
+                        </div>
+
+                        <!-- C) Trend Analysis Report Data Selection -->
+                        <div class="data-selection-form" id="data-trend-analysis" style="display: none;">
+                            <!-- Time Period -->
+                            <div class="form-group">
+                                <label class="form-label">Time Period</label>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="time_period" value="3-months"
+                                            aria-label="Last 3 months">
+                                        <span>Last 3 months</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="time_period" value="6-months"
+                                            aria-label="Last 6 months">
+                                        <span>Last 6 months</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="time_period" value="1-year" aria-label="Last year">
+                                        <span>Last year</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="time_period" value="custom" checked
+                                            aria-label="Custom range">
+                                        <span>Custom range</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Custom Date Range (shown when custom is selected) -->
+                            <div class="form-group" id="custom-date-range">
+                                <div class="date-range-inputs">
+                                    <div class="input-wrapper">
+                                        <label class="input-label">From:</label>
+                                        <input type="month" name="trend_date_from" class="form-control"
+                                            aria-label="Start month">
+                                    </div>
+                                    <div class="input-wrapper">
+                                        <label class="input-label">To:</label>
+                                        <input type="month" name="trend_date_to" class="form-control"
+                                            aria-label="End month">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group By -->
+                            <div class="form-group">
+                                <label class="form-label">Group By</label>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="group_by" value="weekly" aria-label="Group by week">
+                                        <span>Weekly</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="group_by" value="monthly" checked
+                                            aria-label="Group by month">
+                                        <span>Monthly</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="group_by" value="quarterly"
+                                            aria-label="Group by quarter">
+                                        <span>Quarterly</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Analysis Options -->
+                            <div class="form-group">
+                                <label class="form-label">Analyze</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="analyze_coverage" value="true" checked
+                                            aria-label="Coverage percentage trends">
+                                        <span>Coverage percentage trends</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="analyze_biodiversity" value="true" checked
+                                            aria-label="Biodiversity class distribution">
+                                        <span>Biodiversity class distribution</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="analyze_locations" value="true" checked
+                                            aria-label="Location-specific changes">
+                                        <span>Location-specific changes</span>
+                                    </label>
+                                    {% if user.is_admin %}
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="analyze_researchers" value="false"
+                                            aria-label="Researcher comparison">
+                                        <span>Researcher comparison</span>
+                                        <span class="option-meta">(Admin only)</span>
+                                    </label>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- D) Location Comparison Report Data Selection -->
+                        <div class="data-selection-form" id="data-location-comparison" style="display: none;">
+                            <!-- Search Locations -->
+                            <div class="form-group">
+                                <label for="location-search" class="form-label">Search Locations</label>
+                                <div class="search-input-wrapper">
+                                    <i data-lucide="search" aria-hidden="true"></i>
+                                    <input type="text" id="location-search" class="form-control"
+                                        placeholder="Type location name..." aria-label="Search locations">
+                                </div>
+                            </div>
+
+                            <!-- Location Selection -->
+                            <div class="form-group">
+                                <label class="form-label">Select Locations to Compare (2-5)</label>
+                                <div class="location-list">
+                                    {% for location in locations %}
+                                    <label class="location-option">
+                                        <input type="checkbox" name="selected_locations"
+                                            value="location-{{ forloop.counter }}" aria-label="{{ location.name }}"
+                                            data-location-index="{{ forloop.counter0 }}">
+                                        <span>{{ location.name }}</span>
+                                        <span class="option-meta">({{ location.batch_count }}
+                                            survey{{ location.batch_count|pluralize }})</span>
+                                    </label>
+                                    {% empty %}
+                                    <p style="color: #999; font-size: 0.9rem;">No locations available. <a
+                                            href="{% url 'upload_batch' %}">Upload survey data →</a></p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Selected Count -->
+                            <div class="form-group">
+                                <div class="data-summary">
+                                    <p class="summary-text">
+                                        <strong>Selected:</strong>
+                                        <span id="location-count">{% if locations|length > 1 %}2{% elif locations|length
+                                            %}1{% else %}0{% endif %}</span> location{{ locations|length|pluralize }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Compare By -->
+                            <div class="form-group">
+                                <label class="form-label">Compare By</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="compare_coverage" value="true" checked
+                                            aria-label="Compare average coverage">
+                                        <span>Average coverage</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="compare_biodiversity" value="true" checked
+                                            aria-label="Compare biodiversity class distribution">
+                                        <span>Biodiversity class distribution</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="compare_trends" value="true" checked
+                                            aria-label="Compare temporal trends">
+                                        <span>Temporal trends</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="compare_images" value="true" checked
+                                            aria-label="Compare image samples">
+                                        <span>Image samples</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                    </section>
+
+                    <!-- Section 3: Report Customization -->
+                    <section class="report-section" id="section-3" aria-label="Report customization">
+                        <div class="section-title">
+                            <span class="section-number">3</span>
+                            <h2>Customize Report</h2>
+                        </div>
+
+                        <div class="customization-form">
+                            <!-- Report Title -->
+                            <div class="form-group">
+                                <label for="report-title" class="form-label">Report Title</label>
+                                <input type="text" id="report-title" name="report_title" class="form-control"
+                                    placeholder="e.g., Davao Gulf Coral Survey - Q1 2026" aria-label="Report title">
+                            </div>
+
+                            <!-- Author/Organization -->
+                            <div class="form-group">
+                                <label for="report-author" class="form-label">Author/Organization</label>
+                                <input type="text" id="report-author" name="report_author" class="form-control"
+                                    placeholder="e.g., Dr. Maria Santos - DNSC Marine Lab" aria-label="Report author">
+                            </div>
+
+                            <!-- Include Sections -->
+                            <div class="form-group">
+                                <label class="form-label">Include Sections</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_summary" value="true" checked
+                                            aria-label="Include executive summary">
+                                        <span>Executive Summary</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_methodology" value="true" checked
+                                            aria-label="Include methodology">
+                                        <span>Methodology</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_findings" value="true" checked
+                                            aria-label="Include key findings">
+                                        <span>Key Findings (with charts)</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_results" value="true" checked
+                                            aria-label="Include detailed results">
+                                        <span>Detailed Results</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_maps" value="true" checked
+                                            aria-label="Include location maps">
+                                        <span>Location Maps</span>
+                                    </label>
+                                    <label class="checkbox-option checkbox-with-input">
+                                        <input type="checkbox" name="section_images" value="true" checked
+                                            aria-label="Include sample images">
+                                        <span>Sample Images</span>
+                                        <div class="inline-input-wrapper">
+                                            <label class="inline-label">Qty:</label>
+                                            <input type="number" name="sample_images_count" class="inline-input" min="1"
+                                                max="20" value="3" aria-label="Number of sample images">
+                                            <span>images</span>
+                                        </div>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_recommendations" value="true" checked
+                                            aria-label="Include recommendations">
+                                        <span>Recommendations</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="section_appendix" value="true" checked
+                                            aria-label="Include appendix">
+                                        <span>Appendix (raw data tables)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Cover Page Options -->
+                            <div class="form-group">
+                                <label class="form-label">Cover Page</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="cover_logo" value="true" checked
+                                            aria-label="Include CoralSense logo">
+                                        <span>Include CoralSense logo</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="cover_institution_logo" value="true" checked
+                                            aria-label="Include institution logo">
+                                        <span>Include institution logo</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="cover_header_image" value="false"
+                                            aria-label="Use custom header image">
+                                        <span>Custom header image</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Branding -->
+                            <div class="form-group">
+                                <label class="form-label">Color Theme</label>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="color_theme" value="coralsense" checked
+                                            aria-label="CoralSense color theme">
+                                        <span>CoralSense</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="color_theme" value="grayscale"
+                                            aria-label="Grayscale color theme">
+                                        <span>Grayscale</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="color_theme" value="custom"
+                                            aria-label="Custom color theme">
+                                        <span>Custom</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 4: Format & Export Options -->
+                    <section class="report-section" id="section-4" aria-label="Format and export options">
+                        <div class="section-title">
+                            <span class="section-number">4</span>
+                            <h2>Output Format</h2>
+                        </div>
+
+                        <div class="format-selection-form">
+                            <!-- Format Selection -->
+                            <div class="form-group">
+                                <label class="form-label">Select Format</label>
+                                <div class="format-options">
+                                    <label class="format-option">
+                                        <input type="radio" name="export_format" value="pdf" checked data-format>
+                                        <div class="format-content">
+                                            <p class="format-title">PDF Document</p>
+                                            <p class="format-desc">Professional report with charts and images</p>
+                                            <p class="format-size">~2-5 MB</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="format-option">
+                                        <input type="radio" name="export_format" value="docx" data-format>
+                                        <div class="format-content">
+                                            <p class="format-title">Microsoft Word (.docx)</p>
+                                            <p class="format-desc">Editable document for customization</p>
+                                            <p class="format-size">~1-3 MB</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="format-option">
+                                        <input type="radio" name="export_format" value="xlsx" data-format>
+                                        <div class="format-content">
+                                            <p class="format-title">Microsoft Excel (.xlsx)</p>
+                                            <p class="format-desc">Data tables with pivot tables and charts</p>
+                                            <p class="format-size">~500 KB</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="format-option">
+                                        <input type="radio" name="export_format" value="csv" data-format>
+                                        <div class="format-content">
+                                            <p class="format-title">CSV (Comma-Separated Values)</p>
+                                            <p class="format-desc">Raw data for external analysis</p>
+                                            <p class="format-size">~100 KB</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="format-option">
+                                        <input type="radio" name="export_format" value="html" data-format>
+                                        <div class="format-content">
+                                            <p class="format-title">HTML (Web Page)</p>
+                                            <p class="format-desc">Interactive report viewable in browser</p>
+                                            <p class="format-size">~1 MB</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Options -->
+                            <div class="form-group">
+                                <label class="form-label">Advanced Options</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="include_raw_images" value="false"
+                                            aria-label="Include raw image files">
+                                        <span>Include raw image files</span>
+                                        <span class="option-meta">(adds 50-200 MB)</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="multiple_formats" value="false"
+                                            aria-label="Generate multiple formats">
+                                        <span>Generate multiple formats</span>
+                                        <span class="option-meta">(ZIP archive)</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="email_when_ready" value="false"
+                                            aria-label="Email report when ready">
+                                        <span>Email report when ready</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 5: Review & Generate -->
+                    <section class="report-section" id="section-5" aria-label="Review and generate report">
+                        <div class="section-title">
+                            <span class="section-number">5</span>
+                            <h2>Review & Generate</h2>
+                        </div>
+
+                        <div class="review-summary">
+                            <div class="review-item">
+                                <span class="review-label">
+                                    <i data-lucide="file-text" class="review-icon"></i>
+                                    Report Type:
+                                </span>
+                                <span class="review-value" id="review-type">Summary Report</span>
+                            </div>
+
+                            <div class="review-item">
+                                <span class="review-label">
+                                    <i data-lucide="calendar" class="review-icon"></i>
+                                    Date Range:
+                                </span>
+                                <span class="review-value" id="review-dates">All dates</span>
+                            </div>
+
+                            <div class="review-item">
+                                <span class="review-label">
+                                    <i data-lucide="database" class="review-icon"></i>
+                                    Data Coverage:
+                                </span>
+                                <span class="review-value" id="review-coverage">
+                                    <span id="review-batches">0</span> batches, <span id="review-images">0</span> images
+                                </span>
+                            </div>
+
+                            <div class="review-item">
+                                <span class="review-label">
+                                    <i data-lucide="download" class="review-icon"></i>
+                                    Export Format:
+                                </span>
+                                <span class="review-value" id="review-format">PDF Document</span>
+                            </div>
+
+                            <div class="review-item">
+                                <span class="review-label">
+                                    <i data-lucide="zap" class="review-icon"></i>
+                                    Estimated:
+                                </span>
+                                <span class="review-value" id="review-estimate">12 pages, 3.2 MB</span>
+                            </div>
+                        </div>
+
+                        <div class="generate-actions">
+                            <button type="button" class="btn-secondary" id="btn-cancel">
+                                <i data-lucide="x" aria-hidden="true"></i>
+                                <span>Cancel</span>
+                            </button>
+                            <button type="button" class="btn-tertiary" id="btn-preview">
+                                <i data-lucide="eye" aria-hidden="true"></i>
+                                <span>Preview</span>
+                            </button>
+                            <button type="button" class="btn-primary" id="btn-generate">
+                                <i data-lucide="arrow-right" aria-hidden="true"></i>
+                                <span>Generate</span>
+                            </button>
+                        </div>
+
+                        <div class="generate-note">
+                            <i data-lucide="alert-circle" aria-hidden="true"></i>
+                            <p>Reports may take 30-60 seconds to generate depending on data size and complexity.</p>
+                        </div>
+                    </section>
+
+                </form>
+            </aside>
+
+            <!-- Right Panel: Preview Panel (60%) -->
+            <section class="report-preview" aria-label="Report preview panel">
+                <div class="preview-header">
+                    <h3>Preview</h3>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-placeholder">
+                        <i data-lucide="eye" aria-hidden="true"></i>
+                        <p>Live preview of your report will appear here</p>
+                        <p class="preview-subtext">Configure your report options on the left to see how it will look</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Recent Reports Section -->
+        <section class="recent-reports-section" aria-label="Recent reports">
+            <div class="recent-reports-header">
+                <h2>Your Recent Reports</h2>
+                <div class="reports-controls">
+                    <div class="search-wrapper">
+                        <i data-lucide="search" aria-hidden="true"></i>
+                        <input type="text" id="reports-search" class="reports-search" placeholder="Search reports..."
+                            aria-label="Search reports">
+                    </div>
+                    <div class="reports-filters">
+                        <select id="filter-type" class="filter-select" aria-label="Filter by report type">
+                            <option value="">All Types</option>
+                            <option value="summary">Summary</option>
+                            <option value="batch-specific">Batch-Specific</option>
+                            <option value="trend-analysis">Trend Analysis</option>
+                            <option value="location-comparison">Location Comparison</option>
+                            <option value="biodiversity">Biodiversity</option>
+                        </select>
+                        <select id="sort-by" class="filter-select" aria-label="Sort reports">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="largest">Largest First</option>
+                            <option value="smallest">Smallest First</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reports-list">
+                {% if recent_reports %}
+                {% for report in recent_reports %}
+                <div class="report-item" data-report-type="{{ report.report_type }}" data-report-id="{{ report.id }}">
+                    <div class="report-item-icon">
+                        <i data-lucide="{% if report.report_type == 'summary' %}bar-chart-3{% elif report.report_type == 'batch-specific' %}zoom-in{% elif report.report_type == 'trend-analysis' %}trending-up{% elif report.report_type == 'location-comparison' %}map-pin{% elif report.report_type == 'biodiversity' %}globe{% else %}file-text{% endif %}"
+                            aria-hidden="true"></i>
+                    </div>
+
+                    <div class="report-item-content">
+                        <div class="report-item-header">
+                            <h3 class="report-item-title">{{ report.title }}</h3>
+                            <span class="report-item-type">{{ report.get_report_type_display }}</span>
+                        </div>
+                        <div class="report-item-meta">
+                            <span class="meta-item">
+                                <i data-lucide="calendar" aria-hidden="true"></i>
+                                {{ report.created_at|date:"M d, Y" }}
+                            </span>
+                            <span class="meta-item">
+                                <i data-lucide="clock" aria-hidden="true"></i>
+                                {{ report.created_at|date:"g:i A" }}
+                            </span>
+                            <span class="meta-item">
+                                <i data-lucide="database" aria-hidden="true"></i>
+                                {{ report.file_size_mb|default:"N/A" }} MB
+                            </span>
+                            <span class="meta-item">
+                                <i data-lucide="file" aria-hidden="true"></i>
+                                {{ report.export_format|upper }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="report-item-actions">
+                        <button type="button" class="action-btn action-view" title="View report"
+                            aria-label="View {{ report.title }}">
+                            <i data-lucide="eye" aria-hidden="true"></i>
+                            <span>View</span>
+                        </button>
+                        <button type="button" class="action-btn action-download" title="Download report"
+                            aria-label="Download {{ report.title }}">
+                            <i data-lucide="download" aria-hidden="true"></i>
+                            <span>Download</span>
+                        </button>
+                        <div class="action-menu-wrapper">
+                            <button type="button" class="action-btn action-menu" title="More options"
+                                aria-label="More options for {{ report.title }}" aria-haspopup="true"
+                                aria-expanded="false">
+                                <i data-lucide="more-vertical" aria-hidden="true"></i>
+                            </button>
+                            <div class="action-menu-dropdown" role="menu" aria-hidden="true">
+                                <button type="button" class="action-menu-item action-delete"
+                                    data-report-id="{{ report.id }}" role="menuitem">
+                                    <i data-lucide="trash-2" aria-hidden="true"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i data-lucide="inbox" aria-hidden="true"></i>
+                    <h3>No reports yet</h3>
+                    <p>Generate your first report using the report builder above to see it here.</p>
+                    <button type="button" class="btn-primary" id="scroll-to-builder">
+                        <i data-lucide="arrow-up" aria-hidden="true"></i>
+                        <span>Create Report</span>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if recent_reports|length > 5 %}
+            <div class="reports-pagination">
+                <button type="button" class="pagination-btn" aria-label="Previous page">
+                    <i data-lucide="chevron-left" aria-hidden="true"></i>
+                </button>
+                <span class="pagination-info">Page 1 of 3</span>
+                <button type="button" class="pagination-btn" aria-label="Next page">
+                    <i data-lucide="chevron-right" aria-hidden="true"></i>
+                </button>
+            </div>
+            {% endif %}
+        </section>
+
+    </main>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Report Confirmation Modal -->
+<div class="delete-modal" aria-hidden="true" data-delete-modal>
+    <div class="delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title"
+        aria-describedby="delete-desc">
+        <img src="{% static 'icons/trash.png' %}" alt="" aria-hidden="true" class="delete-modal__illustration">
+        <h2 id="delete-title">Delete this report?</h2>
+        <p id="delete-desc">This action cannot be undone. The report "<span id="delete-report-name"></span>" will be
+            permanently deleted.</p>
+        <div class="delete-modal__actions">
+            <button type="button" class="action-outline" data-delete-cancel>Cancel</button>
+            <button type="button" class="delete-confirm-btn" data-delete-confirm>Delete</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<!-- Reports Main Script (includes profile menu, logout modal, PDF export) -->
+<script src="{% static 'js/reports.js' %}"></script>
+<!-- Reports Builder Script (handles report type and data selection) -->
+<script src="{% static 'js/reports_builder.js' %}"></script>
+{% endblock %}

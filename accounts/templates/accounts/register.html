@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load socialaccount %}
+
+{% block title %}Register | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/register.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container auth-shell auth-shell-register">
+    <a href="{% url 'landing_page' %}" class="auth-card-back-link" aria-label="Back to home">
+        <img src="{% static 'icons/back.png' %}" alt="" class="auth-back-icon" aria-hidden="true"> Back to Home
+    </a>
+
+    <aside class="auth-visual auth-visual-illustration">
+        <img src="{% static 'pictures/diving.gif' %}" alt="Coral reef diving illustration"
+            class="register-visual-image">
+    </aside>
+
+    <section class="auth-panel">
+        <div class="card">
+            <div class="card-body">
+                <div class="auth-form-heading">
+                    <h2>Register Account</h2>
+                    <p>Use your active email so the admin team can approve your access.</p>
+                </div>
+
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button type="button" class="alert-close-btn">✕</button>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <form method="POST" novalidate class="prevent-double-submit register-form">
+                    {% csrf_token %}
+
+                    <div class="name-row">
+                        <div class="form-group">
+                            <label for="id_first_name"><strong>First Name</strong></label>
+                            <input type="text" class="form-control" id="id_first_name" name="first_name" required
+                                placeholder="Juan">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_last_name"><strong>Last Name</strong></label>
+                            <input type="text" class="form-control" id="id_last_name" name="last_name" required
+                                placeholder="Dela Cruz">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_email"><strong>Email Address</strong></label>
+                        <input type="email" class="form-control" id="id_email" name="email" required
+                            placeholder="researcher@gmail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_password1"><strong>Password</strong></label>
+                        <input type="password" class="form-control" id="id_password1" name="password1" required
+                            placeholder="Create a strong password">
+                        <small class="form-text auth-password-hint">
+                            • Minimum 8 characters<br>
+                            • Include uppercase and lowercase letters<br>
+                            • Include numbers and symbols
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_password2"><strong>Confirm Password</strong></label>
+                        <input type="password" class="form-control" id="id_password2" name="password2" required
+                            placeholder="Re-enter your password">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block btn-lg auth-submit">
+                        <strong>Create Researcher Account</strong>
+                    </button>
+                </form>
+
+                <hr class="auth-divider">
+
+                {% if google_oauth_enabled %}
+                <a href="{% provider_login_url 'google' process='login' %}"
+                    class="btn btn-outline btn-block btn-lg google-login-btn">
+                    <img src="{% static 'icons/google.svg' %}" alt="" class="google-login-icon" aria-hidden="true">
+                    Continue with Google
+                </a>
+                {% endif %}
+
+                <p class="auth-meta">
+                    Already approved?
+                    <a href="{% url 'login' %}">Sign in here</a>
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/register.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Analysis Results | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/analysis_results.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_results' %}" class="is-active">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main analysis-main">
+        <section class="surface-card analysis-page-head">
+            <div>
+                <p class="page-kicker">Analysis Results</p>
+                <h1>Batch Insights</h1>
+                <p class="page-sub">Showing {{ total_batches }} batches · {{ total_images }} images</p>
+            </div>
+            <div class="analysis-export-actions">
+                <a href="{% url 'analysis_results_export_csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}"
+                    class="action-outline">Export CSV</a>
+                <a href="{% url 'analysis_results_export_pdf' %}{% if filter_query %}?{{ filter_query }}{% endif %}"
+                    class="action-outline">Export PDF</a>
+            </div>
+        </section>
+
+        <form class="surface-card analysis-filter-bar" method="get" aria-label="Analysis filters">
+            <label class="filter-field">
+                <span>From</span>
+                <input type="date" name="start_date" value="{{ filter_state.start_date }}">
+            </label>
+            <label class="filter-field">
+                <span>To</span>
+                <input type="date" name="end_date" value="{{ filter_state.end_date }}">
+            </label>
+            <label class="filter-field">
+                <span>Area</span>
+                <select name="area">
+                    <option value="">All areas</option>
+                    {% for area in area_options %}
+                    <option value="{{ area }}">{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="filter-field">
+                <span>Surveyor</span>
+                <input type="text" name="surveyor" value="{{ filter_state.surveyor }}" placeholder="Name(s)">
+            </label>
+            <label class="filter-field">
+                <span>Class</span>
+                <select name="coverage_class">
+                    <option value="">All classes</option>
+                    <option value="A">Class A</option>
+                    <option value="B">Class B</option>
+                    <option value="C">Class C</option>
+                    <option value="pending">Pending
+                    </option>
+                </select>
+            </label>
+            <label class="filter-field">
+                <span>Min %</span>
+                <input type="number" step="0.1" name="min_coverage" value="{{ filter_state.min_coverage }}"
+                    placeholder="0">
+            </label>
+            <label class="filter-field">
+                <span>Max %</span>
+                <input type="number" step="0.1" name="max_coverage" value="{{ filter_state.max_coverage }}"
+                    placeholder="100">
+            </label>
+            <div class="filter-actions">
+                <button type="submit" class="action-primary">Apply</button>
+                <a href="{% url 'analysis_results' %}" class="action-outline">Clear</a>
+            </div>
+        </form>
+
+        <section class="analysis-charts" aria-label="Charts">
+            <article class="surface-card chart-card compact-chart">
+                <div class="card-header">
+                    <h2>Coverage Trend</h2>
+                    <span class="chart-sub">Monthly average</span>
+                </div>
+                <canvas id="analysisTrendChart" height="140"></canvas>
+            </article>
+            <article class="surface-card chart-card compact-chart">
+                <div class="card-header">
+                    <h2>Class Distribution</h2>
+                    <span class="chart-sub">A/B/C/Pending</span>
+                </div>
+                <canvas id="analysisClassChart" height="140"></canvas>
+            </article>
+        </section>
+
+        <section class="surface-card analysis-map-wrap" aria-label="Survey locations map">
+            <div class="map-head">
+                <h2>Survey Locations</h2>
+                <span class="map-sub">Geographic distribution of batches</span>
+            </div>
+            <div id="analysisMap" class="analysis-map"></div>
+        </section>
+
+        <section class="surface-card analysis-table-wrap" aria-label="Analysis results table">
+            <div class="table-head">
+                <h2>Results</h2>
+                <span class="table-meta">{{ total_batches }} batches</span>
+            </div>
+            <div class="table-scroll">
+                <table class="analysis-table">
+                    <thead>
+                        <tr>
+                            <th>Batch</th>
+                            <th>Date</th>
+                            <th>Area</th>
+                            <th>Surveyors</th>
+                            <th>Images</th>
+                            <th>Avg Coverage</th>
+                            <th>Class</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td>
+                                <div class="cell-title">{{ row.name }}</div>
+                            </td>
+                            <td>{{ row.survey_date|date:"M d, Y" }}</td>
+                            <td>{{ row.area_name }}</td>
+                            <td class="surveyor-cell">{{ row.surveyor_display|linebreaksbr }}</td>
+                            <td>{{ row.image_count }}</td>
+                            <td>
+                                {% if row.avg_coverage is not None %}
+                                {{ row.avg_coverage|floatformat:1 }}%
+                                {% else %}
+                                --
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="batch-class-badge class-{{ row.coverage_class|lower }}">
+                                    {% if row.coverage_class in 'ABC' %}Class {{ row.coverage_class }}{% else %}{{
+                                    row.coverage_class }}{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="{% url 'batch_detail' row.id %}" class="action-outline">Details</a>
+                                    <a href="{% url 'analysis_results_export_csv' %}?batch_id={{ row.id }}"
+                                        class="action-outline">CSV</a>
+                                    <a href="{% url 'analysis_results_export_pdf' %}?batch_id={{ row.id }}"
+                                        class="action-outline">PDF</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="table-empty">No batches match the selected filters.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+{{ chart_data|json_script:"analysis-chart-data" }}
+{{ rows|json_script:"analysis-batch-data" }}
+
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{% static 'js/researcher_dashboard.js' %}"></script>
+<script src="{% static 'js/analysis_results.js' %}"></script>
+{% endblock %}

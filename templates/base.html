@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CoralSense{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- Django Messages Payload (rendered as toast popups in custom.js) -->
+    {% if messages %}
+    <div id="django-messages" hidden>
+        {% for message in messages %}
+        <div data-tags="{{ message.tags|default:'info' }}" data-message="{{ message|escapejs }}"></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-shell">
+            <div class="footer-brand">
+                <img src="{% static 'images/landing/dnsc-logo.png' %}" alt="DNSC logo" class="footer-dnsc-logo">
+                <div>
+                    <p class="footer-credit">Davao del Norte State College (DNSC)</p>
+                    <p class="footer-team">Developed by Christian Jorda, Kyla Samson, Queenie Sumalinog</p>
+                </div>
+            </div>
+
+            <p class="footer-copy">&copy; 2026 CoralSense. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{% static 'js/custom.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

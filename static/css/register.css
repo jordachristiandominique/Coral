@@ -1,0 +1,196 @@
+/* Register page specific styles */
+
+.page-register main {
+    padding-top: 2.2rem;
+}
+
+.auth-shell-register {
+    position: relative;
+    gap: 0;
+    border: 0;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 22px 36px rgba(19, 60, 93, 0.16);
+    grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+}
+
+.auth-shell-register .auth-card-back-link {
+    position: absolute;
+    top: 0.8rem;
+    left: 0.8rem;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #1c5f6d;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #d7e3e9;
+    border-radius: 999px;
+    padding: 0.5rem 0.8rem;
+    box-shadow: 0 8px 18px rgba(14, 43, 63, 0.12);
+}
+
+.auth-shell-register .auth-card-back-link:hover {
+    color: #134b56;
+}
+
+.auth-shell-register .auth-visual {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.auth-shell-register .auth-visual-illustration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 520px;
+    padding: 0;
+    background: #ffffff;
+    isolation: isolate;
+}
+
+.auth-shell-register .auth-visual-illustration::before {
+    content: none;
+}
+
+.auth-shell-register .auth-visual-illustration::after {
+    content: none;
+}
+
+.auth-shell-register .register-visual-image {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 560px);
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.auth-shell-register .auth-form-heading h2 {
+    color: #1c5f6d;
+}
+
+.auth-shell-register .auth-back-icon {
+    width: 13px;
+    height: 13px;
+    display: block;
+    object-fit: contain;
+}
+
+.auth-shell-register .auth-panel {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #ffffff;
+    border-left: 0;
+}
+
+.auth-shell-register .auth-panel .card-body {
+    padding: 0.9rem 1.1rem 0.7rem;
+}
+
+.auth-shell-register .auth-form-heading {
+    margin-bottom: 1rem;
+}
+
+.auth-shell-register .auth-form-heading p {
+    margin-bottom: 0;
+}
+
+.auth-shell-register .register-form .form-group {
+    margin-bottom: 0.72rem;
+}
+
+.auth-shell-register .name-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+}
+
+.auth-shell-register .auth-submit {
+    margin-top: 1rem;
+}
+
+.auth-shell-register .auth-divider {
+    margin: 1.1rem 0 0.95rem;
+}
+
+.auth-shell-register .auth-password-hint {
+    background: #f5fafb;
+    border: 1px solid #d7e8ea;
+    color: #1c5f6d;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin-top: 0.45rem;
+    padding: 0.55rem 0.65rem;
+}
+
+.auth-shell-register .auth-meta a {
+    color: #1c5f6d;
+}
+
+.auth-shell-register .google-login-btn {
+    margin: 0.15rem 0 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: #ffffff;
+    border: 1px solid #cfdfe4;
+    color: #1c5f6d;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.auth-shell-register .google-login-btn:hover {
+    background: #f2f8fa;
+    border-color: #b7ced7;
+    transform: translateY(-1px);
+}
+
+.auth-shell-register .google-login-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+@media (max-width: 768px) {
+    .page-register main {
+        padding-top: 1.6rem;
+    }
+
+    .auth-shell-register {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-shell-register .auth-card-back-link {
+        top: 0.65rem;
+        left: 0.65rem;
+        padding: 0.45rem 0.72rem;
+        font-size: 0.84rem;
+    }
+
+    .auth-shell-register .auth-visual-illustration {
+        min-height: 300px;
+        padding: 0;
+    }
+
+    .auth-shell-register .auth-panel {
+        border-left: 0;
+        border-bottom: 0;
+    }
+
+    .auth-shell-register .register-visual-image {
+        width: min(100%, 410px);
+    }
+
+    .auth-shell-register .name-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}

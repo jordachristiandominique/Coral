@@ -1,0 +1,307 @@
+═══════════════════════════════════════════════════════════════════════════════════════
+                         CORAL REEF SURVEY - JSON SCHEMA DIAGRAM
+                              Project Architecture & Data Flow
+═══════════════════════════════════════════════════════════════════════════════════════
+
+PROJECT OVERVIEW:
+================
+This is a Django-based web application for collecting, analyzing, and reporting coral reef
+survey data. Users (Researchers) upload image batches with location metadata, images are
+analyzed for coral coverage and point classifications, and results are visualized on maps
+and in detailed reports.
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                                    CORE ENTITIES
+═══════════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                               USER (AbstractUser)                                    │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Attributes:                         │ Relationships:                               │
+│   • id (PK)                         │ ├─ image_batches (1-to-M)                  │
+│   • username (string)               │ ├─ created_at (DateTimeField)              │
+│   • email (string, unique)          │ └─ updated_at (DateTimeField)              │
+│   • first_name (string)             │                                             │
+│   • last_name (string)              │ Roles:                                      │
+│   • password (hashed)               │ ├─ superadmin                               │
+│   • role (CharField)                │ ├─ admin                                    │
+│   • is_active (boolean)             │ ├─ researcher                               │
+│   • is_staff (boolean)              │ └─ pending (awaiting approval)               │
+│                                     │                                             │
+│ Methods:                            │ Methods:                                    │
+│   • is_pending()                    │ • is_researcher()                           │
+│   • is_admin()                      │ • is_superadmin()                           │
+│                                     │                                             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                            │
+                                            │ (1-to-Many)
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                          IMAGE_BATCH (Survey Metadata)                              │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Attributes:                         │ Relationships:                               │
+│   • id (PK)                         │ ├─ user_id (FK → User)                     │
+│   • user (ForeignKey)               │ ├─ images (1-to-M → BatchImage)             │
+│   • name (string, max 160)          │ └─ created_at (DateTimeField)               │
+│   • survey_date (DateField)         │                                             │
+│   • area_name (string, max 160)     │ Location Data:                              │
+│   • latitude (DecimalField)         │ ├─ latitude (Decimal: ±9 digits, 6 places) │
+│   • longitude (DecimalField)        │ └─ longitude (Decimal: ±9 digits, 6 places)│
+│   • surveyor_names (string)         │                                             │
+│   • created_at (DateTimeField)      │ Ordering: -created_at (newest first)        │
+│                                     │                                             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                            │
+                                            │ (1-to-Many)
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         BATCH_IMAGE (Image Analysis Data)                           │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Attributes:                         │ Relationships:                               │
+│   • id (PK)                         │ ├─ batch_id (FK → ImageBatch)               │
+│   • batch (ForeignKey)              │ └─ created_at (DateTimeField)               │
+│   • image (FileField)               │                                             │
+│   • description (TextField)         │ Analysis Data:                              │
+│                                     │ ├─ quadrat_rect (JSONField)                │
+│ Quadrat Geometry:                   │ ├─ quadrat_points (JSONField)               │
+│   • quadrat_rect (JSONField)        │ ├─ point_classes (JSONField, default=[])   │
+│   • quadrat_points (JSONField)      │ └─ coverage_percent (DecimalField)          │
+│                                     │                                             │
+│ Analysis Results:                   │ Coverage Classification:                    │
+│   • point_classes (JSONField)       │ └─ coverage_class (CharField, max 1)        │
+│   • coverage_percent (Decimal)      │    (e.g., 'A', 'B', 'C', 'D')              │
+│   • coverage_class (CharField)      │                                             │
+│   • created_at (DateTimeField)      │ Ordering: created_at (oldest first)         │
+│                                     │                                             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                                    DATA FLOW DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════════════
+
+1. AUTHENTICATION FLOW:
+   ┌──────────────────┐
+   │  Registration    │ → Pending Approval → Admin Review → Approved (researcher role)
+   └──────────────────┘
+   
+   ┌──────────────────┐
+   │     Login        │ → Dashboard (if approved) / Pending Approval (if pending)
+   └──────────────────┘
+
+2. SURVEY DATA UPLOAD FLOW:
+   ┌──────────────────┐      ┌─────────────────────┐      ┌─────────────────────┐
+   │ Researcher       │ ──→  │  Upload Batch       │ ──→  │ Add Image Details   │
+   │ User             │      │ (Survey Metadata)   │      │ (Coordinates, Data) │
+   └──────────────────┘      └─────────────────────┘      └─────────────────────┘
+                                        │                           │
+                                        ▼                           ▼
+                            ┌────────────────────┐      ┌──────────────────────┐
+                            │  ImageBatch        │      │  BatchImage          │
+                            │  Created           │      │  (Image + Metadata)  │
+                            └────────────────────┘      └──────────────────────┘
+
+3. ANALYSIS & REPORTING FLOW:
+   ┌─────────────────────┐      ┌──────────────────────┐      ┌───────────────────┐
+   │ Batch Images        │ ──→  │ Analysis Engine      │ ──→  │ Results Stored    │
+   │ (with coordinates)  │      │ (Coverage Calc)      │      │ (coverage_class)  │
+   └─────────────────────┘      └──────────────────────┘      └───────────────────┘
+            │                                                           │
+            └───────────────────────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    ▼                 ▼                 ▼
+            ┌───────────────┐  ┌──────────────┐  ┌──────────────┐
+            │ Map View      │  │ Reports      │  │ CSV/PDF      │
+            │ (lat/long)    │  │ (Analytics)  │  │ Export       │
+            └───────────────┘  └──────────────┘  └──────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                                    VIEW/URL ROUTING
+═══════════════════════════════════════════════════════════════════════════════════════
+
+PUBLIC ROUTES:
+├─ / (landing_page)
+└─ /public-dashboard/
+
+AUTHENTICATION ROUTES:
+├─ /accounts/register/
+├─ /accounts/login/
+├─ /accounts/logout/
+├─ /accounts/pending-approval/
+├─ /accounts/password-reset/
+├─ /accounts/password-reset/done/
+└─ /accounts/password-reset/<uidb64>/<token>/
+
+RESEARCHER ROUTES (Protected - requires researcher role):
+├─ /accounts/researcher/dashboard/
+├─ /accounts/researcher/accept-researcher/
+├─ /accounts/researcher/upload-batch/          [POST - Create ImageBatch + BatchImages]
+├─ /accounts/researcher/batches/               [GET - List all ImageBatches]
+├─ /accounts/researcher/batches/<batch_id>/    [GET - Batch detail with images]
+├─ /accounts/researcher/map-view/              [GET - Display batches on map]
+├─ /accounts/researcher/analysis-results/      [GET - View analysis data]
+│  ├─ /export/csv/                            [POST - Export as CSV]
+│  └─ /export/pdf/                            [POST - Export as PDF]
+└─ /accounts/researcher/reports/               [GET - Generate reports]
+
+ADMIN ROUTES:
+└─ /admin/
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                              DATABASE JSON SCHEMA
+═══════════════════════════════════════════════════════════════════════════════════════
+
+USER TABLE:
+{
+  "id": "integer (PK)",
+  "username": "string (unique)",
+  "email": "string (unique, required)",
+  "first_name": "string",
+  "last_name": "string",
+  "password": "string (hashed)",
+  "role": "enum [superadmin, admin, researcher, pending]",
+  "is_active": "boolean (default: true)",
+  "is_staff": "boolean (default: false)",
+  "is_superuser": "boolean (default: false)",
+  "date_joined": "datetime",
+  "created_at": "datetime (auto_now_add)",
+  "updated_at": "datetime (auto_now)"
+}
+
+IMAGE_BATCH TABLE:
+{
+  "id": "integer (PK)",
+  "user_id": "integer (FK → User.id)",
+  "name": "string (max_length: 160, required)",
+  "survey_date": "date (required)",
+  "area_name": "string (max_length: 160, required)",
+  "latitude": "decimal (max_digits: 9, decimal_places: 6, required)",
+  "longitude": "decimal (max_digits: 9, decimal_places: 6, required)",
+  "surveyor_names": "string (max_length: 200, default: '')",
+  "created_at": "datetime (auto_now_add)"
+}
+
+BATCH_IMAGE TABLE:
+{
+  "id": "integer (PK)",
+  "batch_id": "integer (FK → ImageBatch.id)",
+  "image": "file (upload_to: batch_images/)",
+  "description": "text (blank: true)",
+  "quadrat_rect": {
+    "x": "float",
+    "y": "float",
+    "width": "float",
+    "height": "float"
+  },
+  "quadrat_points": [
+    {"x": "float", "y": "float", "class": "string"}
+  ],
+  "point_classes": [
+    {
+      "class_name": "string",
+      "count": "integer",
+      "percentage": "float"
+    }
+  ],
+  "coverage_percent": "decimal (max_digits: 5, decimal_places: 2, nullable)",
+  "coverage_class": "string (max_length: 1, default: '')",
+  "created_at": "datetime (auto_now_add)"
+}
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                                  KEY FEATURES
+═══════════════════════════════════════════════════════════════════════════════════════
+
+1. USER MANAGEMENT:
+   • Role-based access control (superadmin, admin, researcher, pending)
+   • User registration with pending approval workflow
+   • Password reset functionality
+   • Google OAuth integration
+
+2. DATA COLLECTION:
+   • Batch upload with survey metadata (location, date, surveyors)
+   • Multiple images per batch with quadrat geometry
+   • JSON storage for flexible data structures
+
+3. ANALYSIS:
+   • Coverage percentage calculation
+   • Coverage classification (A, B, C, D)
+   • Point-based classification system
+   • Spatial data storage (latitude/longitude)
+
+4. VISUALIZATION:
+   • Map view with batch locations
+   • Batch detail view with all images
+   • Interactive quadrat coordinate system
+
+5. REPORTING:
+   • CSV export of analysis results
+   • PDF export with charts and summaries
+   • Detailed analytics dashboard
+
+6. TECHNOLOGIES:
+   • Backend: Django 5.2.6
+   • Database: SQLite (configurable)
+   • Authentication: Django Auth + django-allauth (Google OAuth)
+   • Image Processing: Pillow, OpenCV
+   • Reporting: ReportLab
+   • Frontend: Django Templates + Bootstrap
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                                PROJECT STRUCTURE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════════════
+
+coral_app/                    ← Django Project Root
+├── coral_app/              ← Project Configuration
+│   ├── settings.py         ← Django settings, INSTALLED_APPS, Database config
+│   ├── urls.py             ← Main URL routing
+│   ├── wsgi.py             ← WSGI application
+│   ├── asgi.py             ← ASGI application
+│   └── views.py            ← Public views (landing page, dashboard)
+│
+├── accounts/               ← User & Survey Management App
+│   ├── models.py           ← User, ImageBatch, BatchImage models
+│   ├── views.py            ← Auth views, Upload, Analysis views
+│   ├── forms.py            ← Registration, Login, Reset forms
+│   ├── urls.py             ← Accounts routing
+│   ├── admin.py            ← Django admin configuration
+│   ├── migrations/         ← Database migration history
+│   └── templates/          ← HTML templates (register, login, dashboard, etc.)
+│
+├── static/                 ← Static files
+│   ├── css/               ← Stylesheets
+│   ├── js/                ← JavaScript files
+│   └── images/            ← Static images
+│
+├── templates/             ← Base templates
+│   ├── base.html          ← Base template (navbar, footer)
+│   ├── landing_page.html  ← Homepage
+│   └── public_dashboard.html ← Public data view
+│
+├── media/                 ← User-uploaded files
+│   └── batch_images/      ← Uploaded survey images
+│
+├── manage.py              ← Django management command
+├── requirements.txt       ← Python dependencies
+└── db.sqlite3            ← SQLite database
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                            WORKFLOW SEQUENCE DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════════════
+
+[New User Flow]
+User → Register → Pending Status → Admin Review → Approved → Researcher Dashboard
+
+[Survey Upload Flow]
+Researcher → Upload Batch → Add Metadata → Add Images → Add Coordinates → Save
+
+[Analysis Flow]
+Images Uploaded → Extract Metadata → Analyze Coverage → Calculate Classes → Store Results
+
+[Reporting Flow]
+View Results → Select Date Range → Generate Report → Export (CSV/PDF)
+
+[Map Viewing Flow]
+Researcher → Map View → Display All Batches → Click Batch → View Details
+
+═══════════════════════════════════════════════════════════════════════════════════════

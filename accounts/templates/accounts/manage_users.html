@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Users | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/manage_users.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+
+            <!-- Batches Dropdown (Admin only) or Simple Link (Researcher) -->
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+
+            <!-- User Management Dropdown (Admin only) -->
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown is-open">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="true">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown">
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem is-active"><span>Manage
+                            Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main manage-users-main">
+        <section class="surface-card manage-users-page-head" aria-label="Manage users header">
+            <h1><i data-lucide="users"></i>Manage Users</h1>
+        </section>
+
+        <section class="surface-card manage-users-filter-bar" aria-label="User filters">
+            <form class="users-filter-form">
+                {% csrf_token %}
+                <label class="users-filter-search" for="users-search">
+                    <i data-lucide="search" aria-hidden="true"></i>
+                    <input id="users-search" type="text" name="search" placeholder="Search by name or email...">
+                </label>
+
+                <label class="users-filter-select" for="role-filter">
+                    <select id="role-filter" name="role">
+                        <option value="">All Roles</option>
+                        <option value="researcher">Researcher</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </label>
+
+                <label class="users-filter-select" for="status-filter">
+                    <select id="status-filter" name="status">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </label>
+            </form>
+        </section>
+
+        <section class="manage-users-content" aria-label="Users list">
+            {% if users %}
+            <div class="surface-card users-table-wrapper">
+                <table class="users-table" role="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Role</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Batches</th>
+                            <th scope="col">Reports</th>
+                            <th scope="col">Joined</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr class="user-row {% if not u.is_active %}user-inactive{% endif %}">
+                            <td data-label="Name">
+                                <span class="user-name">{{ u.get_full_name|default:u.username }}</span>
+                            </td>
+                            <td data-label="Email">
+                                <span class="user-email">{{ u.email }}</span>
+                            </td>
+                            <td data-label="Role">
+                                <span class="role-badge role-{{ u.role }}">{{ u.get_role_display }}</span>
+                            </td>
+                            <td data-label="Status">
+                                <span
+                                    class="status-badge {% if u.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                    {% if u.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </td>
+                            <td data-label="Batches" class="text-center">
+                                <span class="stat-number">{{ u.batch_count }}</span>
+                            </td>
+                            <td data-label="Reports" class="text-center">
+                                <span class="stat-number">{{ u.report_count }}</span>
+                            </td>
+                            <td data-label="Joined">
+                                <span class="join-date">{{ u.date_joined|date:"M d, Y" }}</span>
+                            </td>
+                            <td data-label="Actions">
+                                <div class="user-actions">
+                                    {% if u.id != user.id %}
+                                        {% if u.is_active %}
+                                        <button type="button" class="action-btn deactivate-btn" data-user-id="{{ u.id }}"
+                                            data-user-name="{{ u.get_full_name|default:u.username }}"
+                                            title="Deactivate user">
+                                            <img src="{% static 'images/deactivate.png' %}" alt="Deactivate" aria-hidden="true">
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="action-btn activate-btn" data-user-id="{{ u.id }}"
+                                            data-user-name="{{ u.get_full_name|default:u.username }}" title="Activate user">
+                                            <img src="{% static 'images/activate.png' %}" alt="Activate" aria-hidden="true">
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="users-count">
+                <span>Showing <strong>{{ users.count }}</strong> user{{ users.count|pluralize }}</span>
+            </div>
+            {% else %}
+            <div class="surface-card empty-state">
+                <div class="empty-state-icon">
+                    <i data-lucide="users" aria-hidden="true"></i>
+                </div>
+                <h3>No users found</h3>
+                <p>No users match your search criteria.</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+
+<!-- Deactivate Confirmation Modal -->
+<div class="modal deactivate-modal" data-deactivate-modal aria-hidden="true" role="alertdialog"
+    aria-labelledby="deactivate-modal-title">
+    <div class="modal__dialog">
+        <i data-lucide="ban" aria-hidden="true" class="modal__illustration"></i>
+        <h2 id="deactivate-modal-title">Deactivate User?</h2>
+        <p id="deactivate-user-name"></p>
+        <div class="modal__actions">
+            <button type="button" class="modal-btn modal-cancel-btn" data-deactivate-cancel>Cancel</button>
+            <button type="button" class="modal-btn modal-confirm-btn deactivate-confirm"
+                data-deactivate-confirm>Deactivate</button>
+        </div>
+    </div>
+</div>
+
+<!-- Activate Confirmation Modal -->
+<div class="modal activate-modal" data-activate-modal aria-hidden="true" role="alertdialog"
+    aria-labelledby="activate-modal-title">
+    <div class="modal__dialog">
+        <i data-lucide="check-circle" aria-hidden="true" class="modal__illustration"></i>
+        <h2 id="activate-modal-title">Activate User?</h2>
+        <p id="activate-user-name"></p>
+        <div class="modal__actions">
+            <button type="button" class="modal-btn modal-cancel-btn" data-activate-cancel>Cancel</button>
+            <button type="button" class="modal-btn modal-confirm-btn activate-confirm"
+                data-activate-confirm>Activate</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Logout Confirmation Modal -->
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/manage_users.js' %}"></script>
+{% endblock %}

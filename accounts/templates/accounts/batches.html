@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Batches | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+
+            <!-- Batches Dropdown (Admin only) or Simple Link (Researcher) -->
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown is-open">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="true">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown">
+                    <a href="{% url 'batches' %}"
+                        class="sidebar-nav-subitem {% if batch_type == 'my_batches' or not batch_type %}is-active{% endif %}">
+                        <span>My Batches</span>
+                    </a>
+                    <a href="{% url 'all_batches' %}"
+                        class="sidebar-nav-subitem {% if batch_type == 'all_batches' %}is-active{% endif %}">
+                        <span>All Batches</span>
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+
+            <!-- User Management Dropdown (Admin only) -->
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+            {% if user.is_admin %}
+            <a href="{% url 'accept_researcher' %}">
+                <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Accept Researcher</span>
+            </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main batches-main">
+        <section class="surface-card batches-page-head" aria-label="My image batches header">
+            <h1><i data-lucide="folder"></i>My Image Batches</h1>
+        </section>
+
+        <section class="surface-card batches-filter-bar" aria-label="Batch filters">
+            <label class="batch-filter-search" for="batch-search">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <input id="batch-search" type="text" placeholder="Search batches...">
+            </label>
+
+            <label class="batch-filter-select" for="batch-date-filter">
+                <span class="sr-only">Filter by date</span>
+                <select id="batch-date-filter" name="batch-date-filter">
+                    <option value="">Date</option>
+                    <option value="latest">Latest first</option>
+                    <option value="oldest">Oldest first</option>
+                </select>
+            </label>
+
+            <label class="batch-filter-select" for="batch-class-filter">
+                <span class="sr-only">Filter by class</span>
+                <select id="batch-class-filter" name="batch-class-filter">
+                    <option value="">Class</option>
+                    <option value="A">Class A</option>
+                    <option value="B">Class B</option>
+                    <option value="C">Class C</option>
+                </select>
+            </label>
+
+            <button type="button" class="filter-clear-btn" id="batch-clear-btn">Clear</button>
+        </section>
+
+        <section class="batches-grid" aria-label="Batch cards list">
+            {% for batch in batches %}
+            <article class="surface-card batch-card">
+                <header class="batch-card-head">
+                    <h2>{{ batch.name }}</h2>
+                </header>
+
+                <p class="batch-meta">
+                    <span><i data-lucide="calendar"></i> {{ batch.survey_date|date:"M d, Y" }}</span>
+                    <span class="meta-dot"></span>
+                    <span><i data-lucide="map-pin"></i> {{ batch.area_name }}</span>
+                    <span class="meta-dot"></span>
+                    <span>{{ batch.image_count }} images</span>
+                </p>
+
+                <p class="batch-uploaded-by">
+                    <i data-lucide="upload"></i>
+                    <span>Uploaded by: {{ batch.user.get_full_name|default:batch.user.username }}</span>
+                </p>
+
+                <p class="batch-surveyors">
+                    <i data-lucide="users"></i>
+                    <span>{{ batch.surveyor_names|default:"Surveyors" }}</span>
+                </p>
+                <p class="batch-coverage">
+                    {% with coverage=batch.avg_coverage|default_if_none:"--"|floatformat:0 %}
+                    <span class="coverage-text">Coverage: <strong>{{ coverage }}%</strong></span>
+                    {% endwith %}
+                    <span class="batch-class-badge class-{{ batch.coverage_class|default:" pending"|lower }}">
+                        Class {{ batch.coverage_class|default:"Pending" }}
+                    </span>
+                </p>
+
+                <div class="batch-actions">
+                    <a href="{% url 'batch_detail' batch.id %}" class="action-outline">View Details</a>
+                    <a href="#" class="action-outline">Download</a>
+                    <a href="#" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
+                </div>
+            </article>
+            {% empty %}
+            <article class="surface-card batch-card">
+                <header class="batch-card-head">
+                    <h2>No batches yet</h2>
+                </header>
+                <p class="batch-meta">
+                    Upload your first image batch to see it here.
+                </p>
+            </article>
+            {% endfor %}
+        </section>
+    </main>
+</div>
+
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/batches.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Public Dashboard | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="public-dashboard" aria-label="Public coral health dashboard">
+    <div class="container">
+        <header class="public-header">
+            <p class="features-kicker">Public Monitoring Portal</p>
+            <h1>Davao Gulf Coral Health Dashboard</h1>
+            <p>Last updated: {{ last_updated|date:"F d, Y"|default:"--" }}</p>
+        </header>
+
+        <section class="summary-grid" aria-label="Summary statistics">
+            <article class="summary-card">
+                <p>Total Surveys</p>
+                <h3 id="stat-surveys">45</h3>
+            </article>
+            <article class="summary-card">
+                <p>Average Coverage</p>
+                <h3 id="stat-coverage">52%</h3>
+            </article>
+            <article class="summary-card">
+                <p>Sites Monitored</p>
+                <h3 id="stat-sites">12</h3>
+            </article>
+            <article class="summary-card">
+                <p>Class A Share</p>
+                <h3 id="stat-class-a">33%</h3>
+            </article>
+        </section>
+
+        <section class="map-panel" aria-label="Interactive map and filters">
+            <div class="map-toolbar">
+                <span class="toolbar-title">Interactive Map</span>
+                <label for="class-filter">Class
+                    <select id="class-filter" name="class-filter">
+                        <option value="ALL">All Classes</option>
+                        <option value="A">Class A</option>
+                        <option value="B">Class B</option>
+                        <option value="C">Class C</option>
+                    </select>
+                </label>
+                <label for="start-date">From
+                    <input id="start-date" name="start-date" type="date">
+                </label>
+                <label for="end-date">To
+                    <input id="end-date" name="end-date" type="date">
+                </label>
+            </div>
+
+            <div id="public-survey-map" class="public-map" aria-label="Survey locations map"></div>
+
+            <div class="legend-row" aria-label="Map legend">
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-a);"></span>Class
+                    A</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-b);"></span>Class
+                    B</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-c);"></span>Class
+                    C</span>
+            </div>
+        </section>
+
+        <section class="charts-grid" aria-label="Coverage and biodiversity charts">
+            <article class="chart-card">
+                <h2>Coverage Trend</h2>
+                <p class="chart-sub">Line chart (last 6 months)</p>
+                <svg id="coverage-line-chart" class="line-chart" viewBox="0 0 600 220" role="img"
+                    aria-labelledby="coverage-chart-title">
+                    <title id="coverage-chart-title">Coral coverage trend line chart</title>
+                    <line class="line-grid" x1="30" y1="20" x2="30" y2="190"></line>
+                    <line class="line-grid" x1="30" y1="190" x2="580" y2="190"></line>
+                    <path id="line-path" class="line-path" d=""></path>
+                </svg>
+                <p id="line-caption" class="chart-caption">Average monthly coverage based on visible survey records.</p>
+            </article>
+
+            <article class="chart-card">
+                <h2>Biodiversity Distribution</h2>
+                <p class="chart-sub">Class A/B/C breakdown</p>
+                <div class="donut-wrap">
+                    <div id="distribution-donut" class="donut" aria-hidden="true"></div>
+                    <div class="donut-legend" aria-live="polite">
+                        <div><strong>Class A</strong><span id="legend-a">0 sites</span></div>
+                        <div><strong>Class B</strong><span id="legend-b">0 sites</span></div>
+                        <div><strong>Class C</strong><span id="legend-c">0 sites</span></div>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="findings-panel" aria-label="Recent findings">
+            <h2>Recent Findings</h2>
+            <div class="findings-table-wrap">
+                <table class="findings-table">
+                    <thead>
+                        <tr>
+                            <th>Area</th>
+                            <th>Surveyors</th>
+                            <th>Date</th>
+                            <th>Coverage</th>
+                            <th>Class</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="findings-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="edu-panel" aria-label="Educational panel">
+            <h2>What do these numbers mean?</h2>
+            <p>
+                Class A means coral coverage is at least 60% and generally indicates strong reef condition. Class B
+                (40-59%) reflects moderate health with stable recovery potential. Class C (below 40%) signals a reef
+                area that needs closer monitoring and targeted restoration support.
+            </p>
+        </section>
+
+        <section class="back-link" aria-label="Return to landing page">
+            <a href="{% url 'landing_page' %}" class="btn btn-outline">Back to Landing Page</a>
+        </section>
+        {{ dashboard_surveys|json_script:"public-surveys-data" }}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{% static 'js/public_dashboard.js' %}?v=20260419a"></script>
+{% endblock %}

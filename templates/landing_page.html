@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Welcome | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+{% endblock %}
+
+{% block content %}
+<section class="landing-hero" style="--landing-hero-image: url('{% static 'images/landing/underwater.png' %}');">
+    <div class="landing-hero-auth">
+        {% if user.is_authenticated %}
+        <a href="{% url 'logout' %}" class="landing-login-pill">Logout</a>
+        {% else %}
+        <a href="{% url 'register' %}" class="landing-login-pill landing-register-pill">Register</a>
+        <a href="{% url 'login' %}" class="landing-login-pill">Login</a>
+        {% endif %}
+    </div>
+
+    <div class="landing-hero-content">
+        <p class="landing-eyebrow">Coral Reef Monitoring Platform</p>
+        <h1>Coral Insights for<br>Davao Gulf</h1>
+        <p class="landing-subtitle">
+            Monitor coral cover, map biodiversity patterns, and support restoration planning using field surveys and
+            analysis.
+        </p>
+        <a href="{% url 'public_dashboard' %}" class="btn btn-outline landing-hero-cta">View Public Dashboard</a>
+    </div>
+</section>
+
+<div class="landing-wave" aria-hidden="true"></div>
+
+<div class="container">
+    <section class="landing-intro">
+        <div>
+            <h2>Our Approach</h2>
+            <p>
+                This project helps researchers monitor the Davao Gulf with one connected workflow. Teams upload
+                geotagged reef images, evaluate biodiversity condition, and track long-term coral health through clear,
+                evidence-based reporting.
+            </p>
+            <a href="#" class="btn btn-outline">Read More</a>
+        </div>
+        <div class="landing-intro-card">
+            <div id="davao-gulf-map" class="landing-map" aria-label="Map of Davao Gulf"></div>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="features-header">
+            <p class="features-kicker">Platform Capabilities</p>
+            <h2>Key Features Built for Coral Fieldwork</h2>
+            <p>
+                A focused toolkit for collecting evidence, mapping reef locations, and turning observations into
+                practical conservation decisions.
+            </p>
+        </div>
+
+        <div class="features-grid">
+            <article class="feature-card feature-card-camera">
+                <div class="feature-icon-wrap">
+                    <img src="{% static 'icons/camera.png' %}" alt="Upload and analysis icon" class="feature-icon">
+                </div>
+                <p class="feature-index">01</p>
+                <h3>Upload & Analyze</h3>
+                <p>
+                    Upload geotagged image batches and automatically assess coral cover and biodiversity condition.
+                </p>
+            </article>
+
+            <article class="feature-card feature-card-mapping">
+                <div class="feature-icon-wrap">
+                    <img src="{% static 'icons/mapping.png' %}" alt="GIS mapping icon" class="feature-icon">
+                </div>
+                <p class="feature-index">02</p>
+                <h3>GIS Mapping</h3>
+                <p>
+                    Visualize reef health points across Davao Gulf with map-ready location context for field teams.
+                </p>
+            </article>
+
+            <article class="feature-card feature-card-analytics">
+                <div class="feature-icon-wrap">
+                    <img src="{% static 'icons/analytics.png' %}" alt="Analytics dashboard icon" class="feature-icon">
+                </div>
+                <p class="feature-index">03</p>
+                <h3>Analytics</h3>
+                <p>
+                    Compare historical survey results and monitor long-term reef changes using clear trend summaries.
+                </p>
+            </article>
+        </div>
+    </section>
+
+    <section class="workflow-section">
+        <div class="workflow-header">
+            <!-- <p class="workflow-kicker">Section 4</p> -->
+            <h2>How It Works</h2>
+            <p>
+                From underwater field capture to decision-ready insights, CoralSense follows a clear end-to-end
+                workflow designed for research teams in the Davao Gulf.
+            </p>
+        </div>
+
+        <div class="workflow-timeline">
+            <article class="workflow-item left">
+                <div class="workflow-panel">
+                    <h3>Field Survey</h3>
+                    <p>Researchers capture underwater photos during scheduled reef monitoring dives.</p>
+                    <span class="workflow-pill">Step 01</span>
+                </div>
+                <div class="workflow-marker" aria-hidden="true"><span></span></div>
+                <div class="workflow-spacer" aria-hidden="true"></div>
+            </article>
+
+            <article class="workflow-item right">
+                <div class="workflow-panel">
+                    <h3>Upload & Tag</h3>
+                    <p>Images are uploaded with GPS coordinates to preserve exact survey locations.</p>
+                    <span class="workflow-pill">Step 02</span>
+                </div>
+                <div class="workflow-marker" aria-hidden="true"><span></span></div>
+                <div class="workflow-spacer" aria-hidden="true"></div>
+            </article>
+
+            <article class="workflow-item left">
+                <div class="workflow-panel">
+                    <h3>Automatic Analysis</h3>
+                    <p>OpenCV processes each image set and computes coral coverage metrics automatically.</p>
+                    <span class="workflow-pill">Step 03</span>
+                </div>
+                <div class="workflow-marker" aria-hidden="true"><span></span></div>
+                <div class="workflow-spacer" aria-hidden="true"></div>
+            </article>
+
+            <article class="workflow-item right">
+                <div class="workflow-panel">
+                    <h3>Real-Time Results</h3>
+                    <p>Biodiversity class is assigned instantly to surface reef condition as soon as analysis finishes.
+                    </p>
+                    <span class="workflow-pill">Step 04</span>
+                </div>
+                <div class="workflow-marker" aria-hidden="true"><span></span></div>
+                <div class="workflow-spacer" aria-hidden="true"></div>
+            </article>
+
+            <article class="workflow-item left">
+                <div class="workflow-panel">
+                    <h3>Dashboard Insights</h3>
+                    <p>Teams review trends and distribution maps to support restoration planning decisions.</p>
+                    <span class="workflow-pill">Step 05</span>
+                </div>
+                <div class="workflow-marker" aria-hidden="true"><span></span></div>
+                <div class="workflow-spacer" aria-hidden="true"></div>
+            </article>
+        </div>
+    </section>
+
+    <hr>
+
+    <section class="about-project-section" id="about-project" aria-label="About the Project">
+        <div class="about-project-header">
+            <p class="features-kicker">About the Project</p>
+            <h2>Research Collaboration for Reef Protection</h2>
+            <p>
+                CoralSense is an academic and field research initiative built to support marine ecosystem monitoring
+                and evidence-based conservation planning in the Davao Gulf.
+            </p>
+        </div>
+
+        <div class="about-project-grid">
+            <article class="about-project-card">
+                <p class="about-label">SDG Alignment</p>
+                <h3>SDG 14: Life Below Water</h3>
+                <p>
+                    This platform aligns with United Nations SDG 14 by helping teams measure reef condition,
+                    biodiversity trends, and restoration priorities.
+                </p>
+                <span class="sdg-badge">SDG 14 Aligned</span>
+            </article>
+
+            <article class="about-project-card">
+                <p class="about-label">Partnership</p>
+                <h3>DNSC Research Partnership</h3>
+                <p>
+                    Developed in collaboration with DNSC to strengthen marine science workflows, improve field data
+                    reliability, and support student-led and faculty-led coastal research.
+                </p>
+            </article>
+
+            <article class="about-project-card" id="documentation">
+                <p class="about-label">Focus Area</p>
+                <h3>Davao Gulf</h3>
+                <p>
+                    Target deployments focus on Davao Gulf, with outputs structured
+                    for academic reporting, thesis studies, and long-term monitoring documentation.
+                </p>
+            </article>
+        </div>
+    </section>
+
+
+    <section class="cta-banner" id="cta-banner" aria-label="Call to action">
+        <div class="cta-card cta-public">
+            <p class="cta-kicker">For Public</p>
+            <h3>Explore Open Coral Trends</h3>
+            <p>Access the latest coral health summaries and mapped reef observations.</p>
+            <a href="{% url 'public_dashboard' %}" class="btn btn-outline">View Coral Health Dashboard</a>
+        </div>
+
+        <div class="cta-card cta-research">
+            <p class="cta-kicker">For Researchers</p>
+            <h3>Join the Research Workspace</h3>
+            <p>Request account access to upload field data, run analysis, and generate reports.</p>
+            <a href="{% url 'register' %}" class="btn">Request Access</a>
+        </div>
+    </section>
+
+
+    <!-- Biodiversity Classes Section -->
+    <hr>
+
+    <section class="biodiversity-section" aria-label="Biodiversity classification">
+        <div class="biodiversity-header text-center">
+            <p class="features-kicker">Reef Status Guide</p>
+            <h2>Biodiversity Classification</h2>
+        </div>
+
+        <div class="biodiversity-grid">
+            <article class="biodiversity-card biodiversity-card-a">
+                <p class="biodiversity-label">Class A - Excellent</p>
+                <h3>Coral Coverage: ≥ 60%</h3>
+                <p>Healthy reef with abundant coral coverage and high biodiversity.</p>
+            </article>
+
+            <article class="biodiversity-card biodiversity-card-b">
+                <p class="biodiversity-label">Class B - Good</p>
+                <h3>Coral Coverage: 40-59%</h3>
+                <p>Moderately healthy reef with acceptable coral coverage.</p>
+            </article>
+
+            <article class="biodiversity-card biodiversity-card-c">
+                <p class="biodiversity-label">Class C - Poor</p>
+                <h3>Coral Coverage: < 40%</h3>
+                        <p>Degraded reef requiring monitoring and conservation efforts.</p>
+            </article>
+        </div>
+    </section>
+
+    {% if not user.is_authenticated %}
+    <hr>
+
+    <section class="public-dashboard-callout text-center" aria-label="Public dashboard call to action">
+        <p class="public-callout-kicker">Public Access</p>
+        <h3>Want to view the public dashboard?</h3>
+        <p>Browse coral health data and reef maps without creating an account.</p>
+        <a href="{% url 'public_dashboard' %}" class="btn btn-outline">View Public Dashboard</a>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const revealTargets = document.querySelectorAll(
+            '.landing-intro, .features-section, .workflow-section, .about-project-section, .cta-banner, .biodiversity-section, .public-dashboard-callout'
+        );
+
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const revealDirections = ['landing-slide-left', 'landing-slide-right', 'landing-slide'];
+
+        revealTargets.forEach((section, index) => {
+            section.classList.add('landing-slide');
+            section.classList.add(revealDirections[index % revealDirections.length]);
+            if (prefersReducedMotion) {
+                section.classList.add('is-visible');
+            }
+        });
+
+        if (!prefersReducedMotion && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries, observe) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) {
+                        return;
+                    }
+
+                    entry.target.classList.add('is-visible');
+                    observe.unobserve(entry.target);
+                });
+            }, {
+                threshold: 0.18,
+                rootMargin: '0px 0px -10% 0px'
+            });
+
+            revealTargets.forEach((section) => observer.observe(section));
+        } else if (!prefersReducedMotion) {
+            revealTargets.forEach((section) => section.classList.add('is-visible'));
+        }
+
+        const mapElement = document.getElementById('davao-gulf-map');
+        if (!mapElement || typeof L === 'undefined') {
+            return;
+        }
+
+        const davaoGulfCenter = [6.84, 125.72];
+        const map = L.map('davao-gulf-map', {
+            zoomControl: true,
+            scrollWheelZoom: false
+        }).setView(davaoGulfCenter, 9);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        L.marker(davaoGulfCenter)
+            .addTo(map)
+            .bindPopup('<strong>Davao Gulf</strong><br>Monitoring area.')
+            .openPopup();
+    });
+</script>
+{% endblock %}

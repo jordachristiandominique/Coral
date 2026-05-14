@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Map View | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/map_view.css' %}">
+<!-- Leaflet Map Library -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.min.css" />
+<link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.Default.min.css" />
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}" class="is-active">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main map-view-main">
+        <!-- Filter Header Section -->
+        <section class="map-filter-header" aria-label="Survey filters">
+            <div class="filter-header-content">
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-search">Search Survey</label>
+                    <input type="text" id="filter-search" class="filter-input" placeholder="Search by name...">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Date Range</label>
+                    <div class="date-range-inputs">
+                        <input type="date" id="filter-date-start" class="filter-input" title="Start date"
+                            placeholder="From">
+                        <input type="date" id="filter-date-end" class="filter-input" title="End date" placeholder="To">
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-coverage">Coverage Class</label>
+                    <select id="filter-coverage" class="filter-input">
+                        <option value="">All Classes</option>
+                        <option value="A">Class A (≥60%)</option>
+                        <option value="B">Class B (40-59%)</option>
+                        <option value="C">Class C (&lt40%)</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button id="filter-clear-btn" class="btn-secondary">Clear All</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map and Sidebar Container -->
+        <div class="map-content-container">
+            <!-- Map Container -->
+            <section class="map-container" aria-label="Survey locations map">
+                <div id="leaflet-map" class="leaflet-map"></div>
+
+                <!-- Map Controls -->
+                <div class="map-controls" aria-label="Map controls">
+                    <button class="map-control-btn zoom-in-btn" id="zoom-in-btn" title="Zoom in" aria-label="Zoom in">
+                        <img src="{% static 'icons/zoom-in.png' %}" alt="" aria-hidden="true">
+                    </button>
+                    <button class="map-control-btn zoom-out-btn" id="zoom-out-btn" title="Zoom out"
+                        aria-label="Zoom out">
+                        <img src="{% static 'icons/zoom-out.png' %}" alt="" aria-hidden="true">
+                    </button>
+                    <button class="map-control-btn reset-btn" id="reset-map-btn" title="Reset map"
+                        aria-label="Reset map view">
+                        <img src="{% static 'icons/reset.png' %}" alt="" aria-hidden="true">
+                    </button>
+                </div>
+
+                <!-- Map Stats Overlay -->
+                <div class="map-stats-overlay" aria-label="Map statistics">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Surveys</span>
+                        <span class="stat-value">{{ total_batches }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Surveys on Map</span>
+                        <span class="stat-value" id="visible-count">{{ total_batches }}</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sidebar Panel -->
+            <aside class="map-sidebar" aria-label="Survey list">
+                <!-- Survey List Section -->
+                <section class="sidebar-section surveys-section" aria-label="Survey list">
+                    <h2 class="sidebar-section-title">Surveys</h2>
+                    <div id="surveys-list" class="surveys-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </main>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet Map Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/leaflet.markercluster.min.js"></script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<!-- Map View Script -->
+<script>
+    window.mapData = JSON.parse('{{ geojson_data|default:"{\"type\":\"FeatureCollection\",\"features\":[]}"|escapejs }}');
+</script>
+<script src="{% static 'js/map_view.js' %}"></script>
+{% endblock %}

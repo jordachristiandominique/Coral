@@ -1,0 +1,421 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload New Batch | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}" class="is-active">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main upload-page-main">
+        <section class="surface-card upload-page-header">
+            <p class="upload-kicker">Image Ingestion Workflow</p>
+            <h1>Upload New Image Batch</h1>
+            <p>Add underwater photos for coral analysis</p>
+        </section>
+
+        <form id="upload-batch-form" class="upload-batch-form" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <section class="surface-card upload-step-card" aria-label="Step 1 batch information">
+                <div class="step-title-row">
+                    <span class="step-pill">Step 1</span>
+                    <h2>Batch Information</h2>
+                </div>
+
+                <div class="upload-form-grid">
+                    <label class="field-floating">
+                        <input type="text" id="batch-name" name="batch_name" placeholder=" " value="">
+                        <span>Batch Name</span>
+                    </label>
+
+                    <label class="field-floating">
+                        <input type="date" id="survey-date" name="survey_date" value="{% now 'Y-m-d' %}">
+                        <span>Survey Date</span>
+                    </label>
+
+                    <label class="field-floating">
+                        <input type="text" id="area-name" name="area_name" placeholder=" " value="">
+                        <span>Area Name</span>
+                    </label>
+
+                    <label class="field-floating">
+                        <textarea id="surveyor-names" name="surveyor_names" placeholder=" " rows="2"
+                            required>{{ user_full_name }}</textarea>
+                        <span>Surveyor Name(s)</span>
+                        <small class="field-help">Separate multiple names with commas. Press Enter to add another
+                            name.</small>
+                    </label>
+                </div>
+
+                <div class="coordinates-row">
+                    <label class="field-floating">
+                        <input type="text" id="latitude" name="latitude" placeholder=" " value="7.0731">
+                        <span>Latitude</span>
+                    </label>
+
+                    <label class="field-floating">
+                        <input type="text" id="longitude" name="longitude" placeholder=" " value="125.6128">
+                        <span>Longitude</span>
+                    </label>
+
+                    <button type="button" class="action-outline map-select-btn" id="map-select-btn">
+                        <i data-lucide="map-pin"></i>
+                        Select on Map
+                    </button>
+                </div>
+
+                <div class="map-card">
+                    <div class="map-card-head">
+                        <h3>Capture Location</h3>
+                        <p>Click on the map to place the survey pin.</p>
+                    </div>
+                    <div id="upload-batch-map" class="upload-batch-map" aria-label="Interactive location map"></div>
+                    {{ survey_points|json_script:"survey-points-data" }}
+                </div>
+            </section>
+
+            <section class="surface-card upload-step-card" aria-label="Step 2 image upload">
+                <div class="step-title-row">
+                    <span class="step-pill">Step 2</span>
+                    <h2>Image Upload</h2>
+                </div>
+
+                <p class="upload-step-note">Add a short description per image and draw the quadrat area for analysis.
+                </p>
+
+                <label class="dropzone" id="dropzone" for="upload-input">
+                    <input id="upload-input" name="images" type="file" accept=".jpg,.jpeg,.png" multiple>
+                    <div class="dropzone-inner">
+                        <i data-lucide="folder-open"></i>
+                        <p>Drag images here or click to browse</p>
+                        <span>Accepted: JPG, PNG | Max 10MB per file</span>
+                    </div>
+                </label>
+
+                <div id="quadrat-inputs" aria-hidden="true"></div>
+
+                <div class="thumb-grid-wrap" aria-label="Selected files preview">
+                    <div class="thumb-grid" id="thumb-grid">
+                        <article class="thumb-card">
+                            <div class="thumb-card-head">
+                                <div class="thumb-box">img1.jpg</div>
+                                <button type="button" aria-label="Remove img1.jpg">&times;</button>
+                            </div>
+                            <p>2.3 MB</p>
+                            <label class="thumb-description-label" for="sample-image-description-1">Image
+                                Description</label>
+                            <textarea class="thumb-description-input" id="sample-image-description-1" rows="3"
+                                placeholder="Describe the image..."></textarea>
+                        </article>
+
+                        <article class="thumb-card">
+                            <div class="thumb-card-head">
+                                <div class="thumb-box">img2.jpg</div>
+                                <button type="button" aria-label="Remove img2.jpg">&times;</button>
+                            </div>
+                            <p>3.1 MB</p>
+                            <label class="thumb-description-label" for="sample-image-description-2">Image
+                                Description</label>
+                            <textarea class="thumb-description-input" id="sample-image-description-2" rows="3"
+                                placeholder="Describe the image..."></textarea>
+                        </article>
+
+                        <article class="thumb-card">
+                            <div class="thumb-card-head">
+                                <div class="thumb-box">img3.jpg</div>
+                                <button type="button" aria-label="Remove img3.jpg">&times;</button>
+                            </div>
+                            <p>2.8 MB</p>
+                            <label class="thumb-description-label" for="sample-image-description-3">Image
+                                Description</label>
+                            <textarea class="thumb-description-input" id="sample-image-description-3" rows="3"
+                                placeholder="Describe the image..."></textarea>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="analyze-row" aria-label="Analyze uploaded images">
+                    <p class="analyze-hint" id="analyze-hint">Draw a quadrat for each image to enable analysis.</p>
+                    <button type="button" class="primary-btn analyze-btn" id="analyze-all-btn" disabled
+                        aria-disabled="true">
+                        Analyze All Images
+                    </button>
+                </div>
+
+                <div class="quadrat-card" id="quadrat-card" aria-label="Quadrat selection">
+                    <div class="quadrat-head">
+                        <div>
+                            <h3>Quadrat Area</h3>
+                            <p>Draw a box around the coral area. Adjust the box after drawing. 10 random points
+                                appear
+                                inside.</p>
+                        </div>
+                        <div class="quadrat-meta">
+                            <span class="quadrat-meta-label">Active Image</span>
+                            <span class="quadrat-meta-value" id="quadrat-image-label">Select an image</span>
+                            <span class="quadrat-points-pill" id="quadrat-points-count">10 points</span>
+                        </div>
+                    </div>
+
+                    <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
+                        <img id="quadrat-image" alt="Selected coral image" loading="lazy">
+                        <canvas id="quadrat-canvas" aria-label="Quadrat selection overlay"></canvas>
+                        <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to draw the
+                            quadrat.</div>
+                    </div>
+
+                    <div class="quadrat-points-panel" aria-label="Point intercept classifications">
+                        <div class="panel-head">
+                            <h4>Point Classes</h4>
+                            <span class="point-progress" id="point-progress">0/10 classified</span>
+                            <p>Assign a class to each point.</p>
+                        </div>
+                        <div class="point-list" id="point-list"></div>
+                    </div>
+
+                    <p class="quadrat-footer">Tip: drag corners to resize, drag inside the box to move.</p>
+                </div>
+            </section>
+
+            <section class="surface-card upload-step-card" aria-label="Step 3 review and submit">
+                <div class="step-title-row">
+                    <span class="step-pill">Step 3</span>
+                    <h2>Review &amp; Submit</h2>
+                </div>
+
+                <div class="summary-box">
+                    <p><strong>Batch:</strong> <span id="summary-batch">Not set</span></p>
+                    <p><strong>Surveyors:</strong> <span id="summary-surveyors">Not set</span></p>
+                    <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
+                    <p><strong>Images:</strong> <span id="summary-images">No files selected</span></p>
+                </div>
+
+                <p class="submit-hint" id="submit-hint">Add at least one image and draw a quadrat box for each image.
+                </p>
+
+                <div class="submit-actions">
+                    <a href="{% url 'researcher_dashboard' %}" class="action-outline">Cancel</a>
+                    <button type="submit" class="primary-btn" id="process-open-btn">Upload</button>
+                </div>
+            </section>
+        </form>
+    </main>
+</div>
+
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+
+<div class="process-modal" id="process-modal" aria-hidden="true">
+    <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="process-title">
+        <h2 id="process-title">Processing Your Images</h2>
+        <p class="process-sub">Please wait while CoralSense analyzes your upload batch.</p>
+
+        <div class="progress-wrap" aria-label="Processing progress">
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p id="progress-text">75% (3/4 complete)</p>
+        </div>
+
+        <ul class="process-list">
+            <li><span>img1.jpg - 58.3% (Class B)</span><em class="dot dot-b"></em></li>
+            <li><span>img2.jpg - 42.1% (Class B)</span><em class="dot dot-b"></em></li>
+            <li><span>img3.jpg - 65.7% (Class A)</span><em class="dot dot-a"></em></li>
+            <li><span>Processing img4.jpg...</span><em class="dot dot-pending"></em></li>
+        </ul>
+
+        <div class="process-actions">
+            <button type="button" class="primary-btn" id="process-close-btn">View Results</button>
+        </div>
+    </div>
+</div>
+
+<div class="process-modal" id="analyze-modal" aria-hidden="true">
+    <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-title">
+        <h2 id="analyze-title">Analyzing Images</h2>
+        <p class="process-sub" id="analyze-status">Preparing analysis...</p>
+
+        <div class="progress-wrap" aria-label="Analyze progress">
+            <div class="progress-track">
+                <div class="progress-fill" id="analyze-progress-fill"></div>
+            </div>
+            <p id="analyze-progress-text">0% (0/0)</p>
+        </div>
+
+        <ul class="process-list" id="analyze-progress-list"></ul>
+
+        <div class="process-actions">
+            <button type="button" class="primary-btn" id="analyze-close-btn" disabled aria-disabled="true">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="process-modal" id="analyze-confirm-modal" aria-hidden="true">
+    <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-confirm-title">
+        <h2 id="analyze-confirm-title">Re-analyze all images?</h2>
+        <p class="process-sub">This will overwrite any point classes you already edited. Continue?</p>
+        <div class="process-actions">
+            <button type="button" class="action-outline" id="analyze-confirm-cancel">Cancel</button>
+            <button type="button" class="primary-btn" id="analyze-confirm-accept">Yes, re-analyze</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/upload_batch.js' %}"></script>
+<script>
+    // Auto-comma on Enter for surveyor names
+    document.addEventListener('DOMContentLoaded', function () {
+        const surveyorNameArea = document.getElementById('surveyor-names');
+        if (surveyorNameArea) {
+            surveyorNameArea.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    const textarea = this;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = textarea.value;
+
+                    // Get the current line
+                    const beforeCursor = text.substring(0, start);
+                    const lastNewline = beforeCursor.lastIndexOf('\n');
+                    const currentLineStart = lastNewline === -1 ? 0 : lastNewline + 1;
+                    const currentLine = text.substring(currentLineStart, start).trim();
+
+                    // Add comma if the line doesn't end with one and isn't empty
+                    if (currentLine && !currentLine.endsWith(',')) {
+                        const newText = text.substring(0, start) + ',' + text.substring(start);
+                        textarea.value = newText;
+                        textarea.selectionStart = textarea.selectionEnd = start + 1;
+                    } else {
+                        const newText = text.substring(0, start) + '\n' + text.substring(start);
+                        textarea.value = newText;
+                        textarea.selectionStart = textarea.selectionEnd = start + 1;
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

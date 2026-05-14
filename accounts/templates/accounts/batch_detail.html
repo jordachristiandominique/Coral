@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Batch Details | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    {% firstof user.first_name user.username as profile_name %}
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            <div class="profile-menu" data-profile-menu>
+                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
+                </button>
+                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+                    data-profile-dropdown>
+                    <a href="#" class="profile-dropdown-item" role="menuitem">
+                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}" class="is-active">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main batch-detail-main">
+        <form class="batch-edit-form" method="post">
+            {% csrf_token %}
+            <section class="surface-card batch-detail-header">
+                <div class="batch-detail-top">
+                    <div class="batch-edit-title">
+                        <p class="batch-detail-kicker">Batch Overview</p>
+                        <input class="batch-edit-name" type="text" name="name" value="{{ batch.name }}" required>
+                        <label class="batch-edit-field">
+                            <span>Survey Date</span>
+                            <input type="date" name="survey_date" value="{{ batch.survey_date|date:'Y-m-d' }}" required>
+                        </label>
+                    </div>
+                </div>
+                <div class="batch-detail-grid">
+                    <label class="batch-edit-field">
+                        <span>Location</span>
+                        <input type="text" name="area_name" value="{{ batch.area_name }}" required>
+                    </label>
+                    <div class="batch-meta-pair">
+                        <span class="meta-label">Images</span>
+                        <span class="meta-value">{{ images|length }}</span>
+                    </div>
+                    <div class="batch-meta-pair">
+                        <span class="meta-label">Coverage</span>
+                        <span class="meta-value">{{ avg_coverage|default_if_none:"--"|floatformat:0 }}%</span>
+                        <span class="batch-class-badge class-{{ coverage_class|default:" pending"|lower }}">
+                            Class {{ coverage_class|default:"Pending" }}
+                        </span>
+                    </div>
+                    <label class="batch-edit-field span-full">
+                        <span>Surveyors</span>
+                        <textarea name="surveyor_names" rows="2" required
+                            spellcheck="false">{{ batch.surveyor_names }}</textarea>
+                    </label>
+                    <div class="batch-edit-coordinates span-full">
+                        <label class="batch-edit-field">
+                            <span>Latitude</span>
+                            <input type="text" name="latitude" value="{{ batch.latitude }}" required>
+                        </label>
+                        <label class="batch-edit-field">
+                            <span>Longitude</span>
+                            <input type="text" name="longitude" value="{{ batch.longitude }}" required>
+                        </label>
+                    </div>
+                    <label class="overlay-toggle span-full">
+                        <input type="checkbox" id="overlay-toggle" checked>
+                        <span>Show quadrat overlay</span>
+                    </label>
+                    <div class="batch-detail-cta span-full">
+                        <button type="submit" class="primary-btn batch-save-btn">Save Changes</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="surface-card batch-images-card">
+                <div class="card-header">
+                    <h2>Uploaded Images</h2>
+                </div>
+
+                <div class="batch-images-grid" aria-label="Batch images">
+                    {% for image in images %}
+                    <article class="batch-image-card">
+                        <div class="batch-image-thumb">
+                            <div class="batch-image-canvas" data-rect-id="rect-data-{{ image.id }}"
+                                data-points-id="points-data-{{ image.id }}">
+                                <img src="{{ image.image.url }}" alt="{{ image.image.name }}">
+                                <canvas class="batch-quadrat-canvas" aria-hidden="true"></canvas>
+                            </div>
+                        </div>
+                        <div class="batch-image-body">
+                            <h3>{{ image.image.name|default:"Image" }}</h3>
+                            <p class="batch-image-meta">Quadrat points: {{ image.quadrat_points|length }}</p>
+                            <p class="batch-image-coverage">
+                                {% with coverage=image.coverage_percent|default_if_none:"--"|floatformat:0 %}
+                                Coverage: <strong>{{ coverage }}%</strong>
+                                {% endwith %}
+                                <span class="batch-class-badge class-{{ image.coverage_class|default:" pending"|lower
+                                    }}">
+                                    Class {{ image.coverage_class|default:"Pending" }}
+                                </span>
+                            </p>
+                        </div>
+                    </article>
+                    {% empty %}
+                    <p class="batch-empty">No images uploaded yet.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </form>
+    </main>
+</div>
+
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/batch_detail.js' %}"></script>
+{% endblock %}
