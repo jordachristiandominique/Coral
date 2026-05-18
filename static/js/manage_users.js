@@ -3,7 +3,7 @@
  * Handles deactivate/activate user actions with confirmation modals
  */
 
-document.addEventListener('DOMContentLoaded', function () {
+const initializeManageUsers = function () {
     if (window.lucide) {
         window.lucide.createIcons();
     }
@@ -267,4 +267,12 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
             '';
     }
-});
+};
+
+// Initialize immediately if DOM is already loaded, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeManageUsers);
+} else {
+    // DOM is already loaded (script loaded late in page)
+    initializeManageUsers();
+}

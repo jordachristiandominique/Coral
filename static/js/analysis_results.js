@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+const initializeAnalysisResults = function () {
     const chartScript = document.getElementById('analysis-chart-data');
     let labels = [];
     let values = [];
@@ -190,4 +190,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
-});
+};
+
+// Initialize immediately if DOM is already loaded, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAnalysisResults);
+} else {
+    // DOM is already loaded (script loaded late in page)
+    initializeAnalysisResults();
+}

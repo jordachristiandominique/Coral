@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+const initializePublicDashboard = function () {
     const surveyScript = document.getElementById('public-surveys-data');
     let surveys = [];
 
@@ -342,4 +342,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     renderAll();
-});
+};
+
+// Initialize immediately if DOM is already loaded, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePublicDashboard);
+} else {
+    // DOM is already loaded (script loaded late in page)
+    initializePublicDashboard();
+}

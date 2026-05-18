@@ -423,7 +423,7 @@ class NavToggle {
 }
 
 // ===== Initialize All Features =====
-document.addEventListener('DOMContentLoaded', () => {
+const initializeCoralSense = () => {
     // Render Django messages as toast popups.
     const djangoMessages = document.querySelectorAll('#django-messages [data-message]');
     const shownMessages = new Set();
@@ -622,4 +622,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     console.log('✨ CoralSense JavaScript initialized successfully');
-});
+};
+
+// Initialize immediately if DOM is already loaded, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeCoralSense);
+} else {
+    // DOM is already loaded (script loaded late in page)
+    initializeCoralSense();
+}
