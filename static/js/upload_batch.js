@@ -131,7 +131,6 @@ const initializeUploadBatch = function () {
     };
 
     const selectedFiles = [];
-    let descriptionsByFileKey = {};
     const quadratStateByKey = {};
     const thumbUrlByKey = {};
     const MIN_POINTS = 10;
@@ -1087,9 +1086,7 @@ const initializeUploadBatch = function () {
         thumbGrid.innerHTML = '';
         selectedFiles.forEach(function (file, index) {
             const fileKey = getFileKey(file);
-            const descriptionId = `image-description-${index + 1}`;
             const safeFileName = escapeHtml(file.name);
-            const safeDescription = escapeHtml(descriptionsByFileKey[fileKey] || '');
             const thumbUrl = getThumbUrl(fileKey, file);
 
             const card = document.createElement('article');
@@ -1108,15 +1105,6 @@ const initializeUploadBatch = function () {
                 </div>
                 <p>${formatFileSize(file.size)}</p>
                 <p class="thumb-points-status" data-point-status>Points: 0/${MIN_POINTS}</p>
-                <label class="thumb-description-label" for="${descriptionId}">Image Description</label>
-                <textarea
-                    class="thumb-description-input"
-                    id="${descriptionId}"
-                    name="image_description_${index + 1}"
-                    data-file-key="${fileKey}"
-                    rows="3"
-                    placeholder="Example: Algae contents near coral colony"
-                >${safeDescription}</textarea>
             `;
 
             thumbGrid.appendChild(card);
@@ -1133,15 +1121,6 @@ const initializeUploadBatch = function () {
         Array.from(fileList).forEach(function (file) {
             selectedFiles.push(file);
         });
-
-        const nextDescriptions = {};
-        selectedFiles.forEach(function (file, index) {
-            const key = getFileKey(file);
-            if (descriptionsByFileKey[key]) {
-                nextDescriptions[key] = descriptionsByFileKey[key];
-            }
-        });
-        descriptionsByFileKey = nextDescriptions;
 
         if (activeFileIndex >= selectedFiles.length) {
             activeFileIndex = 0;
@@ -1199,7 +1178,6 @@ const initializeUploadBatch = function () {
                 return;
             }
             selectedFiles.length = 0;
-            descriptionsByFileKey = {};
             renderSelectedFiles();
             updateSummary();
         });
@@ -1238,31 +1216,9 @@ const initializeUploadBatch = function () {
                 }
             }
 
-            const nextDescriptions = {};
-            selectedFiles.forEach(function (file, index) {
-                const key = getFileKey(file);
-                if (descriptionsByFileKey[key]) {
-                    nextDescriptions[key] = descriptionsByFileKey[key];
-                }
-            });
-            descriptionsByFileKey = nextDescriptions;
-
             renderSelectedFiles();
         });
 
-        thumbGrid.addEventListener('input', function (event) {
-            const descriptionField = event.target.closest('.thumb-description-input');
-            if (!descriptionField) {
-                return;
-            }
-
-            const fieldKey = descriptionField.getAttribute('data-file-key');
-            if (!fieldKey) {
-                return;
-            }
-
-            descriptionsByFileKey[fieldKey] = descriptionField.value;
-        });
     }
 
     if (pointList) {

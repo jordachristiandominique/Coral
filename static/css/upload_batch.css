@@ -326,34 +326,6 @@
     font-weight: 700;
 }
 
-.thumb-description-label {
-    color: #3f6977;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.thumb-description-input {
-    resize: vertical;
-    min-height: 72px;
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid rgba(28, 95, 109, 0.2);
-    border-radius: 8px;
-    background: #ffffff;
-    color: #264f5e;
-    padding: 8px 10px;
-    font-size: 13px;
-    line-height: 1.35;
-    font-family: inherit;
-    transition: border-color 180ms ease, box-shadow 180ms ease;
-}
-
-.thumb-description-input:focus {
-    outline: none;
-    border-color: rgba(42, 135, 147, 0.45);
-    box-shadow: 0 0 0 3px rgba(42, 135, 147, 0.14);
-}
-
 .quadrat-card {
     border: 1px solid rgba(28, 95, 109, 0.15);
     border-radius: 12px;
