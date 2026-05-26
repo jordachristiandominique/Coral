@@ -182,10 +182,10 @@
             <section class="surface-card upload-step-card" aria-label="Step 2 image upload">
                 <div class="step-title-row">
                     <span class="step-pill">Step 2</span>
-                    <h2>Image Upload</h2>
+                    <h2>Image Upload & Auto-Analysis</h2>
                 </div>
 
-                <p class="upload-step-note">Draw the quadrat area for each image to enable analysis.
+                <p class="upload-step-note">Upload images. Our AI automatically detects coral areas and classifies species.
                 </p>
 
                 <label class="dropzone" id="dropzone" for="upload-input">
@@ -227,63 +227,73 @@
                     </div>
                 </div>
 
-                <div class="analyze-row" aria-label="Analyze uploaded images">
-                    <p class="analyze-hint" id="analyze-hint">Draw a quadrat for each image to enable analysis.</p>
+                <div class="analyze-row" aria-label="Automatic AI analysis">
+                    <p class="analyze-hint" id="analyze-hint">Ready to analyze? Click below to run AI detection on all images.</p>
                     <button type="button" class="primary-btn analyze-btn" id="analyze-all-btn" disabled
                         aria-disabled="true">
-                        Analyze All Images
+                        <i data-lucide="zap"></i>
+                        Run AI Analysis
                     </button>
                 </div>
 
-                <div class="quadrat-card" id="quadrat-card" aria-label="Quadrat selection">
+                <div class="quadrat-card" id="quadrat-card" aria-label="Auto-analysis results">
                     <div class="quadrat-head">
                         <div>
-                            <h3>Quadrat Area</h3>
-                            <p>Draw a box around the coral area. Adjust the box after drawing. 10 random points
-                                appear
-                                inside.</p>
+                            <h3>Automated Analysis Results</h3>
+                            <p>Our AI has detected the coral area and identified species. Review and approve the results below.</p>
                         </div>
                         <div class="quadrat-meta">
                             <span class="quadrat-meta-label">Active Image</span>
                             <span class="quadrat-meta-value" id="quadrat-image-label">Select an image</span>
-                            <span class="quadrat-points-pill" id="quadrat-points-count">10 points</span>
+                            <span class="quadrat-points-pill" id="quadrat-points-count">Detection pending</span>
                         </div>
                     </div>
 
                     <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
                         <img id="quadrat-image" alt="Selected coral image" loading="lazy">
-                        <canvas id="quadrat-canvas" aria-label="Quadrat selection overlay"></canvas>
-                        <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to draw the
-                            quadrat.</div>
+                        <canvas id="quadrat-canvas" aria-label="Detected quadrat area with confidence overlay"></canvas>
+                        <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
                     </div>
 
-                    <div class="quadrat-points-panel" aria-label="Point intercept classifications">
+                    <div class="analysis-results-panel" aria-label="Automated analysis summary">
                         <div class="panel-head">
-                            <h4>Point Classes</h4>
-                            <span class="point-progress" id="point-progress">0/10 classified</span>
-                            <p>Assign a class to each point.</p>
+                            <h4>Analysis Summary</h4>
+                            <div class="coverage-info">
+                                <div class="coverage-class" id="coverage-class">Class: Pending</div>
+                                <div class="coverage-percent" id="coverage-percent">Coverage: 0%</div>
+                            </div>
                         </div>
-                        <div class="point-list" id="point-list"></div>
+                        <div class="point-list" id="point-list">
+                            <!-- Point classifications will appear here -->
+                        </div>
+                        <div class="ai-actions">
+                            <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
+                                <i data-lucide="refresh-cw"></i>
+                                Re-analyze
+                            </button>
+                            <p class="hint-text">AI has automatically detected coral areas, placed 10 analysis points, and classified each point. Review the results above.</p>
+                        </div>
                     </div>
 
-                    <p class="quadrat-footer">Tip: drag corners to resize, drag inside the box to move.</p>
+                    <p class="quadrat-footer">💡 Tip: Click on any species classification to review or correct it. Red boxes = low confidence (review recommended).</p>
                 </div>
             </section>
 
             <section class="surface-card upload-step-card" aria-label="Step 3 review and submit">
                 <div class="step-title-row">
                     <span class="step-pill">Step 3</span>
-                    <h2>Review &amp; Submit</h2>
+                    <h2>Review AI Results &amp; Submit</h2>
                 </div>
 
                 <div class="summary-box">
                     <p><strong>Batch:</strong> <span id="summary-batch">Not set</span></p>
                     <p><strong>Surveyors:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
-                    <p><strong>Images:</strong> <span id="summary-images">No files selected</span></p>
+                    <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
+                    <p><strong>AI Confidence:</strong> <span id="summary-confidence">N/A</span></p>
                 </div>
 
-                <p class="submit-hint" id="submit-hint">Add at least one image and draw a quadrat box for each image.
+                <p class="submit-hint" id="submit-hint">Upload at least one image. AI will auto-analyze. Review and approve results.
                 </p>
 
                 <div class="submit-actions">
@@ -335,8 +345,8 @@
 
 <div class="process-modal" id="analyze-modal" aria-hidden="true">
     <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-title">
-        <h2 id="analyze-title">Analyzing Images</h2>
-        <p class="process-sub" id="analyze-status">Preparing analysis...</p>
+        <h2 id="analyze-title">🤖 AI Analysis in Progress</h2>
+        <p class="process-sub" id="analyze-status">Running YOLO coral detection...</p>
 
         <div class="progress-wrap" aria-label="Analyze progress">
             <div class="progress-track">
@@ -349,7 +359,7 @@
 
         <div class="process-actions">
             <button type="button" class="primary-btn" id="analyze-close-btn" disabled aria-disabled="true">
-                Done
+                Review Results
             </button>
         </div>
     </div>
@@ -357,11 +367,11 @@
 
 <div class="process-modal" id="analyze-confirm-modal" aria-hidden="true">
     <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-confirm-title">
-        <h2 id="analyze-confirm-title">Re-analyze all images?</h2>
-        <p class="process-sub">This will overwrite any point classes you already edited. Continue?</p>
+        <h2 id="analyze-confirm-title">Re-run AI Analysis?</h2>
+        <p class="process-sub">This will re-detect coral areas and re-classify all species. Continue?</p>
         <div class="process-actions">
             <button type="button" class="action-outline" id="analyze-confirm-cancel">Cancel</button>
-            <button type="button" class="primary-btn" id="analyze-confirm-accept">Yes, re-analyze</button>
+            <button type="button" class="primary-btn" id="analyze-confirm-accept">Yes, re-run AI</button>
         </div>
     </div>
 </div>

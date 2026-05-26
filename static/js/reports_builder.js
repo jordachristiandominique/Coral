@@ -298,8 +298,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
-                                <div style="color: #1c5f6d; font-size: 28px; font-weight: bold; margin-bottom: 40px;">CORALSENSE</div>
-                                <h1 style="margin: 20px 0; font-size: 24px; color: #1c5f6d;">${reportTitle}</h1>
+                                
+                                <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
                                 <p style="margin: 20px 0; font-size: 14px; color: #666;">Comprehensive Survey Summary - Q1 2026</p>
                             </div>
                             <div class="cover-middle">
@@ -335,8 +335,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
-                                <div style="color: #1c5f6d; font-size: 28px; font-weight: bold; margin-bottom: 40px;">CORALSENSE</div>
-                                <h1 style="margin: 20px 0; font-size: 24px; color: #1c5f6d;">${reportTitle}</h1>
+                                
+                                <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
                                 <p style="margin: 20px 0; font-size: 14px; color: #666;">Detailed Batch Analysis Report</p>
                             </div>
                             <div class="cover-middle">
@@ -373,8 +373,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
-                                <div style="color: #1c5f6d; font-size: 28px; font-weight: bold; margin-bottom: 40px;">CORALSENSE</div>
-                                <h1 style="margin: 20px 0; font-size: 24px; color: #1c5f6d;">${reportTitle}</h1>
+                               
+                                <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
                                 <p style="margin: 20px 0; font-size: 14px; color: #666;">Temporal Trend Analysis Report</p>
                             </div>
                             <div class="cover-middle">
@@ -411,8 +411,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
-                                <div style="color: #1c5f6d; font-size: 28px; font-weight: bold; margin-bottom: 40px;">CORALSENSE</div>
-                                <h1 style="margin: 20px 0; font-size: 24px; color: #1c5f6d;">${reportTitle}</h1>
+                               
+                                <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
                                 <p style="margin: 20px 0; font-size: 14px; color: #666;">Multi-Site Comparison Report</p>
                             </div>
                             <div class="cover-middle">
@@ -449,8 +449,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
-                                <div style="color: #1c5f6d; font-size: 28px; font-weight: bold; margin-bottom: 40px;">CORALSENSE</div>
-                                <h1 style="margin: 20px 0; font-size: 24px; color: #1c5f6d;">${reportTitle}</h1>
+                                
+                                <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
                                 <p style="margin: 20px 0; font-size: 14px; color: #666;">Biodiversity Classification Analysis</p>
                             </div>
                             <div class="cover-middle">
@@ -487,8 +487,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
-                                <div style="color: #1c5f6d; font-size: 28px; font-weight: bold; margin-bottom: 40px;">CORALSENSE</div>
-                                <h1 style="margin: 20px 0; font-size: 24px; color: #1c5f6d;">${reportTitle}</h1>
+                                <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
                                 <p style="margin: 20px 0; font-size: 14px; color: #666;">Customized Report - Your Configuration</p>
                             </div>
                             <div class="cover-middle">

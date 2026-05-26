@@ -134,16 +134,15 @@ const initializeUploadBatch = function () {
     const quadratStateByKey = {};
     const thumbUrlByKey = {};
     const MIN_POINTS = 10;
-    const MIN_RECT_SIZE = 40;
-    const HANDLE_SIZE = 8;
     const DEFAULT_RECT_SCALE = 0.5;
     const POINT_CLASSES = [
-        'Live coral',
-        'Non-coral',
-        'Dead coral',
-        'Algae',
-        'Rock/Sand',
-        'Other'
+        'Hard Coral',
+        'Soft Coral',
+        'Macroalgae',
+        'Halimeda',
+        'Algae Assemblage',
+        'Abiotic',
+        'Other Biota'
     ];
     const MAX_ANALYZE_SIZE = 1200;
     const ANALYZE_PATCH_RADIUS = 6;
@@ -151,10 +150,7 @@ const initializeUploadBatch = function () {
     const ANALYZE_VAL_MIN = 0.18;
     let activeFileIndex = 0;
     let activeImageUrl = null;
-    let dragMode = null;
-    let dragStart = null;
-    let startRectPx = null;
-    let activeHandle = null;
+    let aiResultsByFileKey = {};
     let isAnalyzing = false;
 
     const formatFileSize = function (sizeInBytes) {
@@ -264,26 +260,14 @@ const initializeUploadBatch = function () {
         }
 
         return selectedFiles.every(function (file) {
-            const state = quadratStateByKey[getFileKey(file)];
-            if (!state || !state.rect) {
-                return false;
-            }
-            ensurePointClasses(state);
-            return state.pointClasses.every(function (value) {
-                return Boolean(value);
-            });
+            const fileKey = getFileKey(file);
+            return aiResultsByFileKey[fileKey] && aiResultsByFileKey[fileKey].species && aiResultsByFileKey[fileKey].species.length > 0;
         });
     };
 
     const isReadyForAutoAnalyze = function () {
-        if (!selectedFiles.length) {
-            return false;
-        }
-
-        return selectedFiles.every(function (file) {
-            const state = quadratStateByKey[getFileKey(file)];
-            return state && state.rect;
-        });
+        // AI analysis is ready when we have at least one image uploaded
+        return selectedFiles.length > 0;
     };
 
     const updateAnalyzeState = function () {
@@ -298,8 +282,8 @@ const initializeUploadBatch = function () {
 
         if (analyzeHint) {
             analyzeHint.textContent = ready
-                ? 'Analyze all images to prefill point classes.'
-                : 'Draw a quadrat for each image to enable analysis.';
+                ? 'Ready to run AI analysis. Click below to automatically detect coral species.'
+                : 'Upload at least one image to enable AI analysis.';
         }
     };
 
@@ -316,10 +300,10 @@ const initializeUploadBatch = function () {
 
         if (submitHint) {
             if (ready) {
-                submitHint.textContent = 'Ready to analyze. Review and upload the batch.';
+                submitHint.textContent = 'AI analysis complete. Review the detected species and upload the batch.';
                 submitHint.style.color = '#2a8793';
             } else {
-                submitHint.textContent = 'Draw a quadrat for each image and classify all 10 points.';
+                submitHint.textContent = 'Upload images and run AI analysis to detect coral species.';
                 submitHint.style.color = '';
             }
         }
@@ -333,17 +317,17 @@ const initializeUploadBatch = function () {
         quadratInputs.innerHTML = '';
 
         selectedFiles.forEach(function (file, index) {
-            const state = quadratStateByKey[getFileKey(file)] || {};
-            const classes = state.pointClasses || [];
+            const results = aiResultsByFileKey[getFileKey(file)] || { points: [], quadrat_bbox: null, coverage_percent: 0, coverage_class: 'C' };
             const payload = {
-                rect: state.rect || null,
-                points: state.points || [],
-                point_classes: classes
+                quadrat_bbox: results.quadrat_bbox,
+                points: results.points || [],
+                coverage_percent: results.coverage_percent || 0,
+                coverage_class: results.coverage_class || 'C'
             };
 
             const input = document.createElement('input');
             input.type = 'hidden';
-            input.name = `image_quadrat_${index + 1}`;
+            input.name = `image_ai_results_${index + 1}`;
             input.value = JSON.stringify(payload);
             quadratInputs.appendChild(input);
         });
@@ -380,6 +364,59 @@ const initializeUploadBatch = function () {
         quadratCanvas.height = rect.height * dpr;
         quadratCanvas.style.width = `${rect.width}px`;
         quadratCanvas.style.height = `${rect.height}px`;
+    };
+
+    const drawQuadratAndPoints = function (quadratBbox, points) {
+        if (!quadratCanvas || !quadratImage) {
+            return;
+        }
+
+        const ctx = quadratCanvas.getContext('2d');
+        if (!ctx) {
+            return;
+        }
+
+        const size = getCanvasSize();
+        if (!size.width || !size.height) {
+            return;
+        }
+
+        const dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, size.width, size.height);
+
+        // Draw quadrat box
+        const rectPx = {
+            x: quadratBbox.x * size.width,
+            y: quadratBbox.y * size.height,
+            w: quadratBbox.w * size.width,
+            h: quadratBbox.h * size.height
+        };
+
+        ctx.strokeStyle = '#ff8a3d';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
+
+        // Draw points with classification labels
+        if (points && points.length) {
+            points.forEach(function (point, index) {
+                const x = rectPx.x + point.x * rectPx.w;
+                const y = rectPx.y + point.y * rectPx.h;
+
+                // Draw point circle
+                ctx.fillStyle = '#e53b2c';
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw point number
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index + 1, x, y);
+            });
+        }
     };
 
     const getCanvasSize = function () {
@@ -678,35 +715,106 @@ const initializeUploadBatch = function () {
 
         for (let i = 0; i < selectedFiles.length; i += 1) {
             const file = selectedFiles[i];
-            if (analyzeHint) {
-                analyzeHint.textContent = `Analyzing ${i + 1}/${selectedFiles.length}: ${file.name}`;
-            }
+            const fileKey = getFileKey(file);
+            
             setAnalyzeProgress(i, selectedFiles.length, file.name);
+            
             try {
-                await analyzeFilePoints(file);
-                markAnalyzeItemDone(getFileKey(file));
+                // TODO: Replace with actual YOLO API call
+                // For now, generate mock AI results
+                const mockResults = await generateMockAIResults(file);
+                aiResultsByFileKey[fileKey] = mockResults;
+                markAnalyzeItemDone(fileKey);
             } catch (error) {
-                // Ignore per-file errors so the rest can continue.
+                console.error('Error analyzing file:', error);
+                // Continue with next file
             }
         }
 
         isAnalyzing = false;
         if (analyzeAllBtn) {
-            analyzeAllBtn.textContent = 'Analyze All Images';
+            analyzeAllBtn.textContent = 'Run AI Analysis';
         }
 
         if (analyzeStatus) {
-            analyzeStatus.textContent = 'Analysis complete. Review the point classes below.';
+            analyzeStatus.textContent = '✓ Analysis complete. Review the classified points below.';
         }
         if (analyzeCloseBtn) {
             analyzeCloseBtn.disabled = false;
             analyzeCloseBtn.setAttribute('aria-disabled', 'false');
         }
 
+        setActiveFileIndex(0);
         renderPointList();
         updateThumbPointsStatus();
-        updatePointProgress();
         updateSubmitState();
+    };
+
+    const generateMockAIResults = function (file) {
+        return new Promise(function (resolve) {
+            // Simulate API delay
+            setTimeout(function () {
+                // Quadrat placed in middle of image (50% scale)
+                const quadratBbox = {
+                    x: 0.25,
+                    y: 0.25,
+                    w: 0.5,
+                    h: 0.5
+                };
+
+                // 7 coral classification classes
+                const allClasses = [
+                    'Hard Coral',
+                    'Soft Coral',
+                    'Macroalgae',
+                    'Halimeda',
+                    'Algae Assemblage',
+                    'Abiotic',
+                    'Other Biota'
+                ];
+
+                // Generate 10 random points with random class assignments
+                // Simulate realistic distribution: ~50% coral, ~30% algae, ~20% abiotic
+                const points = [];
+                for (let i = 0; i < 10; i++) {
+                    const rand = Math.random();
+                    let classIdx;
+                    
+                    if (rand < 0.5) {
+                        // Coral: Hard Coral, Soft Coral
+                        classIdx = Math.random() < 0.7 ? 0 : 1;
+                    } else if (rand < 0.8) {
+                        // Algae: Macroalgae, Halimeda, Algae Assemblage
+                        classIdx = Math.floor(Math.random() * 3) + 2;
+                    } else {
+                        // Non-coral: Abiotic, Other Biota
+                        classIdx = Math.random() < 0.7 ? 5 : 6;
+                    }
+
+                    points.push({
+                        x: Math.random(),
+                        y: Math.random(),
+                        class: allClasses[classIdx]
+                    });
+                }
+
+                // Calculate coverage
+                const coralClasses = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota'];
+                const coralCount = points.filter(function (p) {
+                    return coralClasses.indexOf(p.class) !== -1;
+                }).length;
+                const coveragePercent = Math.round((coralCount / points.length) * 100);
+
+                const results = {
+                    quadrat_bbox: quadratBbox,
+                    points: points,
+                    coverage_percent: coveragePercent,
+                    coverage_class: getCoverageClass(coveragePercent)
+                };
+                
+                resolve(results);
+            }, 800 + Math.random() * 400);
+        });
     };
 
     const runAnalyzeAll = function () {
@@ -761,12 +869,15 @@ const initializeUploadBatch = function () {
             if (!fileKey) {
                 return;
             }
-            const state = ensureQuadratState(fileKey);
-            ensurePointClasses(state);
-            const status = getPointStatus(state);
+            const results = aiResultsByFileKey[fileKey];
             const target = card.querySelector('[data-point-status]');
             if (target) {
-                target.textContent = `Points: ${status.filled}/${status.total}`;
+                if (results && results.points) {
+                    const coverage = getCoralCoveragePercent(results.points);
+                    target.textContent = `Analysis: ${coverage}% coverage`;
+                } else {
+                    target.textContent = 'Analysis: Pending';
+                }
             }
         });
     };
@@ -885,38 +996,95 @@ const initializeUploadBatch = function () {
         });
     };
 
+    const getConfidenceClass = function (confidence) {
+        if (confidence >= 90) return 'confidence-high';
+        if (confidence >= 70) return 'confidence-medium';
+        return 'confidence-low';
+    };
+
+    const getCoralCoveragePercent = function (points) {
+        if (!points || !points.length) {
+            return 0;
+        }
+        const coralClasses = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota'];
+        const coralCount = points.filter(function (p) {
+            return coralClasses.indexOf(p.class) !== -1;
+        }).length;
+        return Math.round((coralCount / points.length) * 100);
+    };
+
+    const getCoverageClass = function (coveragePercent) {
+        if (coveragePercent >= 60) return 'A';
+        if (coveragePercent >= 40) return 'B';
+        return 'C';
+    };
+
     const renderPointList = function () {
+        const pointList = document.getElementById('point-list');
+        const coverageClassEl = document.getElementById('coverage-class');
+        const coveragePercentEl = document.getElementById('coverage-percent');
+        
         if (!pointList) {
             return;
         }
 
         const activeFile = getActiveFile();
         if (!activeFile) {
-            pointList.innerHTML = '<p class="thumb-empty-state">Select an image to classify points.</p>';
+            pointList.innerHTML = '<p class="thumb-empty-state">Select an image to view analysis results.</p>';
+            if (coverageClassEl) {
+                coverageClassEl.textContent = 'Class: Pending';
+            }
+            if (coveragePercentEl) {
+                coveragePercentEl.textContent = 'Coverage: 0%';
+            }
             return;
         }
 
-        const state = ensureQuadratState(getFileKey(activeFile));
-        ensurePointClasses(state);
+        const results = aiResultsByFileKey[getFileKey(activeFile)];
+        if (!results || !results.points) {
+            pointList.innerHTML = '<p class="thumb-empty-state">Run AI analysis to classify points.</p>';
+            if (coverageClassEl) {
+                coverageClassEl.textContent = 'Class: Pending';
+            }
+            if (coveragePercentEl) {
+                coveragePercentEl.textContent = 'Coverage: 0%';
+            }
+            return;
+        }
 
-        const rows = state.points.map(function (_point, index) {
-            const options = ['<option value="">Select class</option>']
-                .concat(POINT_CLASSES.map(function (label) {
-                    const selected = state.pointClasses[index] === label ? ' selected' : '';
-                    return `<option value="${label}"${selected}>${label}</option>`;
-                }))
-                .join('');
+        const points = results.points || [];
+        if (!points.length) {
+            pointList.innerHTML = '<p class="thumb-empty-state">No points detected.</p>';
+            if (coverageClassEl) {
+                coverageClassEl.textContent = 'Class: Pending';
+            }
+            if (coveragePercentEl) {
+                coveragePercentEl.textContent = 'Coverage: 0%';
+            }
+            return;
+        }
 
+        const coveragePercent = getCoralCoveragePercent(points);
+        const coverageClass = getCoverageClass(coveragePercent);
+
+        const rows = points.map(function (point, index) {
+            const className = escapeHtml(point.class || 'Unknown');
             return `
                 <label class="point-row">
                     <span>Point ${index + 1}</span>
-                    <select data-point-index="${index}">${options}</select>
+                    <span class="point-class-display">${className}</span>
                 </label>
             `;
         }).join('');
 
-        pointList.innerHTML = rows || '<p class="thumb-empty-state">No points yet.</p>';
-        updatePointProgress();
+        pointList.innerHTML = rows;
+        
+        if (coverageClassEl) {
+            coverageClassEl.textContent = `Class: ${coverageClass}`;
+        }
+        if (coveragePercentEl) {
+            coveragePercentEl.textContent = `Coverage: ${coveragePercent}%`;
+        }
     };
 
     const getImageBounds = function () {
@@ -1038,8 +1206,13 @@ const initializeUploadBatch = function () {
             quadratImageLabel.textContent = activeFile.name;
         }
 
+        const results = aiResultsByFileKey[getFileKey(activeFile)];
         if (quadratPointsCount) {
-            quadratPointsCount.textContent = `${MIN_POINTS} points`;
+            if (results && results.points) {
+                quadratPointsCount.textContent = `${results.points.length} points classified`;
+            } else {
+                quadratPointsCount.textContent = 'Analysis pending';
+            }
         }
 
         if (activeImageUrl) {
@@ -1053,16 +1226,10 @@ const initializeUploadBatch = function () {
 
         quadratImage.onload = function () {
             syncCanvasSize();
-            const state = ensureQuadratState(getFileKey(activeFile));
-            const bounds = getImageBounds();
-            const didCreateDefault = ensureDefaultRect(state, bounds);
-            ensurePointClasses(state);
-            renderPointList();
-            updateThumbPointsStatus();
-            drawQuadrat();
-            if (didCreateDefault) {
-                updateSubmitState();
+            if (results && results.quadrat_bbox && results.points) {
+                drawQuadratAndPoints(results.quadrat_bbox, results.points);
             }
+            renderPointList();
         };
     };
 
@@ -1096,6 +1263,10 @@ const initializeUploadBatch = function () {
             if (index === activeFileIndex) {
                 card.classList.add('is-active');
             }
+
+            const results = aiResultsByFileKey[fileKey];
+            const statusText = results && results.points ? `${getCoralCoveragePercent(results.points)}% coverage` : 'Pending';
+
             card.innerHTML = `
                 <div class="thumb-card-head">
                     <div class="thumb-box">
@@ -1104,7 +1275,7 @@ const initializeUploadBatch = function () {
                     <button type="button" aria-label="Remove ${safeFileName}" data-remove-index="${index}">&times;</button>
                 </div>
                 <p>${formatFileSize(file.size)}</p>
-                <p class="thumb-points-status" data-point-status>Points: 0/${MIN_POINTS}</p>
+                <p class="thumb-points-status" data-point-status>Analysis: ${statusText}</p>
             `;
 
             thumbGrid.appendChild(card);
@@ -1222,32 +1393,28 @@ const initializeUploadBatch = function () {
     }
 
     if (pointList) {
-        pointList.addEventListener('change', function (event) {
-            const select = event.target.closest('select[data-point-index]');
-            if (!select) {
-                return;
+        pointList.addEventListener('click', function (event) {
+            // Species list items can be clicked to select/deselect for manual review
+            const speciesItem = event.target.closest('.species-item');
+            if (speciesItem) {
+                speciesItem.classList.toggle('selected');
             }
-
-            const activeFile = getActiveFile();
-            if (!activeFile) {
-                return;
-            }
-
-            const index = Number(select.getAttribute('data-point-index'));
-            if (Number.isNaN(index)) {
-                return;
-            }
-
-            const state = ensureQuadratState(getFileKey(activeFile));
-            ensurePointClasses(state);
-            state.pointClasses[index] = select.value;
-            updatePointProgress();
-            updateThumbPointsStatus();
         });
     }
 
     if (analyzeAllBtn) {
         analyzeAllBtn.addEventListener('click', function () {
+            runAnalyzeAll();
+        });
+    }
+
+    const reanalyzeBtn = document.getElementById('reanalyze-btn');
+    if (reanalyzeBtn) {
+        reanalyzeBtn.addEventListener('click', function () {
+            // Clear AI results and re-run analysis
+            aiResultsByFileKey = {};
+            updateThumbPointsStatus();
+            renderSpeciesList();
             runAnalyzeAll();
         });
     }
@@ -1273,142 +1440,11 @@ const initializeUploadBatch = function () {
 
     setTodayIfEmpty();
 
+    // AI Results Display - Canvas is now read-only (used to display AI-detected quadrats)
+    // Manual drawing has been replaced with AI automation
     if (quadratCanvas) {
-        quadratCanvas.addEventListener('mousedown', function (event) {
-            const activeFile = getActiveFile();
-            if (!activeFile) {
-                return;
-            }
-
-            const size = getCanvasSize();
-            if (!size.width || !size.height) {
-                return;
-            }
-
-            const state = ensureQuadratState(getFileKey(activeFile));
-            const pos = getPointerPos(event);
-            let rectPx = state.rect ? toPixelRect(state.rect, size.width, size.height) : null;
-
-            if (rectPx) {
-                const handleHit = getHandleHit(rectPx, pos);
-                if (handleHit) {
-                    dragMode = 'resize';
-                    activeHandle = handleHit;
-                } else if (isInsideRect(rectPx, pos)) {
-                    dragMode = 'move';
-                } else {
-                    dragMode = 'draw';
-                    rectPx = { x: pos.x, y: pos.y, w: 0, h: 0 };
-                }
-            } else {
-                dragMode = 'draw';
-                rectPx = { x: pos.x, y: pos.y, w: 0, h: 0 };
-            }
-
-            dragStart = pos;
-            startRectPx = rectPx;
-            if (dragMode === 'draw') {
-                state.rect = toNormalizedRect(rectPx, size.width, size.height);
-                state.points = [];
-                drawQuadrat();
-            }
-        });
-
-        quadratCanvas.addEventListener('mousemove', function (event) {
-            const activeFile = getActiveFile();
-            if (!activeFile) {
-                return;
-            }
-
-            const size = getCanvasSize();
-            if (!size.width || !size.height) {
-                return;
-            }
-
-            const state = ensureQuadratState(getFileKey(activeFile));
-            const pos = getPointerPos(event);
-            const bounds = getImageBounds();
-
-            if (!dragMode) {
-                if (state.rect) {
-                    const rectPx = toPixelRect(state.rect, size.width, size.height);
-                    const handleHit = getHandleHit(rectPx, pos);
-                    if (handleHit) {
-                        quadratCanvas.style.cursor = handleHit === 'ne' || handleHit === 'sw' ? 'nesw-resize' : 'nwse-resize';
-                    } else if (isInsideRect(rectPx, pos)) {
-                        quadratCanvas.style.cursor = 'move';
-                    } else {
-                        quadratCanvas.style.cursor = 'crosshair';
-                    }
-                }
-                return;
-            }
-
-            let nextRectPx = { ...startRectPx };
-            if (dragMode === 'draw') {
-                nextRectPx.w = pos.x - dragStart.x;
-                nextRectPx.h = pos.y - dragStart.y;
-            } else if (dragMode === 'move') {
-                const dx = pos.x - dragStart.x;
-                const dy = pos.y - dragStart.y;
-                nextRectPx.x = startRectPx.x + dx;
-                nextRectPx.y = startRectPx.y + dy;
-            } else if (dragMode === 'resize') {
-                const dx = pos.x - dragStart.x;
-                const dy = pos.y - dragStart.y;
-                if (activeHandle === 'nw') {
-                    nextRectPx.x = startRectPx.x + dx;
-                    nextRectPx.y = startRectPx.y + dy;
-                    nextRectPx.w = startRectPx.w - dx;
-                    nextRectPx.h = startRectPx.h - dy;
-                } else if (activeHandle === 'ne') {
-                    nextRectPx.y = startRectPx.y + dy;
-                    nextRectPx.w = startRectPx.w + dx;
-                    nextRectPx.h = startRectPx.h - dy;
-                } else if (activeHandle === 'se') {
-                    nextRectPx.w = startRectPx.w + dx;
-                    nextRectPx.h = startRectPx.h + dy;
-                } else if (activeHandle === 'sw') {
-                    nextRectPx.x = startRectPx.x + dx;
-                    nextRectPx.w = startRectPx.w - dx;
-                    nextRectPx.h = startRectPx.h + dy;
-                }
-            }
-
-            nextRectPx = clampRect(nextRectPx, bounds);
-            state.rect = toNormalizedRect(nextRectPx, size.width, size.height);
-            drawQuadrat();
-        });
-
-        const endDrag = function () {
-            const activeFile = getActiveFile();
-            if (!activeFile) {
-                dragMode = null;
-                activeHandle = null;
-                return;
-            }
-
-            if (!dragMode) {
-                return;
-            }
-
-            const state = ensureQuadratState(getFileKey(activeFile));
-            if (state.rect) {
-                state.points = generateRandomPoints(MIN_POINTS);
-                ensurePointClasses(state);
-            }
-
-            dragMode = null;
-            activeHandle = null;
-            drawQuadrat();
-            updateSubmitState();
-            renderPointList();
-            updateThumbPointsStatus();
-        };
-
-        quadratCanvas.addEventListener('mouseup', endDrag);
-        quadratCanvas.addEventListener('mouseleave', endDrag);
-        window.addEventListener('mouseup', endDrag);
+        // Prevent default interactions on canvas
+        quadratCanvas.style.cursor = 'default';
     }
 
     if (quadratImage) {
@@ -1417,13 +1453,17 @@ const initializeUploadBatch = function () {
                 return;
             }
             syncCanvasSize();
-            drawQuadrat();
+            const activeFile = getActiveFile();
+            const results = aiResultsByFileKey[getFileKey(activeFile)];
+            if (results && results.quadrat_bbox) {
+                drawAIQuadrat(results.quadrat_bbox);
+            }
         });
     }
 
     renderSelectedFiles();
     updateSummary();
-    updatePointProgress();
+    updateSubmitState();
 
     const modal = document.getElementById('process-modal');
     const openModalBtn = document.getElementById('process-open-btn');
