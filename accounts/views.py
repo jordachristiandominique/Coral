@@ -804,9 +804,14 @@ def upload_batch(request):
                 description = request.POST.get(f'image_description_{index}', '').strip()
                 payload = quadrat_payloads[index - 1]
                 point_classes = payload.get('point_classes') or []
-                live_count = sum(1 for value in point_classes if value == 'Live coral')
+                
+                # Count coral/algae classes (exclude Abiotic only)
+                # Coral classes: Hard Coral, Soft Coral, Macroalgae, Halimeda, Algae Assemblage, Other Biota
+                coral_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota']
+                coral_count = sum(1 for value in point_classes if value in coral_classes)
                 total_points = len(point_classes) or 1
-                coverage_percent = (Decimal(live_count) * Decimal('100') / Decimal(total_points)).quantize(Decimal('0.01'))
+                coverage_percent = (Decimal(coral_count) * Decimal('100') / Decimal(total_points)).quantize(Decimal('0.01'))
+                
                 if coverage_percent >= Decimal('60'):
                     coverage_class = 'A'
                 elif coverage_percent >= Decimal('40'):
