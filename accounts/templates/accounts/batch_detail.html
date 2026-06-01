@@ -6,6 +6,76 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'css/batch_detail.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .visualization-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    .viz-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+    }
+    #coralMap {
+        height: 400px;
+        border-radius: 8px;
+        z-index: 1;
+    }
+    .class-legend {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #f9f9f9;
+        border-radius: 6px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+    }
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    .stat-box {
+        background: #f0f7ff;
+        padding: 1rem;
+        border-radius: 6px;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #1c5f6d;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    @media (max-width: 1024px) {
+        .visualization-section {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -164,17 +234,69 @@
                 </div>
             </section>
 
+            <!-- 7-Class Coral Distribution Visualization -->
+            <section class="visualization-section">
+                <!-- Pie Chart Card -->
+                <div class="viz-card">
+                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Coral Class Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="coralClassChart"></canvas>
+                    </div>
+                    <div class="class-legend" id="classLegend"></div>
+                </div>
+
+                <!-- Map & Statistics Card -->
+                <div class="viz-card">
+                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Survey Location & Summary</h3>
+                    <div id="coralMap"></div>
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="totalPointsValue">0</div>
+                            <div class="stat-label">Total Points</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="coveragePercentValue">0%</div>
+                            <div class="stat-label">Coverage</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="coverageClassValue">--</div>
+                            <div class="stat-label">Coverage Class</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="surface-card batch-images-card">
                 <div class="card-header">
                     <h2>Uploaded Images</h2>
                 </div>
+
+                <!-- Embed batch point class data for visualization -->
+                <script id="batchPointClassesData" type="application/json">
+                {
+                    {% for image in images %}
+                    "image-{{ image.id }}": {{ image.point_classes|safe }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                }
+                </script>
+
+                <!-- Embed quadrat rectangle data for canvas rendering -->
+                {% for image in images %}
+                <script id="rect-data-{{ image.id }}" type="application/json">
+                {{ image.quadrat_rect|safe }}
+                </script>
+                <!-- Embed quadrat points data for canvas rendering -->
+                <script id="points-data-{{ image.id }}" type="application/json">
+                {{ image.quadrat_points|safe }}
+                </script>
+                {% endfor %}
 
                 <div class="batch-images-grid" aria-label="Batch images">
                     {% for image in images %}
                     <article class="batch-image-card">
                         <div class="batch-image-thumb">
                             <div class="batch-image-canvas" data-rect-id="rect-data-{{ image.id }}"
-                                data-points-id="points-data-{{ image.id }}">
+                                data-points-id="points-data-{{ image.id }}" data-class-key="image-{{ image.id }}">
                                 <img src="{{ image.image.url }}" alt="{{ image.image.name }}">
                                 <canvas class="batch-quadrat-canvas" aria-hidden="true"></canvas>
                             </div>
@@ -186,8 +308,7 @@
                                 {% with coverage=image.coverage_percent|default_if_none:"--"|floatformat:0 %}
                                 Coverage: <strong>{{ coverage }}%</strong>
                                 {% endwith %}
-                                <span class="batch-class-badge class-{{ image.coverage_class|default:" pending"|lower
-                                    }}">
+                                <span class="batch-class-badge class-{{ image.coverage_class|default:" pending"|lower           }}">
                                     Class {{ image.coverage_class|default:"Pending" }}
                                 </span>
                             </p>
@@ -219,6 +340,9 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/custom.js' %}"></script>
 <script src="{% static 'js/batch_detail.js' %}"></script>
+<script src="{% static 'js/batch_visualization.js' %}"></script>
 {% endblock %}
