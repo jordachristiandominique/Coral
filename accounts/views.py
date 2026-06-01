@@ -185,49 +185,38 @@ def researcher_dashboard(request):
         return redirect('admin:index')
 
     if request.user.is_admin():
-        batches = (
-            ImageBatch.objects
-            .all()
-            .annotate(
-                avg_coverage=Avg('images__coverage_percent'),
-                image_count=Count('images')
-            )
-            .order_by('-survey_date')
-        )
-        images_filter = {}
+        batches = ImageBatch.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
     else:
-        batches = (
-            ImageBatch.objects
-            .filter(user=request.user)
-            .annotate(
-                avg_coverage=Avg('images__coverage_percent'),
-                image_count=Count('images')
-            )
-            .order_by('-survey_date')
-        )
-        images_filter = {'batch__user': request.user}
+        batches = ImageBatch.objects.filter(user=request.user).annotate(image_count=Count('images')).order_by('-survey_date')
 
-    total_images = BatchImage.objects.filter(**images_filter).count() if images_filter else BatchImage.objects.count()
-    
-    if images_filter:
-        avg_coverage_value = (
-            BatchImage.objects
-            .filter(**images_filter, coverage_percent__isnull=False)
-            .aggregate(avg=Avg('coverage_percent'))
-            .get('avg')
-        )
+    # Recalculate coverage from point_classes for each batch (HC+SC only)
+    batches_with_coverage = []
+    for batch in batches:
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        # Calculate coral coverage (Hard Coral + Soft Coral only)
+        coral_classes = ['Hard Coral', 'Soft Coral']
+        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
+        batches_with_coverage.append(batch)
+
+    # Get total images count
+    if request.user.is_admin():
+        total_images = BatchImage.objects.count()
     else:
-        avg_coverage_value = (
-            BatchImage.objects
-            .filter(coverage_percent__isnull=False)
-            .aggregate(avg=Avg('coverage_percent'))
-            .get('avg')
-        )
-    avg_coverage = float(avg_coverage_value) if avg_coverage_value is not None else None
+        total_images = BatchImage.objects.filter(batch__user=request.user).count()
 
+    # Calculate overall average coverage
+    all_coverages = [b.avg_coverage for b in batches_with_coverage if b.avg_coverage is not None]
+    avg_coverage = round(sum(all_coverages) / len(all_coverages), 1) if all_coverages else None
+
+    # Calculate class distribution
     healthy_reefs = 0
     class_counts = {'A': 0, 'B': 0, 'C': 0}
-    for batch in batches:
+    for batch in batches_with_coverage:
         if batch.avg_coverage is None:
             continue
         if batch.avg_coverage >= 60:
@@ -240,36 +229,25 @@ def researcher_dashboard(request):
 
     locations = batches.values('area_name').distinct().count()
 
-    if images_filter:
-        chart_rows = (
-            BatchImage.objects
-            .filter(**images_filter, coverage_percent__isnull=False)
-            .annotate(month=TruncMonth('batch__survey_date'))
-            .values('month')
-            .annotate(avg=Avg('coverage_percent'))
-            .order_by('month')
-        )
-    else:
-        chart_rows = (
-            BatchImage.objects
-            .filter(coverage_percent__isnull=False)
-            .annotate(month=TruncMonth('batch__survey_date'))
-            .values('month')
-            .annotate(avg=Avg('coverage_percent'))
-            .order_by('month')
-        )
-
+    # Build chart data (monthly trend)
     chart_labels = []
     chart_values = []
-    for row in chart_rows:
-        month = row.get('month')
-        if not month:
+    months_data = {}
+    for batch in batches_with_coverage:
+        if batch.avg_coverage is None:
             continue
-        chart_labels.append(month.strftime('%b'))
-        chart_values.append(round(float(row.get('avg') or 0), 0))
+        month_key = batch.survey_date.strftime('%b')
+        if month_key not in months_data:
+            months_data[month_key] = []
+        months_data[month_key].append(batch.avg_coverage)
+    
+    for month_key in sorted(months_data.keys()):
+        chart_labels.append(month_key)
+        chart_values.append(round(sum(months_data[month_key]) / len(months_data[month_key]), 0))
 
+    # Build recent submissions
     recent_submissions = []
-    for batch in batches[:5]:
+    for batch in batches_with_coverage[:5]:
         coverage_value = batch.avg_coverage
         if coverage_value is None:
             coverage_class = None

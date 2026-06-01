@@ -10,16 +10,21 @@ def landing_page(request):
 
 def public_dashboard(request):
     """Render the public dashboard page."""
-    batches = (
-        ImageBatch.objects
-        .select_related('user')
-        .annotate(avg_coverage=Avg('images__coverage_percent'))
-        .order_by('-survey_date')
-    )
+    batches = ImageBatch.objects.select_related('user').order_by('-survey_date')
 
     surveys = []
     for batch in batches:
-        coverage = batch.avg_coverage
+        # Recalculate coverage from point_classes (HC+SC only)
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        # Calculate coral coverage (Hard Coral + Soft Coral only)
+        coral_classes = ['Hard Coral', 'Soft Coral']
+        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
+        
         if coverage is None:
             coverage_value = None
             coverage_class = None
