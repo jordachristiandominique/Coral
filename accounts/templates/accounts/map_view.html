@@ -128,8 +128,9 @@
                     <label class="filter-label">Date Range</label>
                     <div class="date-range-inputs">
                         <input type="date" id="filter-date-start" class="filter-input" title="Start date"
-                            placeholder="From">
-                        <input type="date" id="filter-date-end" class="filter-input" title="End date" placeholder="To">
+                            aria-label="Start date">
+                        <span class="date-range-separator">to</span>
+                        <input type="date" id="filter-date-end" class="filter-input" title="End date" aria-label="End date">
                     </div>
                 </div>
 
@@ -139,8 +140,28 @@
                         <option value="">All Classes</option>
                         <option value="A">Class A (≥60%)</option>
                         <option value="B">Class B (40-59%)</option>
-                        <option value="C">Class C (&lt40%)</option>
+                        <option value="C">Class C (<40%)</option>
                         <option value="Pending">Pending</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-coral-type">Coral Type</label>
+                    <select id="filter-coral-type" class="filter-input">
+                        <option value="">All Types</option>
+                        <option value="hard">Hard Coral Dominant</option>
+                        <option value="soft">Soft Coral Dominant</option>
+                        <option value="mixed">Mixed/Balanced</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-heatmap">Visualization</label>
+                    <select id="filter-heatmap" class="filter-input">
+                        <option value="none">Standard Map</option>
+                        <option value="hard">Hard Coral Heatmap</option>
+                        <option value="soft">Soft Coral Heatmap</option>
+                        <option value="total">Total Coral Heatmap</option>
                     </select>
                 </div>
 

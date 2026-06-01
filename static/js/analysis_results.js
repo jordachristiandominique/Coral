@@ -153,6 +153,206 @@ const initializeAnalysisResults = function () {
         });
     }
 
+    // 7-Class Distribution Chart
+    const coralClassEl = document.getElementById('analysisCoralClassChart');
+    if (coralClassEl && window.Chart) {
+        let classPercentages = {};
+        if (chartScript) {
+            try {
+                const payload = JSON.parse(chartScript.textContent || '{}');
+                classPercentages = payload.class_percentages || {};
+            } catch (error) {
+                console.error('Error parsing chart data for class percentages:', error);
+            }
+        }
+
+        const classLabels = [
+            'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
+            'Algae Assemblage', 'Abiotic', 'Other Biota'
+        ];
+        const classColors = [
+            '#d4a574', '#e85d75', '#f5d76e', '#7ec8c8',
+            '#a8d5a8', '#b0b0b0', '#d8a5d5'
+        ];
+        const classData = classLabels.map(label => classPercentages[label] || 0);
+
+        new Chart(coralClassEl, {
+            type: 'doughnut',
+            data: {
+                labels: classLabels,
+                datasets: [{
+                    data: classData,
+                    backgroundColor: classColors,
+                    borderRadius: 999,
+                    spacing: 8,
+                    borderWidth: 10,
+                    borderColor: '#ffffff',
+                    hoverOffset: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'right',
+                        labels: {
+                            font: { size: 11 },
+                            padding: 12,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Hard vs Soft Coral Chart
+    const hardSoftEl = document.getElementById('analysisHardSoftChart');
+    if (hardSoftEl && window.Chart) {
+        let hardCoralPct = 0;
+        let softCoralPct = 0;
+        
+        if (chartScript) {
+            try {
+                const payload = JSON.parse(chartScript.textContent || '{}');
+                hardCoralPct = payload.hard_coral_pct || 0;
+                softCoralPct = payload.soft_coral_pct || 0;
+            } catch (error) {
+                console.error('Error parsing hard/soft coral data:', error);
+            }
+        }
+
+        new Chart(hardSoftEl, {
+            type: 'bar',
+            data: {
+                labels: ['Hard Coral', 'Soft Coral'],
+                datasets: [{
+                    label: 'Coverage %',
+                    data: [hardCoralPct, softCoralPct],
+                    backgroundColor: ['#d4a574', '#e85d75'],
+                    borderRadius: 8,
+                    borderWidth: 0,
+                    barThickness: 'flex',
+                    maxBarThickness: 80
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        grid: { color: 'rgba(28, 95, 109, 0.08)' }
+                    },
+                    y: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Coral Type Trend Chart (Hard vs Soft over time)
+    const coralTrendEl = document.getElementById('analysisCoralTrendChart');
+    if (coralTrendEl && window.Chart) {
+        let trendLabels = [];
+        let hardCoralTrendData = [];
+        let softCoralTrendData = [];
+        
+        if (chartScript) {
+            try {
+                const payload = JSON.parse(chartScript.textContent || '{}');
+                trendLabels = payload.hard_soft_labels || [];
+                hardCoralTrendData = payload.hard_coral_trend || [];
+                softCoralTrendData = payload.soft_coral_trend || [];
+            } catch (error) {
+                console.error('Error parsing coral trend data:', error);
+            }
+        }
+
+        new Chart(coralTrendEl, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [
+                    {
+                        label: 'Hard Coral',
+                        data: hardCoralTrendData,
+                        borderColor: '#d4a574',
+                        backgroundColor: 'rgba(212, 165, 116, 0.1)',
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#d4a574',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Soft Coral',
+                        data: softCoralTrendData,
+                        borderColor: '#e85d75',
+                        backgroundColor: 'rgba(232, 93, 117, 0.1)',
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#e85d75',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: { size: 12 },
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 15
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(28, 95, 109, 0.08)' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        grid: { color: 'rgba(28, 95, 109, 0.08)' }
+                    }
+                }
+            }
+        });
+    }
+
     // Initialize map
     const mapEl = document.getElementById('analysisMap');
     if (mapEl && window.L) {

@@ -441,24 +441,116 @@ def analysis_results(request):
     for row in rows:
         distribution[row['coverage_class']] += 1
 
-    batch_ids = [row['id'] for row in rows]
-    chart_rows = (
-        BatchImage.objects
-        .filter(batch_id__in=batch_ids, coverage_percent__isnull=False)
-        .annotate(month=TruncMonth('batch__survey_date'))
-        .values('month')
-        .annotate(avg=Avg('coverage_percent'))
-        .order_by('month')
-    )
+    # Calculate 7-class distribution and hard/soft coral stats
+    class_distribution = {
+        'Hard Coral': 0,
+        'Soft Coral': 0,
+        'Macroalgae': 0,
+        'Halimeda': 0,
+        'Algae Assemblage': 0,
+        'Abiotic': 0,
+        'Other Biota': 0,
+    }
+    total_points = 0
+    
+    for batch in batches_queryset:
+        for image in batch.images.all():
+            if image.point_classes:
+                for point_class in image.point_classes:
+                    if point_class in class_distribution:
+                        class_distribution[point_class] += 1
+                    total_points += 1
+    
+    # Convert to percentages
+    class_percentages = {}
+    for class_name, count in class_distribution.items():
+        if total_points > 0:
+            class_percentages[class_name] = round((count / total_points) * 100, 1)
+        else:
+            class_percentages[class_name] = 0
+    
+    # Calculate hard vs soft coral averages
+    hard_soft_totals = {'hard': 0, 'soft': 0}
+    hard_soft_count = 0
+    
+    for batch in batches_queryset:
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        if all_point_classes:
+            hard_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
+            soft_count = sum(1 for pc in all_point_classes if pc == 'Soft Coral')
+            
+            hard_soft_totals['hard'] += hard_count
+            hard_soft_totals['soft'] += soft_count
+            hard_soft_count += len(all_point_classes)
+    
+    hard_coral_pct = round((hard_soft_totals['hard'] / hard_soft_count) * 100, 1) if hard_soft_count > 0 else 0
+    soft_coral_pct = round((hard_soft_totals['soft'] / hard_soft_count) * 100, 1) if hard_soft_count > 0 else 0
 
+    # Calculate chart data using ALL batches (not filtered by coverage), grouped by month
+    # This shows the actual trend without filtering distorting the averages
+    chart_data_rows = _build_analysis_rows(batches_queryset)
+    
+    # Group by month and calculate average coverage
+    from collections import defaultdict
+    monthly_data = defaultdict(list)
+    for row in chart_data_rows:
+        month_key = row['survey_date'].strftime('%b %Y')
+        monthly_data[month_key].append(row['avg_coverage'])
+    
+    # Sort by date and create chart labels/values
     chart_labels = []
     chart_values = []
-    for row in chart_rows:
-        month = row.get('month')
-        if not month:
-            continue
-        chart_labels.append(month.strftime('%b %Y'))
-        chart_values.append(round(float(row.get('avg') or 0), 1))
+    from datetime import datetime
+    month_dates = []
+    for month_str in monthly_data.keys():
+        try:
+            month_date = datetime.strptime(month_str, '%b %Y')
+            month_dates.append((month_date, month_str))
+        except:
+            pass
+    
+    month_dates.sort(key=lambda x: x[0])
+    for month_date, month_str in month_dates:
+        chart_labels.append(month_str)
+        avg = sum(monthly_data[month_str]) / len(monthly_data[month_str])
+        chart_values.append(round(avg, 1))
+
+    # Calculate Hard and Soft Coral trends by month
+    monthly_hard_soft = defaultdict(lambda: {'hard_points': 0, 'soft_points': 0, 'total_points': 0})
+    
+    for batch in batches_queryset:
+        month_key = batch.survey_date.strftime('%b %Y')
+        for image in batch.images.all():
+            if image.point_classes:
+                hard_count = sum(1 for pc in image.point_classes if pc == 'Hard Coral')
+                soft_count = sum(1 for pc in image.point_classes if pc == 'Soft Coral')
+                
+                monthly_hard_soft[month_key]['hard_points'] += hard_count
+                monthly_hard_soft[month_key]['soft_points'] += soft_count
+                monthly_hard_soft[month_key]['total_points'] += len(image.point_classes)
+    
+    # Convert to percentages and sort by month
+    hard_soft_labels = []
+    hard_coral_trend = []
+    soft_coral_trend = []
+    
+    for month_date, month_str in month_dates:
+        if month_str in monthly_hard_soft:
+            data = monthly_hard_soft[month_str]
+            if data['total_points'] > 0:
+                hard_pct = round((data['hard_points'] / data['total_points']) * 100, 1)
+                soft_pct = round((data['soft_points'] / data['total_points']) * 100, 1)
+            else:
+                hard_pct = 0
+                soft_pct = 0
+            
+            hard_soft_labels.append(month_str)
+            hard_coral_trend.append(hard_pct)
+            soft_coral_trend.append(soft_pct)
 
     context = {
         'user': request.user,
@@ -471,6 +563,12 @@ def analysis_results(request):
             'labels': chart_labels,
             'values': chart_values,
             'classes': [distribution['A'], distribution['B'], distribution['C'], distribution['Pending']],
+            'class_percentages': class_percentages,
+            'hard_coral_pct': hard_coral_pct,
+            'soft_coral_pct': soft_coral_pct,
+            'hard_soft_labels': hard_soft_labels,
+            'hard_coral_trend': hard_coral_trend,
+            'soft_coral_trend': soft_coral_trend,
         },
         'filter_state': filter_state,
         'area_options': area_options,
@@ -967,10 +1065,43 @@ def map_view(request):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
         
+        # Calculate class distribution for all 7 classes
+        class_breakdown = {
+            'Hard Coral': 0,
+            'Soft Coral': 0,
+            'Macroalgae': 0,
+            'Halimeda': 0,
+            'Algae Assemblage': 0,
+            'Abiotic': 0,
+            'Other Biota': 0,
+        }
+        
+        total_points = len(all_point_classes)
+        for pc in all_point_classes:
+            if pc in class_breakdown:
+                class_breakdown[pc] += 1
+        
+        # Convert counts to percentages
+        if total_points > 0:
+            class_breakdown_pct = {k: round((v / total_points) * 100, 1) for k, v in class_breakdown.items()}
+        else:
+            class_breakdown_pct = {k: 0 for k in class_breakdown.keys()}
+        
+        batch.class_breakdown = class_breakdown_pct
+        
         # Calculate coral coverage (Hard Coral + Soft Coral only)
         coral_classes = ['Hard Coral', 'Soft Coral']
         coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
         batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
+        
+        # Determine dominant coral type
+        hard_coral_pct = class_breakdown_pct.get('Hard Coral', 0)
+        soft_coral_pct = class_breakdown_pct.get('Soft Coral', 0)
+        batch.dominant_coral_type = 'mixed'
+        if hard_coral_pct > soft_coral_pct:
+            batch.dominant_coral_type = 'hard'
+        elif soft_coral_pct > hard_coral_pct:
+            batch.dominant_coral_type = 'soft'
         
         # Determine coverage class
         if batch.avg_coverage is None:
@@ -1001,6 +1132,10 @@ def map_view(request):
                 'imageCount': batch.image_count,
                 'coverage': float(batch.avg_coverage) if batch.avg_coverage is not None else None,
                 'coverageClass': batch.coverage_class or 'Pending',
+                'classBreakdown': batch.class_breakdown,
+                'dominantCoralType': batch.dominant_coral_type,
+                'hardCoralPct': batch.class_breakdown.get('Hard Coral', 0),
+                'softCoralPct': batch.class_breakdown.get('Soft Coral', 0),
             }
         })
 
