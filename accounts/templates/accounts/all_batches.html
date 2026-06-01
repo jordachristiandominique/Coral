@@ -180,7 +180,7 @@
                 </p>
                 <p class="batch-coverage">
                     {% with coverage=batch.avg_coverage|default_if_none:"--"|floatformat:0 %}
-                    <span class="coverage-text">Coverage: <strong>{{ coverage }}%</strong></span>
+                    <span class="coverage-text">Coral Coverage: <strong>{{ coverage }}%</strong></span>
                     {% endwith %}
                     <span class="batch-class-badge class-{{ batch.coverage_class|default:" pending"|lower }}">
                         Class {{ batch.coverage_class|default:"Pending" }}

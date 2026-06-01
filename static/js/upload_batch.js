@@ -1112,10 +1112,11 @@ const initializeUploadBatch = function () {
     };
 
     const getCoralCoveragePercent = function (points) {
+        // Coral Coverage: Only Hard Coral + Soft Coral
         if (!points || !points.length) {
             return 0;
         }
-        const coralClasses = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota'];
+        const coralClasses = ['Hard Coral', 'Soft Coral'];
         const coralCount = points.filter(function (p) {
             return coralClasses.indexOf(p.class) !== -1;
         }).length;
@@ -1131,7 +1132,7 @@ const initializeUploadBatch = function () {
     const renderPointList = function () {
         const pointList = document.getElementById('point-list');
         const coverageClassEl = document.getElementById('coverage-class');
-        const coveragePercentEl = document.getElementById('coverage-percent');
+        const coveragePercentEl = document.getElementById('coral-coverage-percent');
         
         if (!pointList) {
             return;
@@ -1168,7 +1169,7 @@ const initializeUploadBatch = function () {
                 coverageClassEl.textContent = 'Class: Pending';
             }
             if (coveragePercentEl) {
-                coveragePercentEl.textContent = 'Coverage: 0%';
+                coveragePercentEl.textContent = 'Coral Coverage: 0%';
             }
             return;
         }
@@ -1192,7 +1193,7 @@ const initializeUploadBatch = function () {
             coverageClassEl.textContent = `Class: ${coverageClass}`;
         }
         if (coveragePercentEl) {
-            coveragePercentEl.textContent = `Coverage: ${coveragePercent}%`;
+            coveragePercentEl.textContent = `Coral Coverage: ${coveragePercent}%`;
         }
     };
 
@@ -1564,8 +1565,8 @@ const initializeUploadBatch = function () {
             syncCanvasSize();
             const activeFile = getActiveFile();
             const results = aiResultsByFileKey[getFileKey(activeFile)];
-            if (results && results.quadrat_bbox) {
-                drawAIQuadrat(results.quadrat_bbox);
+            if (results && results.quadrat_bbox && results.points) {
+                drawQuadratAndPoints(results.quadrat_bbox, results.points);
             }
         });
     }

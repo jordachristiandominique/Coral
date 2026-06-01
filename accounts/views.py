@@ -354,10 +354,12 @@ def _apply_analysis_filters(request, queryset):
     end_date = _parse_date(request.GET.get('end_date', '').strip())
     area = request.GET.get('area', '').strip()
     surveyor = request.GET.get('surveyor', '').strip()
+    # Coverage class and min/max filters will be applied AFTER recalculation in _build_analysis_rows
     class_filter = request.GET.get('coverage_class', '').strip()
     min_coverage = _parse_decimal(request.GET.get('min_coverage', '').strip())
     max_coverage = _parse_decimal(request.GET.get('max_coverage', '').strip())
 
+    # Apply basic filters at database level
     if start_date:
         queryset = queryset.filter(survey_date__gte=start_date)
     if end_date:
@@ -367,24 +369,7 @@ def _apply_analysis_filters(request, queryset):
     if surveyor:
         queryset = queryset.filter(surveyor_names__icontains=surveyor)
 
-    queryset = queryset.annotate(
-        avg_coverage=Avg('images__coverage_percent'),
-        image_count=Count('images')
-    )
-
-    if min_coverage is not None:
-        queryset = queryset.filter(avg_coverage__gte=min_coverage)
-    if max_coverage is not None:
-        queryset = queryset.filter(avg_coverage__lte=max_coverage)
-
-    if class_filter == 'A':
-        queryset = queryset.filter(avg_coverage__gte=60)
-    elif class_filter == 'B':
-        queryset = queryset.filter(avg_coverage__gte=40, avg_coverage__lt=60)
-    elif class_filter == 'C':
-        queryset = queryset.filter(avg_coverage__lt=40)
-    elif class_filter == 'pending':
-        queryset = queryset.filter(avg_coverage__isnull=True)
+    queryset = queryset.annotate(image_count=Count('images'))
 
     filter_state = {
         'start_date': start_date.isoformat() if start_date else '',
@@ -396,13 +381,28 @@ def _apply_analysis_filters(request, queryset):
         'max_coverage': str(max_coverage) if max_coverage is not None else '',
     }
 
+    # Store coverage filters in filter_state for post-processing in analysis_results view
+    filter_state['_class_filter'] = class_filter
+    filter_state['_min_coverage'] = min_coverage
+    filter_state['_max_coverage'] = max_coverage
+
     return queryset.order_by('-survey_date'), filter_state
 
 
 def _build_analysis_rows(queryset):
     rows = []
     for batch in queryset:
-        coverage_value = batch.avg_coverage
+        # Recalculate coverage from point_classes (HC+SC only)
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        # Calculate coral coverage (Hard Coral + Soft Coral only)
+        coral_classes = ['Hard Coral', 'Soft Coral']
+        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        coverage_value = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else 0
+        
         coverage_class = _coverage_class(coverage_value)
         surveyor_display = (batch.surveyor_names or '').replace(',', '\n')
         rows.append({
@@ -438,6 +438,23 @@ def analysis_results(request):
 
     batches_queryset, filter_state = _apply_analysis_filters(request, base_queryset)
     rows = _build_analysis_rows(batches_queryset)
+    
+    # Apply coverage filters post-calculation (based on recalculated HC+SC coverage)
+    class_filter = filter_state.get('_class_filter', '')
+    min_coverage = filter_state.get('_min_coverage')
+    max_coverage = filter_state.get('_max_coverage')
+    
+    if min_coverage is not None:
+        rows = [r for r in rows if r['avg_coverage'] >= min_coverage]
+    if max_coverage is not None:
+        rows = [r for r in rows if r['avg_coverage'] <= max_coverage]
+    
+    if class_filter == 'A':
+        rows = [r for r in rows if r['avg_coverage'] >= 60]
+    elif class_filter == 'B':
+        rows = [r for r in rows if 40 <= r['avg_coverage'] < 60]
+    elif class_filter == 'C':
+        rows = [r for r in rows if r['avg_coverage'] < 40]
 
     total_batches = len(rows)
     total_images = sum(row['image_count'] or 0 for row in rows)
@@ -805,9 +822,8 @@ def upload_batch(request):
                 payload = quadrat_payloads[index - 1]
                 point_classes = payload.get('point_classes') or []
                 
-                # Count coral/algae classes (exclude Abiotic only)
-                # Coral classes: Hard Coral, Soft Coral, Macroalgae, Halimeda, Algae Assemblage, Other Biota
-                coral_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota']
+                # Count coral coverage: Only Hard Coral + Soft Coral
+                coral_classes = ['Hard Coral', 'Soft Coral']
                 coral_count = sum(1 for value in point_classes if value in coral_classes)
                 total_points = len(point_classes) or 1
                 coverage_percent = (Decimal(coral_count) * Decimal('100') / Decimal(total_points)).quantize(Decimal('0.01'))
@@ -865,11 +881,23 @@ def batches(request):
     batches_qs = ImageBatch.objects.filter(user=request.user)
     
     batches_qs = batches_qs.annotate(
-        image_count=Count('images'),
-        avg_coverage=Avg('images__coverage_percent')
+        image_count=Count('images')
     )
 
     for batch in batches_qs:
+        # Recalculate coral coverage (HC + SC only) from point_classes data
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        if all_point_classes:
+            coral_classes = ['Hard Coral', 'Soft Coral']
+            coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+            batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100)
+        else:
+            batch.avg_coverage = None
+        
         if batch.avg_coverage is None:
             batch.coverage_class = None
             continue
@@ -904,11 +932,23 @@ def all_batches(request):
     batches_qs = ImageBatch.objects.all()
     
     batches_qs = batches_qs.annotate(
-        image_count=Count('images'),
-        avg_coverage=Avg('images__coverage_percent')
+        image_count=Count('images')
     )
 
     for batch in batches_qs:
+        # Recalculate coral coverage (HC + SC only) from point_classes data
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        if all_point_classes:
+            coral_classes = ['Hard Coral', 'Soft Coral']
+            coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+            batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100)
+        else:
+            batch.avg_coverage = None
+        
         if batch.avg_coverage is None:
             batch.coverage_class = None
             continue
@@ -940,16 +980,24 @@ def map_view(request):
     else:
         batches_qs = ImageBatch.objects.filter(user=request.user)
     
-    batches_qs = batches_qs.annotate(
-        image_count=Count('images'),
-        avg_coverage=Avg('images__coverage_percent')
-    )
+    batches_qs = batches_qs.annotate(image_count=Count('images'))
 
+    # Recalculate coverage from point_classes for each batch
     for batch in batches_qs:
+        all_point_classes = []
+        for image in batch.images.all():
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        # Calculate coral coverage (Hard Coral + Soft Coral only)
+        coral_classes = ['Hard Coral', 'Soft Coral']
+        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
+        
+        # Determine coverage class
         if batch.avg_coverage is None:
             batch.coverage_class = None
-            continue
-        if batch.avg_coverage >= 60:
+        elif batch.avg_coverage >= 60:
             batch.coverage_class = 'A'
         elif batch.avg_coverage >= 40:
             batch.coverage_class = 'B'
@@ -1073,6 +1121,20 @@ def batch_detail(request, batch_id):
             messages.success(request, 'Batch updated successfully.')
             return redirect('batch_detail', batch_id=batch.id)
 
+    # Calculate Coral Coverage (Hard Coral + Soft Coral only)
+    all_point_classes = []
+    for image in images:
+        if image.point_classes:
+            all_point_classes.extend(image.point_classes)
+    
+    if all_point_classes:
+        # Coral Coverage: Only Hard Coral + Soft Coral
+        coral_classes = ['Hard Coral', 'Soft Coral']
+        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        coral_coverage = round((coral_count / len(all_point_classes)) * 100)
+    else:
+        coral_coverage = 0
+
     context = {
         'user': request.user,
         'generated_at': timezone.now(),
@@ -1080,6 +1142,8 @@ def batch_detail(request, batch_id):
         'images': images,
         'avg_coverage': avg_coverage,
         'coverage_class': coverage_class,
+        'point_classes_json': json.dumps({f'image-{img.id}': img.point_classes for img in images}),
+        'coral_coverage': coral_coverage,
     }
     return render(request, 'accounts/batch_detail.html', context)
 
