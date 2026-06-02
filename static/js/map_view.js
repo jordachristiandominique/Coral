@@ -494,9 +494,12 @@ class CoralSenseMap {
 
         this.currentHeatmapType = heatmapType;
 
-        // Create new heatmap if requested
+        // Hide markers when heatmap is active, show them otherwise
         if (heatmapType === 'none') {
+            this.markerClusterGroup.addTo(this.map);
             return; // No heatmap
+        } else {
+            this.map.removeLayer(this.markerClusterGroup);
         }
 
         // Generate heatmap data points
