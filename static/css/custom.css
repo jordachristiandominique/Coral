@@ -1048,6 +1048,7 @@ footer {
     border-color: rgba(243, 251, 251, 0.7);
     color: #ffffff;
     box-shadow: 0 10px 24px rgba(7, 35, 49, 0.22);
+    border-radius: 999px!important;
 }
 
 .landing-hero-cta:hover {

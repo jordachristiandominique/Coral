@@ -168,6 +168,12 @@
     margin-top: 0.6rem;
 }
 
+.stacked-bar-chart {
+    width: 100%;
+    height: 250px;
+    margin-top: 0.6rem;
+}
+
 .line-grid {
     stroke: #e3edf2;
     stroke-width: 1;
@@ -183,6 +189,28 @@
 
 .line-point {
     fill: #0d91b8;
+}
+
+.stacked-legend {
+    margin-top: 0.8rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.6rem;
+    font-size: 0.85rem;
+}
+
+.stacked-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--public-text);
+}
+
+.stacked-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex: 0 0 auto;
 }
 
 .chart-caption {
@@ -207,6 +235,11 @@
     flex: 0 0 auto;
 }
 
+.donut-lg {
+    width: 180px;
+    height: 180px;
+}
+
 .donut::after {
     content: "";
     position: absolute;
@@ -216,10 +249,21 @@
     border: 1px solid var(--public-border);
 }
 
+.donut-lg::after {
+    inset: 28px;
+}
+
 .donut-legend {
     display: grid;
     gap: 0.55rem;
     width: 100%;
+}
+
+.ecosystem-legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    font-size: 0.85rem;
 }
 
 .donut-legend div {
@@ -330,6 +374,51 @@
 .class-badge.class-c {
     color: #9a513e;
     background: rgba(219, 123, 52, 0.18);
+}
+
+.mini-bars-container {
+    display: flex;
+    height: 24px;
+    gap: 1px;
+    align-items: stretch;
+    background: #f5f7f9;
+    border-radius: 4px;
+    padding: 2px;
+    min-width: 150px;
+}
+
+.mini-bar-segment {
+    flex: 1;
+    border-radius: 2px;
+    position: relative;
+    min-width: 4px;
+}
+
+.mini-bar-segment:hover {
+    opacity: 0.8;
+}
+
+.mini-bar-segment::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #10323d;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    margin-bottom: 5px;
+    z-index: 10;
+}
+
+.mini-bar-segment:hover::after {
+    opacity: 1;
 }
 
 .edu-panel {

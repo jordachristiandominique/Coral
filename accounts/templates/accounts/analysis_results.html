@@ -174,7 +174,12 @@
             </div>
         </form>
 
-        <section class="analysis-charts" aria-label="Charts">
+        <section class="analysis-section" aria-labelledby="overview-title">
+            <div class="section-header">
+                <h2 id="overview-title">Overview</h2>
+                <p class="section-description">General batch metrics and coverage classification</p>
+            </div>
+            <div class="analysis-charts" aria-label="Overview charts">
             <article class="surface-card chart-card compact-chart">
                 <div class="card-header">
                     <h2>Coverage Trend</h2>
@@ -189,9 +194,15 @@
                 </div>
                 <canvas id="analysisClassChart" height="140"></canvas>
             </article>
+            </div>
         </section>
 
-        <section class="analysis-charts" aria-label="Coral composition charts">
+        <section class="analysis-section" aria-labelledby="composition-title">
+            <div class="section-header">
+                <h2 id="composition-title">Coral Composition</h2>
+                <p class="section-description">Detailed breakdown of all 7 coral classes and hard/soft coral distribution</p>
+            </div>
+            <div class="analysis-charts" aria-label="Coral composition charts">
             <article class="surface-card chart-card compact-chart">
                 <div class="card-header">
                     <h2>Coral Class Breakdown</h2>
@@ -206,9 +217,15 @@
                 </div>
                 <canvas id="analysisHardSoftChart" height="140"></canvas>
             </article>
+            </div>
         </section>
 
-        <section class="analysis-charts" aria-label="Coral type trend">
+        <section class="analysis-section" aria-labelledby="temporal-title">
+            <div class="section-header">
+                <h2 id="temporal-title">Temporal Analysis</h2>
+                <p class="section-description">Trends and patterns over time across all surveyed periods</p>
+            </div>
+            <div class="analysis-charts" aria-label="Coral type trend">
             <article class="surface-card chart-card compact-chart" style="grid-column: 1 / -1;">
                 <div class="card-header">
                     <h2>Coral Type Trend</h2>
@@ -216,17 +233,84 @@
                 </div>
                 <canvas id="analysisCoralTrendChart" height="140"></canvas>
             </article>
+            </div>
+
+            <div class="surface-card analysis-monthly-stats" aria-label="Monthly statistics">
+            <div class="table-head">
+                <h2>Monthly Summary</h2>
+                <span class="table-meta">Statistics by survey month</span>
+            </div>
+            <div class="table-scroll">
+                <table class="analysis-table monthly-stats-table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Batches</th>
+                            <th>Images</th>
+                            <th>Avg Coverage</th>
+                            <th>Hard Coral %</th>
+                            <th>Soft Coral %</th>
+                            <th>Class A</th>
+                            <th>Class B</th>
+                            <th>Class C</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for month_stat in monthly_stats %}
+                        <tr>
+                            <td><strong>{{ month_stat.month }}</strong></td>
+                            <td>{{ month_stat.batch_count }}</td>
+                            <td>{{ month_stat.image_count }}</td>
+                            <td>
+                                <span class="coverage-badge">{{ month_stat.avg_coverage|floatformat:1 }}%</span>
+                            </td>
+                            <td>
+                                <span style="color: #d4a574; font-weight: 600;">{{ month_stat.hard_coral_pct|floatformat:1 }}%</span>
+                            </td>
+                            <td>
+                                <span style="color: #e85d75; font-weight: 600;">{{ month_stat.soft_coral_pct|floatformat:1 }}%</span>
+                            </td>
+                            <td>
+                                <span class="class-count class-a">{{ month_stat.class_a_count }}</span>
+                            </td>
+                            <td>
+                                <span class="class-count class-b">{{ month_stat.class_b_count }}</span>
+                            </td>
+                            <td>
+                                <span class="class-count class-c">{{ month_stat.class_c_count }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="table-empty">No monthly data available.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            </div>
         </section>
 
-        <section class="surface-card analysis-map-wrap" aria-label="Survey locations map">
+        <section class="analysis-section" aria-labelledby="geographic-title">
+            <div class="section-header">
+                <h2 id="geographic-title">Geographic Distribution</h2>
+                <p class="section-description">Spatial visualization of all survey locations</p>
+            </div>
+            <div class="surface-card analysis-map-wrap" aria-label="Survey locations map">
             <div class="map-head">
                 <h2>Survey Locations</h2>
                 <span class="map-sub">Geographic distribution of batches</span>
             </div>
             <div id="analysisMap" class="analysis-map"></div>
+            </div>
         </section>
 
-        <section class="surface-card analysis-table-wrap" aria-label="Analysis results table">
+        <section class="analysis-section" aria-labelledby="detailed-title">
+            <div class="section-header">
+                <h2 id="detailed-title">Detailed Results</h2>
+                <p class="section-description">Complete batch-by-batch analysis and per-image metrics</p>
+            </div>
+            <div class="surface-card analysis-table-wrap" aria-label="Analysis results table">
             <div class="table-head">
                 <h2>Results</h2>
                 <span class="table-meta">{{ total_batches }} batches</span>
@@ -285,6 +369,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
             </div>
         </section>
     </main>

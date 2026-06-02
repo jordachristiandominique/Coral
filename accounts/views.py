@@ -552,6 +552,68 @@ def analysis_results(request):
             hard_coral_trend.append(hard_pct)
             soft_coral_trend.append(soft_pct)
 
+    # Calculate monthly statistics table
+    monthly_stats = []
+    monthly_coverage_data = defaultdict(list)
+    monthly_classes = defaultdict(lambda: {'A': 0, 'B': 0, 'C': 0})
+    monthly_batches = defaultdict(int)
+    monthly_images = defaultdict(int)
+    
+    for batch in batches_queryset:
+        month_key = batch.survey_date.strftime('%b %Y')
+        monthly_batches[month_key] += 1
+        
+        # Count images and collect coverage data
+        all_point_classes = []
+        for image in batch.images.all():
+            monthly_images[month_key] += 1
+            if image.point_classes:
+                all_point_classes.extend(image.point_classes)
+        
+        # Calculate coverage for this batch
+        if all_point_classes:
+            coral_count = sum(1 for pc in all_point_classes if pc in ['Hard Coral', 'Soft Coral'])
+            batch_coverage = round((coral_count / len(all_point_classes)) * 100, 1)
+            monthly_coverage_data[month_key].append(batch_coverage)
+            
+            # Assign to class
+            if batch_coverage >= 60:
+                monthly_classes[month_key]['A'] += 1
+            elif batch_coverage >= 40:
+                monthly_classes[month_key]['B'] += 1
+            else:
+                monthly_classes[month_key]['C'] += 1
+    
+    # Build monthly stats list
+    for month_date, month_str in month_dates:
+        if month_str in monthly_batches:
+            avg_coverage = sum(monthly_coverage_data[month_str]) / len(monthly_coverage_data[month_str]) if monthly_coverage_data[month_str] else 0
+            
+            # Get hard/soft percentages
+            if month_str in monthly_hard_soft:
+                data = monthly_hard_soft[month_str]
+                if data['total_points'] > 0:
+                    hard_pct = round((data['hard_points'] / data['total_points']) * 100, 1)
+                    soft_pct = round((data['soft_points'] / data['total_points']) * 100, 1)
+                else:
+                    hard_pct = 0
+                    soft_pct = 0
+            else:
+                hard_pct = 0
+                soft_pct = 0
+            
+            monthly_stats.append({
+                'month': month_str,
+                'batch_count': monthly_batches[month_str],
+                'image_count': monthly_images[month_str],
+                'avg_coverage': avg_coverage,
+                'hard_coral_pct': hard_pct,
+                'soft_coral_pct': soft_pct,
+                'class_a_count': monthly_classes[month_str]['A'],
+                'class_b_count': monthly_classes[month_str]['B'],
+                'class_c_count': monthly_classes[month_str]['C'],
+            })
+
     context = {
         'user': request.user,
         'generated_at': timezone.now(),
@@ -559,6 +621,7 @@ def analysis_results(request):
         'total_batches': total_batches,
         'total_images': total_images,
         'distribution': distribution,
+        'monthly_stats': monthly_stats,
         'chart_data': {
             'labels': chart_labels,
             'values': chart_values,

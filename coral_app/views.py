@@ -37,6 +37,19 @@ def public_dashboard(request):
             else:
                 coverage_class = 'C'
 
+        # Calculate 7-class distribution
+        all_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota']
+        class_distribution = {}
+        total_count = len(all_point_classes) if all_point_classes else 0
+        
+        for cls in all_classes:
+            count = sum(1 for pc in all_point_classes if pc == cls)
+            percentage = round((count / total_count) * 100) if total_count > 0 else 0
+            class_distribution[cls] = {
+                'count': count,
+                'percentage': percentage
+            }
+
         surveys.append({
             'area': batch.area_name,
             'surveyors': batch.surveyor_names or 'Not set',
@@ -45,6 +58,7 @@ def public_dashboard(request):
             'date': batch.survey_date.isoformat(),
             'coverage': coverage_value,
             'classCode': coverage_class,
+            'classDistribution': class_distribution,
         })
 
     last_updated = batches[0].survey_date if batches else None

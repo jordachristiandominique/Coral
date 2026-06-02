@@ -83,6 +83,22 @@
             </article>
 
             <article class="chart-card">
+                <h2>Class Composition</h2>
+                <p class="chart-sub">7-class distribution by month</p>
+                <svg id="stacked-bar-chart" class="stacked-bar-chart" viewBox="0 0 600 250" role="img"
+                    aria-labelledby="stacked-chart-title">
+                    <title id="stacked-chart-title">Coral class composition stacked bar chart</title>
+                    <line class="line-grid" x1="30" y1="20" x2="30" y2="210"></line>
+                    <line class="line-grid" x1="30" y1="210" x2="580" y2="210"></line>
+                    <g id="stacked-bars"></g>
+                </svg>
+                <div id="stacked-legend" class="stacked-legend" aria-live="polite"></div>
+                <p id="stacked-caption" class="chart-caption">Percentage breakdown of all 7 coral classes by month.</p>
+            </article>
+        </section>
+
+        <section class="charts-grid" aria-label="Biodiversity charts">
+            <article class="chart-card">
                 <h2>Biodiversity Distribution</h2>
                 <p class="chart-sub">Class A/B/C breakdown</p>
                 <div class="donut-wrap">
@@ -92,6 +108,15 @@
                         <div><strong>Class B</strong><span id="legend-b">0 sites</span></div>
                         <div><strong>Class C</strong><span id="legend-c">0 sites</span></div>
                     </div>
+                </div>
+            </article>
+
+            <article class="chart-card">
+                <h2>Ecosystem Composition</h2>
+                <p class="chart-sub">7-class detailed breakdown</p>
+                <div class="donut-wrap">
+                    <div id="ecosystem-donut" class="donut donut-lg" aria-hidden="true"></div>
+                    <div id="ecosystem-legend" class="donut-legend ecosystem-legend" aria-live="polite"></div>
                 </div>
             </article>
         </section>
@@ -107,6 +132,7 @@
                             <th>Date</th>
                             <th>Coverage</th>
                             <th>Class</th>
+                            <th>Class Distribution</th>
                             <th>Action</th>
                         </tr>
                     </thead>

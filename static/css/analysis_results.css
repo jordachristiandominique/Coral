@@ -285,6 +285,33 @@
     font-weight: 700;
 }
 
+/* Analysis Sections */
+.analysis-section {
+    display: grid;
+    gap: 16px;
+}
+
+.section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1c5f6d;
+    letter-spacing: -0.02em;
+}
+
+.section-description {
+    margin: 0;
+    font-size: 13px;
+    color: #6a8893;
+    font-weight: 500;
+}
+
 @media (max-width: 960px) {
     .analysis-page-head {
         flex-direction: column;
