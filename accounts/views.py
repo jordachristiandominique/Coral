@@ -312,9 +312,8 @@ def _parse_decimal(value):
 
 
 def _get_analysis_queryset(user):
-    if user.is_admin():
-        return ImageBatch.objects.all()
-    return ImageBatch.objects.filter(user=user)
+    # All users (admin and researchers) see all survey data
+    return ImageBatch.objects.all()
 
 
 def _coverage_class(coverage_value):
@@ -1114,10 +1113,8 @@ def map_view(request):
         messages.info(request, 'Your account is still pending approval.')
         return redirect('pending_approval')
 
-    if request.user.is_admin():
-        batches_qs = ImageBatch.objects.all()
-    else:
-        batches_qs = ImageBatch.objects.filter(user=request.user)
+    # All users (admin and researchers) see all survey data
+    batches_qs = ImageBatch.objects.all()
     
     batches_qs = batches_qs.annotate(image_count=Count('images'))
 

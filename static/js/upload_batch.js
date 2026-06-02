@@ -308,7 +308,7 @@ const initializeUploadBatch = function () {
 
         if (submitHint) {
             if (ready) {
-                submitHint.textContent = '✓ AI analysis complete! Review coverage data and click Upload to save the batch.';
+                submitHint.textContent = 'Image analysis complete! Review coverage data and click Upload to save the batch.';
                 submitHint.style.color = '#2a8793';
             } else {
                 submitHint.textContent = 'Upload images and run AI analysis to detect coral coverage.';
