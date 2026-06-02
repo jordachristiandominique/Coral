@@ -184,10 +184,8 @@ def researcher_dashboard(request):
     if request.user.is_superadmin():
         return redirect('admin:index')
 
-    if request.user.is_admin():
-        batches = ImageBatch.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
-    else:
-        batches = ImageBatch.objects.filter(user=request.user).annotate(image_count=Count('images')).order_by('-survey_date')
+    # All users (admin and researchers) see all survey data
+    batches = ImageBatch.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
 
     # Recalculate coverage from point_classes for each batch (HC+SC only)
     batches_with_coverage = []
@@ -203,11 +201,8 @@ def researcher_dashboard(request):
         batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
         batches_with_coverage.append(batch)
 
-    # Get total images count
-    if request.user.is_admin():
-        total_images = BatchImage.objects.count()
-    else:
-        total_images = BatchImage.objects.filter(batch__user=request.user).count()
+    # Get total images count (all data)
+    total_images = BatchImage.objects.count()
 
     # Calculate overall average coverage
     all_coverages = [b.avg_coverage for b in batches_with_coverage if b.avg_coverage is not None]
@@ -238,12 +233,13 @@ def researcher_dashboard(request):
             continue
         month_key = batch.survey_date.strftime('%b')
         if month_key not in months_data:
-            months_data[month_key] = []
-        months_data[month_key].append(batch.avg_coverage)
+            months_data[month_key] = {'month_num': batch.survey_date.month, 'values': []}
+        months_data[month_key]['values'].append(batch.avg_coverage)
     
-    for month_key in sorted(months_data.keys()):
+    # Sort by actual month number (chronological order) instead of alphabetically
+    for month_key in sorted(months_data.keys(), key=lambda x: months_data[x]['month_num']):
         chart_labels.append(month_key)
-        chart_values.append(round(sum(months_data[month_key]) / len(months_data[month_key]), 0))
+        chart_values.append(round(sum(months_data[month_key]['values']) / len(months_data[month_key]['values']), 0))
 
     # Build recent submissions
     recent_submissions = []
