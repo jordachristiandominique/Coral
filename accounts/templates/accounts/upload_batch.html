@@ -249,33 +249,40 @@
                         </div>
                     </div>
 
-                    <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
-                        <img id="quadrat-image" alt="Selected coral image" loading="lazy">
-                        <canvas id="quadrat-canvas" aria-label="Detected quadrat area with confidence overlay"></canvas>
-                        <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
-                    </div>
+                    <div class="quadrat-body">
+                        <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
+                            <img id="quadrat-image" alt="Selected coral image" loading="lazy">
+                            <canvas id="quadrat-canvas" aria-label="Detected quadrat area with confidence overlay"></canvas>
+                            <button type="button" class="image-nav image-nav-prev" id="image-prev-btn"
+                                aria-label="Previous image" title="Previous image" hidden>&#8249;</button>
+                            <button type="button" class="image-nav image-nav-next" id="image-next-btn"
+                                aria-label="Next image" title="Next image" hidden>&#8250;</button>
+                            <div class="image-nav-counter" id="image-nav-counter" hidden>1 / 1</div>
+                            <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
+                        </div>
 
-                    <div class="analysis-results-panel" aria-label="Automated analysis summary">
-                        <div class="panel-head">
-                            <h4>Analysis Summary</h4>
-                            <div class="coverage-info">
-                                <div class="coverage-class" id="coverage-class">Class: Pending</div>
-                                <div class="coverage-percent" id="coral-coverage-percent" style="color: #2a8793;">Coral Coverage: 0%</div>
+                        <div class="analysis-results-panel" aria-label="Automated analysis summary">
+                            <div class="panel-head">
+                                <h4>Analysis Summary</h4>
+                                <div class="coverage-info">
+                                    <div class="coverage-class" id="coverage-class">Class: Pending</div>
+                                    <div class="coverage-percent" id="coral-coverage-percent" style="color: #2a8793;">Coral Coverage: 0%</div>
+                                </div>
+                            </div>
+                            <div class="point-list" id="point-list">
+                                <!-- Point classifications will appear here -->
+                            </div>
+                            <div class="ai-actions">
+                                <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
+                                    <i data-lucide="refresh-cw"></i>
+                                    Re-analyze
+                                </button>
+                                <p class="hint-text">Each point below is editable — pick the correct class (CPCE code) to correct any misclassification. Coverage updates instantly.</p>
                             </div>
                         </div>
-                        <div class="point-list" id="point-list">
-                            <!-- Point classifications will appear here -->
-                        </div>
-                        <div class="ai-actions">
-                            <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
-                                <i data-lucide="refresh-cw"></i>
-                                Re-analyze
-                            </button>
-                            <p class="hint-text">AI has automatically detected coral areas, placed 10 analysis points, and classified each point. Review the results above.</p>
-                        </div>
                     </div>
 
-                    <p class="quadrat-footer">💡 Tip: Click on any species classification to review or correct it. Red boxes = low confidence (review recommended).</p>
+                    <p class="quadrat-footer">💡 Tip: Match each numbered point on the image to its dropdown on the right and correct it if the class is wrong.</p>
                 </div>
             </section>
 

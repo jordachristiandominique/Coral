@@ -1,57 +1,89 @@
 /**
- * Map View - Interactive survey location mapping
- * Uses Leaflet.js for mapping and marker clustering
+ * Map View - Spatial visualization of coral survey sites
+ * Uses Leaflet.js. Survey sites are drawn as proportional-symbol bubbles:
+ *   - circle SIZE  = coral coverage %
+ *   - circle COLOR = reef health class (A / B / C / Pending)
+ * on a satellite basemap focused on the Davao Gulf.
  */
+
+// Davao Gulf default view
+const DAVAO_GULF_CENTER = [6.85, 125.65];
+const DAVAO_GULF_ZOOM = 10;
+
+// Reef-health class colors (match coverage badges in map_view.css)
+const CLASS_COLORS = {
+    A: '#2e8b57',       // healthy   (>= 60%)
+    B: '#d9a441',       // moderate  (40-59%)
+    C: '#c95a5a',       // poor      (< 40%)
+    Pending: '#2a8793', // not analyzed
+};
 
 class CoralSenseMap {
     constructor() {
         this.map = null;
-        this.markerClusterGroup = null;
-        this.heatmapLayer = null;
-        this.markers = new Map(); // Store markers by batch ID
+        this.markerLayer = null;      // L.featureGroup holding all site bubbles
+        this.markers = new Map();     // batch ID -> circleMarker
         this.allBatches = [];
         this.filteredBatches = [];
-        this.currentHeatmapType = 'none'; // none, hard, soft, total
         this.init();
     }
 
     init() {
-        // Initialize map
         this.initMap();
 
-        // Load GeoJSON data
         if (window.mapData && window.mapData.features) {
             this.loadBatches(window.mapData.features);
         }
 
-        // Setup event listeners
         this.setupEventListeners();
-
-        // Render initial survey list
-        this.renderSurveyList(this.allBatches);
+        this.renderSummary(this.allBatches);
     }
 
     initMap() {
-        // Create map centered on Philippines
-        this.map = L.map('leaflet-map').setView([9.7604, 118.7437], 6);
+        // Center on the Davao Gulf
+        this.map = L.map('leaflet-map', { zoomControl: false })
+            .setView(DAVAO_GULF_CENTER, DAVAO_GULF_ZOOM);
 
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-            className: 'map-tiles'
-        }).addTo(this.map);
+        // ---- Base layers (choose one) ----
+        const satellite = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+                maxZoom: 19,
+                className: 'map-tiles'
+            }
+        );
+        // Ocean basemap shows bathymetry (water depth) — useful marine context
+        const ocean = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+            { attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, and other contributors', maxZoom: 13 }
+        );
+        const street = L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19 }
+        );
 
-        // Initialize marker cluster group
-        this.markerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 80,
-            iconCreateFunction: this.createClusterIcon.bind(this),
-            disableClusteringAtZoom: 17
-        });
-        this.map.addLayer(this.markerClusterGroup);
+        satellite.addTo(this.map); // default base
 
-        // Map controls
+        // ---- Overlay layers (toggle on/off) ----
+        // Place-name reference labels that sit on top of any base map
+        const placeLabels = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19, opacity: 0.9 }
+        ).addTo(this.map);
+
+        // Layer that holds the survey-site bubbles
+        this.markerLayer = L.featureGroup().addTo(this.map);
+
+        // ---- Layer control (the "layers" panel) ----
+        L.control.layers(
+            { 'Satellite': satellite, 'Ocean (depth)': ocean, 'Street': street },
+            { 'Survey Sites': this.markerLayer, 'Place Labels': placeLabels },
+            { position: 'topleft', collapsed: true }
+        ).addTo(this.map);
+
         this.setupMapControls();
+        this.addLegend();
     }
 
     setupMapControls() {
@@ -59,44 +91,43 @@ class CoralSenseMap {
         const zoomOutBtn = document.getElementById('zoom-out-btn');
         const resetBtn = document.getElementById('reset-map-btn');
 
-        if (zoomInBtn) {
-            zoomInBtn.addEventListener('click', () => this.map.zoomIn());
-        }
-        if (zoomOutBtn) {
-            zoomOutBtn.addEventListener('click', () => this.map.zoomOut());
-        }
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => this.resetMapView());
-        }
+        if (zoomInBtn) zoomInBtn.addEventListener('click', () => this.map.zoomIn());
+        if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => this.map.zoomOut());
+        if (resetBtn) resetBtn.addEventListener('click', () => this.resetMapView());
     }
 
     resetMapView() {
         if (this.allBatches.length === 0) {
-            this.map.setView([9.7604, 118.7437], 6);
+            this.map.setView(DAVAO_GULF_CENTER, DAVAO_GULF_ZOOM);
             return;
         }
-
-        // Calculate bounds
         const bounds = L.latLngBounds();
-        this.allBatches.forEach(batch => {
-            bounds.extend([batch.latitude, batch.longitude]);
-        });
-        this.map.fitBounds(bounds, { padding: [100, 100] });
+        this.allBatches.forEach(batch => bounds.extend([batch.latitude, batch.longitude]));
+        this.map.fitBounds(bounds, { padding: [80, 80], maxZoom: 13 });
     }
 
-    createClusterIcon(cluster) {
-        const childCount = cluster.getChildCount();
-        let className = 'marker-cluster';
-
-        if (childCount < 10) className += ' marker-cluster-small';
-        else if (childCount < 100) className += ' marker-cluster-medium';
-        else className += ' marker-cluster-large';
-
-        return new L.DivIcon({
-            html: `<div><span>${childCount}</span></div>`,
-            className: className,
-            iconSize: new L.Point(40, 40)
-        });
+    /** Legend explaining the color (health class) and size (coverage) encodings. */
+    addLegend() {
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'map-legend');
+            div.innerHTML = `
+                <div class="map-legend-title">Reef Health Class</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.A}"></span> Class A &mdash; Healthy (&ge;60%)</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.B}"></span> Class B &mdash; Moderate (40&ndash;59%)</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.C}"></span> Class C &mdash; Poor (&lt;40%)</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.Pending}"></span> Pending analysis</div>
+                <div class="map-legend-title" style="margin-top:8px;">Circle size = coverage %</div>
+                <div class="map-legend-sizes">
+                    <span class="map-legend-size"><span class="map-legend-bubble" style="width:14px;height:14px;"></span>low</span>
+                    <span class="map-legend-size"><span class="map-legend-bubble" style="width:26px;height:26px;"></span>high</span>
+                </div>
+            `;
+            // Keep map interactions (drag/zoom) from firing while using the legend
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        legend.addTo(this.map);
     }
 
     loadBatches(features) {
@@ -116,71 +147,50 @@ class CoralSenseMap {
                 imageCount: props.imageCount,
                 coverage: props.coverage,
                 coverageClass: props.coverageClass,
-                classBreakdown: props.classBreakdown || {},
-                dominantCoralType: props.dominantCoralType || 'mixed',
-                hardCoralPct: props.hardCoralPct || 0,
-                softCoralPct: props.softCoralPct || 0
+                classBreakdown: props.classBreakdown || {}
             };
 
             this.allBatches.push(batch);
             this.addMarker(batch);
         });
 
-        // Initial render of survey list
         this.filteredBatches = [...this.allBatches];
         this.updateStats();
 
-        // Fit map bounds to all markers
         if (this.allBatches.length > 0) {
             setTimeout(() => this.resetMapView(), 100);
         }
     }
 
+    /** Radius (px) proportional to coverage %. Pending sites get a small fixed dot. */
+    getRadius(batch) {
+        if (batch.coverage === null || batch.coverage === undefined) return 7;
+        return 8 + (Math.max(0, Math.min(100, batch.coverage)) / 100) * 16; // 8 - 24 px
+    }
+
+    getClassColor(coverageClass) {
+        return CLASS_COLORS[coverageClass] || CLASS_COLORS.Pending;
+    }
+
     addMarker(batch) {
-        const marker = L.marker([batch.latitude, batch.longitude], {
-            icon: this.createBatchIcon(batch),
-            title: batch.name
+        const marker = L.circleMarker([batch.latitude, batch.longitude], {
+            radius: this.getRadius(batch),
+            fillColor: this.getClassColor(batch.coverageClass),
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
         });
 
-        const popupContent = this.createPopupContent(batch);
-        marker.bindPopup(popupContent, {
+        marker.bindPopup(this.createPopupContent(batch), {
             maxWidth: 280,
             className: 'batch-popup'
         });
 
-        marker.on('click', () => {
-            this.highlightSurvey(batch.id);
-        });
+        marker.on('click', () => this.highlightSurvey(batch.id));
 
-        this.markerClusterGroup.addLayer(marker);
+        this.markerLayer.addLayer(marker);
         this.markers.set(batch.id, marker);
-    }
-
-    createBatchIcon(batch) {
-        return L.icon({
-            iconUrl: this.getMarkerIconUrl(batch),
-            iconSize: [32, 40],
-            iconAnchor: [16, 40],
-            popupAnchor: [0, -40]
-        });
-    }
-
-    getMarkerIconUrl(batch) {
-        // Color by dominant coral type
-        let fillColor = '#1c5f6d'; // default mixed
-        if (batch.dominantCoralType === 'hard') {
-            fillColor = '#d4a574'; // Hard coral - tan/brown
-        } else if (batch.dominantCoralType === 'soft') {
-            fillColor = '#e85d75'; // Soft coral - pink/red
-        }
-
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="24" height="32">
-                <path d="M12 0C6.48 0 2 4.48 2 10c0 8 10 22 10 22s10-14 10-22c0-5.52-4.48-10-10-10z" 
-                    fill="%23${fillColor.slice(1)}" stroke="%23ffffff" stroke-width="1"/>
-                <circle cx="12" cy="10" r="3" fill="%23ffffff"/>
-            </svg>
-        `);
     }
 
     createDonutChart(breakdown) {
@@ -207,22 +217,19 @@ class CoralSenseMap {
             return '<div style="text-align: center; color: #999; font-size: 11px;">No data available</div>';
         }
 
-        // SVG donut chart
         const radius = 45;
         const centerX = 50;
         const centerY = 50;
         const innerRadius = 30;
 
         let svg = `<svg viewBox="0 0 100 100" width="140" height="140" style="margin: 8px auto; display: block;">`;
-        
         let currentAngle = -90; // Start from top
 
-        data.forEach(([cls, pct], idx) => {
+        data.forEach(([cls, pct]) => {
             const sliceAngle = (pct / 100) * 360;
             const startAngle = currentAngle * Math.PI / 180;
             const endAngle = (currentAngle + sliceAngle) * Math.PI / 180;
 
-            // Calculate points for donut slice
             const x1 = centerX + radius * Math.cos(startAngle);
             const y1 = centerY + radius * Math.sin(startAngle);
             const x2 = centerX + radius * Math.cos(endAngle);
@@ -234,19 +241,15 @@ class CoralSenseMap {
 
             const largeArc = sliceAngle > 180 ? 1 : 0;
 
-            // Draw donut slice
             const pathData = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`;
-            
             svg += `<path d="${pathData}" fill="${colors[cls]}" stroke="white" stroke-width="0.5" style="opacity: 0.85;"/>`;
 
             currentAngle += sliceAngle;
         });
 
-        // Add center circle for donut effect
         svg += `<circle cx="${centerX}" cy="${centerY}" r="${innerRadius - 2}" fill="white"/>`;
         svg += `</svg>`;
 
-        // Legend with color dots
         let legend = '<div style="margin-top: 8px; font-size: 10px; line-height: 1.4;">';
         data.forEach(([cls, pct]) => {
             const colorDot = `<span style="display: inline-block; width: 8px; height: 8px; background: ${colors[cls]}; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>`;
@@ -261,7 +264,7 @@ class CoralSenseMap {
         const coverageHtml = batch.coverage !== null
             ? `<div class="popup-item">
                 <span class="popup-label">Coverage:</span>
-                <span class="popup-value">${batch.coverage.toFixed(1)}% 
+                <span class="popup-value">${batch.coverage.toFixed(1)}%
                     <span class="coverage-badge class-${batch.coverageClass.toLowerCase()}">
                         Class ${batch.coverageClass}
                     </span>
@@ -272,7 +275,6 @@ class CoralSenseMap {
                 <span class="coverage-badge pending">Pending Analysis</span>
             </div>`;
 
-        // Build donut chart visualization
         const breakdown = batch.classBreakdown || {};
         const donutChartHtml = Object.entries(breakdown).length > 0
             ? `<div class="popup-breakdown" style="margin-top: 8px; border-top: 1px solid #e0e0e0; padding-top: 8px;">
@@ -309,9 +311,9 @@ class CoralSenseMap {
                 ${coverageHtml}
                 ${donutChartHtml}
                 <div class="popup-item" style="margin-top: 10px;">
-                    <a href="/accounts/researcher/batches/${batch.id}/" 
+                    <a href="/accounts/researcher/batches/${batch.id}/"
                         style="color: #2a8793; font-weight: 600; text-decoration: none;">
-                        View Full Details →
+                        View Full Details &rarr;
                     </a>
                 </div>
             </div>
@@ -323,32 +325,13 @@ class CoralSenseMap {
         const dateStartInput = document.getElementById('filter-date-start');
         const dateEndInput = document.getElementById('filter-date-end');
         const coverageSelect = document.getElementById('filter-coverage');
-        const coralTypeSelect = document.getElementById('filter-coral-type');
-        const heatmapSelect = document.getElementById('filter-heatmap');
         const clearBtn = document.getElementById('filter-clear-btn');
 
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.applyFilters();
-            });
-        }
-
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => this.clearFilters());
-        }
-
-        // Allow filtering on input change
+        if (searchInput) searchInput.addEventListener('input', () => this.applyFilters());
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearFilters());
         if (dateStartInput) dateStartInput.addEventListener('change', () => this.applyFilters());
         if (dateEndInput) dateEndInput.addEventListener('change', () => this.applyFilters());
         if (coverageSelect) coverageSelect.addEventListener('change', () => this.applyFilters());
-        if (coralTypeSelect) coralTypeSelect.addEventListener('change', () => this.applyFilters());
-        
-        // Heatmap visualization
-        if (heatmapSelect) {
-            heatmapSelect.addEventListener('change', (e) => {
-                this.updateHeatmap(e.target.value);
-            });
-        }
     }
 
     applyFilters() {
@@ -356,31 +339,20 @@ class CoralSenseMap {
         const dateStart = document.getElementById('filter-date-start').value;
         const dateEnd = document.getElementById('filter-date-end').value;
         const coverageClass = document.getElementById('filter-coverage').value;
-        const coralType = document.getElementById('filter-coral-type').value;
 
         this.filteredBatches = this.allBatches.filter(batch => {
-            // Search filter
             if (searchText && !batch.name.toLowerCase().includes(searchText) &&
                 !batch.area.toLowerCase().includes(searchText)) {
                 return false;
             }
-
-            // Date range filter
             if (dateStart && batch.surveyDate < dateStart) return false;
             if (dateEnd && batch.surveyDate > dateEnd) return false;
-
-            // Coverage class filter
             if (coverageClass && batch.coverageClass !== coverageClass) return false;
-
-            // Coral type filter
-            if (coralType && batch.dominantCoralType !== coralType) return false;
-
             return true;
         });
 
         this.updateMapVisibility();
-        this.updateHeatmap(this.currentHeatmapType); // Update heatmap with filtered data
-        this.renderSurveyList(this.filteredBatches);
+        this.renderSummary(this.filteredBatches);
         this.updateStats();
     }
 
@@ -389,224 +361,116 @@ class CoralSenseMap {
         document.getElementById('filter-date-start').value = '';
         document.getElementById('filter-date-end').value = '';
         document.getElementById('filter-coverage').value = '';
-        document.getElementById('filter-coral-type').value = '';
-        document.getElementById('filter-heatmap').value = 'none';
 
         this.filteredBatches = [...this.allBatches];
         this.updateMapVisibility();
-        this.updateHeatmap('none');
         this.renderSurveyList(this.filteredBatches);
         this.updateStats();
     }
 
     updateMapVisibility() {
         const visibleIds = new Set(this.filteredBatches.map(b => b.id));
-
         this.markers.forEach((marker, batchId) => {
             if (visibleIds.has(batchId)) {
-                this.markerClusterGroup.addLayer(marker);
+                this.markerLayer.addLayer(marker);
             } else {
-                this.markerClusterGroup.removeLayer(marker);
+                this.markerLayer.removeLayer(marker);
             }
         });
     }
 
     updateStats() {
         const visibleCount = document.getElementById('visible-count');
-        if (visibleCount) {
-            visibleCount.textContent = this.filteredBatches.length;
-        }
+        if (visibleCount) visibleCount.textContent = this.filteredBatches.length;
     }
 
-    renderSurveyList(batches) {
-        const listContainer = document.getElementById('surveys-list');
-        if (!listContainer) return;
+    /** Populate the Spatial Summary panel from the (filtered) set of sites. */
+    renderSummary(batches) {
+        const setText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
 
-        if (batches.length === 0) {
-            listContainer.innerHTML = `
-                <div class="surveys-empty">
-                    <p>No surveys found matching your filters.</p>
-                </div>
-            `;
-            return;
+        const total = batches.length;
+        const counts = { A: 0, B: 0, C: 0, Pending: 0 };
+        let coverageSum = 0, coverageN = 0;
+
+        batches.forEach(b => {
+            const cls = ['A', 'B', 'C'].includes(b.coverageClass) ? b.coverageClass : 'Pending';
+            counts[cls]++;
+            if (b.coverage !== null && b.coverage !== undefined) {
+                coverageSum += b.coverage;
+                coverageN++;
+            }
+        });
+
+        const avg = coverageN > 0 ? coverageSum / coverageN : null;
+        setText('summary-sites', total);
+        setText('summary-avg', avg !== null ? avg.toFixed(1) + '%' : '—');
+
+        // Stacked distribution bar
+        const bar = document.getElementById('summary-bar');
+        if (bar) {
+            if (total === 0) {
+                bar.innerHTML = '<div class="summary-bar-empty">No sites match the current filters.</div>';
+            } else {
+                bar.innerHTML = ['A', 'B', 'C', 'Pending'].map(cls => {
+                    if (counts[cls] === 0) return '';
+                    const pct = (counts[cls] / total) * 100;
+                    return `<div class="summary-bar-seg" style="width:${pct}%;background:${CLASS_COLORS[cls]}"
+                                title="Class ${cls}: ${counts[cls]} site(s)"></div>`;
+                }).join('');
+            }
         }
 
-        listContainer.innerHTML = batches.map(batch => `
-            <div class="survey-item" data-batch-id="${batch.id}" onclick="mapInstance.highlightSurvey(${batch.id})">
-                <span class="survey-name">${this.escapeHtml(batch.name)}</span>
-                <div class="survey-meta">
-                    <div class="survey-meta-item">
-                        <img src="/static/icons/pin.png" alt="" class="survey-meta-icon" style="width: 20px; height: 20px;"> ${this.escapeHtml(batch.area)}
-                    </div>
-                    <div class="survey-meta-item">
-                        <img src="/static/icons/camera-survey.png" alt="" class="survey-meta-icon" style="width: 18px; height: 18px;"> ${batch.imageCount} images
-                    </div>
-                    <div class="survey-meta-item">
-                        <img src="/static/icons/calendar.png" alt="" class="survey-meta-icon" style="width: 18px; height: 18px;"> ${new Date(batch.surveyDate).toLocaleDateString()}
-                    </div>
+        // Per-class counts legend
+        const legend = document.getElementById('summary-legend');
+        if (legend) {
+            const labels = { A: 'Class A · Healthy', B: 'Class B · Moderate', C: 'Class C · Poor', Pending: 'Pending' };
+            legend.innerHTML = ['A', 'B', 'C', 'Pending'].map(cls => `
+                <div class="summary-legend-row">
+                    <span class="summary-legend-dot" style="background:${CLASS_COLORS[cls]}"></span>
+                    <span class="summary-legend-label">${labels[cls]}</span>
+                    <span class="summary-legend-count">${counts[cls]}</span>
                 </div>
-                <div class="survey-coverage">
-                    <span class="survey-coverage-text">
-                        ${batch.coverage !== null
-                ? `Coverage: <strong>${batch.coverage.toFixed(1)}%</strong>`
-                : 'Coverage: Pending'
+            `).join('');
+        }
+
+        // Healthiest / needs-attention highlights (analyzed sites only)
+        const extremes = document.getElementById('summary-extremes');
+        if (extremes) {
+            const analyzed = batches.filter(b => b.coverage !== null && b.coverage !== undefined);
+            if (analyzed.length === 0) {
+                extremes.innerHTML = '';
+            } else {
+                const best = analyzed.reduce((a, b) => (b.coverage > a.coverage ? b : a));
+                const worst = analyzed.reduce((a, b) => (b.coverage < a.coverage ? b : a));
+                extremes.innerHTML = `
+                    <div class="summary-extreme" onclick="mapInstance.highlightSurvey(${best.id})">
+                        <span class="summary-extreme-tag good">Healthiest</span>
+                        <span class="summary-extreme-name">${this.escapeHtml(best.name)}</span>
+                        <span class="summary-extreme-val">${best.coverage.toFixed(1)}%</span>
+                    </div>
+                    <div class="summary-extreme" onclick="mapInstance.highlightSurvey(${worst.id})">
+                        <span class="summary-extreme-tag bad">Needs attention</span>
+                        <span class="summary-extreme-name">${this.escapeHtml(worst.name)}</span>
+                        <span class="summary-extreme-val">${worst.coverage.toFixed(1)}%</span>
+                    </div>
+                `;
             }
-                    </span>
-                    <span class="survey-badge class-${batch.coverageClass.toLowerCase()}">
-                        ${batch.coverageClass}
-                    </span>
-                </div>
-            </div>
-        `).join('');
+        }
     }
 
     highlightSurvey(batchId) {
-        // Remove active state from all items
-        document.querySelectorAll('.survey-item').forEach(item => {
-            item.classList.remove('active');
-        });
-
-        // Add active state to selected item
-        const selectedItem = document.querySelector(`[data-batch-id="${batchId}"]`);
-        if (selectedItem) {
-            selectedItem.classList.add('active');
-            selectedItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        // Pan and zoom to marker
         const marker = this.markers.get(batchId);
         if (marker) {
             const batch = this.allBatches.find(b => b.id === batchId);
-            this.map.setView([batch.latitude, batch.longitude], 16, {
+            this.map.setView([batch.latitude, batch.longitude], 15, {
                 animate: true,
                 duration: 0.5
             });
             marker.openPopup();
         }
-    }
-
-    updateHeatmap(heatmapType) {
-        // Remove existing heatmap layer
-        if (this.heatmapLayer) {
-            this.map.removeLayer(this.heatmapLayer);
-            this.heatmapLayer = null;
-        }
-
-        this.currentHeatmapType = heatmapType;
-
-        // Hide markers when heatmap is active, show them otherwise
-        if (heatmapType === 'none') {
-            this.markerClusterGroup.addTo(this.map);
-            return; // No heatmap
-        } else {
-            this.map.removeLayer(this.markerClusterGroup);
-        }
-
-        // Generate heatmap data points
-        const heatmapData = this.generateHeatmapData(heatmapType);
-
-        if (heatmapData.length === 0) {
-            return;
-        }
-
-        // Create canvas-based heatmap using Leaflet gradient circles
-        this.heatmapLayer = L.layerGroup();
-
-        const batches = this.filteredBatches.length > 0 ? this.filteredBatches : this.allBatches;
-        batches.forEach(batch => {
-            let intensity = 0;
-            let color = '#999999';
-
-            if (heatmapType === 'hard') {
-                intensity = batch.hardCoralPct || 0;
-                color = this.getColorForIntensity(intensity, 'hard');
-            } else if (heatmapType === 'soft') {
-                intensity = batch.softCoralPct || 0;
-                color = this.getColorForIntensity(intensity, 'soft');
-            } else if (heatmapType === 'total') {
-                intensity = (batch.hardCoralPct || 0) + (batch.softCoralPct || 0);
-                color = this.getColorForIntensity(intensity, 'total');
-            }
-
-            if (intensity > 0) {
-                // Create a circle marker sized by intensity
-                const circle = L.circleMarker([batch.latitude, batch.longitude], {
-                    radius: Math.max(8, intensity / 3), // Larger circles for higher intensity
-                    fillColor: color,
-                    color: 'white',
-                    weight: 1,
-                    opacity: 0.7,
-                    fillOpacity: 0.6
-                });
-
-                // Add tooltip
-                circle.bindTooltip(`${batch.name}<br>${intensity.toFixed(1)}%`, {
-                    permanent: false,
-                    direction: 'top'
-                });
-
-                this.heatmapLayer.addLayer(circle);
-            }
-        });
-
-        this.heatmapLayer.addTo(this.map);
-    }
-
-    generateHeatmapData(heatmapType) {
-        /**
-         * Generate heatmap data points based on type
-         * Returns array of [lat, lng, intensity] tuples
-         */
-        const batches = this.filteredBatches.length > 0 ? this.filteredBatches : this.allBatches;
-        const data = [];
-
-        batches.forEach(batch => {
-            let intensity = 0;
-
-            if (heatmapType === 'hard') {
-                intensity = batch.hardCoralPct || 0;
-            } else if (heatmapType === 'soft') {
-                intensity = batch.softCoralPct || 0;
-            } else if (heatmapType === 'total') {
-                intensity = (batch.hardCoralPct || 0) + (batch.softCoralPct || 0);
-            }
-
-            if (intensity > 0) {
-                data.push([batch.latitude, batch.longitude, intensity / 100]); // Normalize 0-1
-            }
-        });
-
-        return data;
-    }
-
-    getColorForIntensity(value, type) {
-        /**
-         * Get color for intensity value
-         * Different color schemes for hard, soft, and total coral
-         */
-        if (type === 'hard') {
-            // Hard Coral: Tan to Dark Brown
-            if (value >= 60) return '#8B4513'; // Dark brown
-            if (value >= 45) return '#A0522D'; // Sienna
-            if (value >= 30) return '#CD853F'; // Peru
-            if (value >= 15) return '#D2B48C'; // Tan
-            return '#F5DEB3'; // Wheat (low)
-        } else if (type === 'soft') {
-            // Soft Coral: Light Pink to Deep Red
-            if (value >= 60) return '#8B0000'; // Dark red
-            if (value >= 45) return '#DC143C'; // Crimson
-            if (value >= 30) return '#FF69B4'; // Hot pink
-            if (value >= 15) return '#FFB6C1'; // Light pink
-            return '#FFE4E1'; // Misty rose (low)
-        } else if (type === 'total') {
-            // Total Coral: Green (healthy) to Red (degraded)
-            if (value >= 70) return '#228B22'; // Forest green
-            if (value >= 55) return '#32CD32'; // Lime green
-            if (value >= 40) return '#FFD700'; // Gold
-            if (value >= 25) return '#FFA500'; // Orange
-            return '#FF6347'; // Tomato (low/degraded)
-        }
-        return '#999999';
     }
 
     escapeHtml(text) {
@@ -626,8 +490,6 @@ let mapInstance;
 
 const initializeMapView = () => {
     mapInstance = new CoralSenseMap();
-
-    // Initialize Lucide icons
     if (window.lucide) {
         window.lucide.createIcons();
     }
@@ -636,6 +498,5 @@ const initializeMapView = () => {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeMapView);
 } else {
-    // DOM is already loaded (script loaded late in page)
     initializeMapView();
 }

@@ -392,6 +392,14 @@
     background: rgba(42, 135, 147, 0.12);
 }
 
+/* Image + Analysis Summary side-by-side; the image gets the larger share */
+.quadrat-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
 .quadrat-canvas-wrap {
     position: relative;
     border-radius: 12px;
@@ -405,9 +413,64 @@
     display: block;
     width: 100%;
     height: auto;
-    max-height: 420px;
+    max-height: 560px;
     object-fit: contain;
     background: #f2f8fa;
+}
+
+/* Previous / Next image navigation over the preview */
+.image-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(28, 95, 109, 0.78);
+    color: #ffffff;
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    transition: background 150ms ease, opacity 150ms ease;
+}
+
+.image-nav:hover {
+    background: rgba(20, 74, 85, 0.95);
+}
+
+.image-nav:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.image-nav-prev {
+    left: 10px;
+}
+
+.image-nav-next {
+    right: 10px;
+}
+
+.image-nav-counter {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(28, 95, 109, 0.82);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 
 #quadrat-canvas {
@@ -446,6 +509,13 @@
     padding: 12px;
     display: grid;
     gap: 10px;
+    align-content: start;
+}
+
+/* In the side-by-side layout, keep the panel from pushing the image off-screen */
+.quadrat-body .analysis-results-panel {
+    max-height: 600px;
+    overflow-y: auto;
 }
 
 .analysis-results-panel .panel-head {
@@ -664,7 +734,7 @@
 .point-list {
     display: grid;
     gap: 8px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
 }
 
 .point-row {
@@ -693,6 +763,18 @@
     font-weight: 600;
     color: #1f5160;
     background: #ffffff;
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.point-row select:hover {
+    border-color: rgba(28, 95, 109, 0.4);
+}
+
+.point-row select:focus {
+    outline: none;
+    border-color: #2a8793;
+    box-shadow: 0 0 0 3px rgba(42, 135, 147, 0.15);
 }
 
 @media (max-width: 1100px) {
@@ -702,6 +784,16 @@
 
     .thumb-grid-wrap {
         max-height: none;
+    }
+
+    /* Stack image above the summary again on narrower screens */
+    .quadrat-body {
+        grid-template-columns: 1fr;
+    }
+
+    .quadrat-body .analysis-results-panel {
+        max-height: none;
+        overflow-y: visible;
     }
 }
 

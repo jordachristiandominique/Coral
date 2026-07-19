@@ -92,6 +92,9 @@ const initializeUploadBatch = function () {
     const quadratEmpty = document.getElementById('quadrat-empty');
     const quadratImageLabel = document.getElementById('quadrat-image-label');
     const quadratPointsCount = document.getElementById('quadrat-points-count');
+    const imagePrevBtn = document.getElementById('image-prev-btn');
+    const imageNextBtn = document.getElementById('image-next-btn');
+    const imageNavCounter = document.getElementById('image-nav-counter');
     const processOpenBtn = document.getElementById('process-open-btn');
     const analyzeAllBtn = document.getElementById('analyze-all-btn');
     const analyzeHint = document.getElementById('analyze-hint');
@@ -144,6 +147,25 @@ const initializeUploadBatch = function () {
         'Abiotic',
         'Other Biota'
     ];
+    // CPCE code shown to the surveyor/expert for each class. The stored value
+    // stays the full class name so backend coverage logic is unaffected.
+    const CPCE_CODES = {
+        'Hard Coral': 'HC',
+        'Soft Coral': 'SC',
+        'Macroalgae': 'MA',
+        'Halimeda': 'HA',
+        'Algae Assemblage': 'AA',
+        'Abiotic': 'AB',
+        'Other Biota': 'OB'
+    };
+    // Build <option> markup for a point-class dropdown, marking `selected` current.
+    const buildClassOptions = function (selectedClass) {
+        return POINT_CLASSES.map(function (cls) {
+            const code = CPCE_CODES[cls] || '';
+            const isSel = cls === selectedClass ? ' selected' : '';
+            return `<option value="${cls}"${isSel}>${code} – ${cls}</option>`;
+        }).join('');
+    };
     const MAX_ANALYZE_SIZE = 1200;
     const ANALYZE_PATCH_RADIUS = 6;
     const ANALYZE_SAT_MIN = 0.22;
@@ -1174,27 +1196,47 @@ const initializeUploadBatch = function () {
             return;
         }
 
-        const coveragePercent = getCoralCoveragePercent(points);
-        const coverageClass = getCoverageClass(coveragePercent);
+        const updateCoverageLabels = function () {
+            const pct = getCoralCoveragePercent(results.points);
+            if (coverageClassEl) {
+                coverageClassEl.textContent = `Class: ${getCoverageClass(pct)}`;
+            }
+            if (coveragePercentEl) {
+                coveragePercentEl.textContent = `Coral Coverage: ${pct}%`;
+            }
+        };
 
         const rows = points.map(function (point, index) {
-            const className = escapeHtml(point.class || 'Unknown');
+            const current = point.class || '';
             return `
                 <label class="point-row">
-                    <span>Point ${index + 1}</span>
-                    <span class="point-class-display">${className}</span>
+                    <span class="point-row-label">Point ${index + 1}</span>
+                    <select class="point-class-select" data-index="${index}"
+                        aria-label="Class for point ${index + 1}">
+                        ${buildClassOptions(current)}
+                    </select>
                 </label>
             `;
         }).join('');
 
         pointList.innerHTML = rows;
-        
-        if (coverageClassEl) {
-            coverageClassEl.textContent = `Class: ${coverageClass}`;
-        }
-        if (coveragePercentEl) {
-            coveragePercentEl.textContent = `Coral Coverage: ${coveragePercent}%`;
-        }
+
+        // Let the surveyor/expert correct any point's class. Updating the value
+        // recomputes coverage/class live and keeps the submitted data in sync.
+        pointList.querySelectorAll('.point-class-select').forEach(function (select) {
+            select.addEventListener('change', function () {
+                const idx = parseInt(this.getAttribute('data-index'), 10);
+                if (!isNaN(idx) && results.points[idx]) {
+                    results.points[idx].class = this.value;
+                    updateCoverageLabels();
+                    if (typeof updateSubmitState === 'function') {
+                        updateSubmitState();
+                    }
+                }
+            });
+        });
+
+        updateCoverageLabels();
     };
 
     const getImageBounds = function () {
@@ -1295,11 +1337,30 @@ const initializeUploadBatch = function () {
         }
     };
 
+    const updateImageNav = function () {
+        const total = selectedFiles.length;
+        const showNav = total > 1;
+
+        if (imageNavCounter) {
+            imageNavCounter.hidden = total === 0;
+            imageNavCounter.textContent = `${total ? activeFileIndex + 1 : 0} / ${total}`;
+        }
+        if (imagePrevBtn) {
+            imagePrevBtn.hidden = !showNav;
+            imagePrevBtn.disabled = activeFileIndex <= 0;
+        }
+        if (imageNextBtn) {
+            imageNextBtn.hidden = !showNav;
+            imageNextBtn.disabled = activeFileIndex >= total - 1;
+        }
+    };
+
     const updateQuadratPreview = function () {
         if (!quadratImage || !quadratCanvas || !quadratEmpty) {
             return;
         }
 
+        updateImageNav();
         const activeFile = getActiveFile();
         if (!activeFile) {
             quadratImage.removeAttribute('src');
@@ -1515,6 +1576,17 @@ const initializeUploadBatch = function () {
     if (analyzeAllBtn) {
         analyzeAllBtn.addEventListener('click', function () {
             runAnalyzeAll();
+        });
+    }
+
+    if (imagePrevBtn) {
+        imagePrevBtn.addEventListener('click', function () {
+            setActiveFileIndex(activeFileIndex - 1);
+        });
+    }
+    if (imageNextBtn) {
+        imageNextBtn.addEventListener('click', function () {
+            setActiveFileIndex(activeFileIndex + 1);
         });
     }
 

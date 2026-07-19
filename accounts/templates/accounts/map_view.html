@@ -8,10 +8,6 @@
 <link rel="stylesheet" href="{% static 'css/map_view.css' %}">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-<link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.min.css" />
-<link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/MarkerCluster.Default.min.css" />
 {% endblock %}
 
 {% block content %}
@@ -145,26 +141,6 @@
                     </select>
                 </div>
 
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-coral-type">Coral Type</label>
-                    <select id="filter-coral-type" class="filter-input">
-                        <option value="">All Types</option>
-                        <option value="hard">Hard Coral Dominant</option>
-                        <option value="soft">Soft Coral Dominant</option>
-                        <option value="mixed">Mixed/Balanced</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-heatmap">Visualization</label>
-                    <select id="filter-heatmap" class="filter-input">
-                        <option value="none">Standard Map</option>
-                        <option value="hard">Hard Coral Heatmap</option>
-                        <option value="soft">Soft Coral Heatmap</option>
-                        <option value="total">Total Coral Heatmap</option>
-                    </select>
-                </div>
-
                 <div class="filter-actions">
                     <button id="filter-clear-btn" class="btn-secondary">Clear All</button>
                 </div>
@@ -206,12 +182,30 @@
             </section>
 
             <!-- Sidebar Panel -->
-            <aside class="map-sidebar" aria-label="Survey list">
-                <!-- Survey List Section -->
-                <section class="sidebar-section surveys-section" aria-label="Survey list">
-                    <h2 class="sidebar-section-title">Surveys</h2>
-                    <div id="surveys-list" class="surveys-list">
-                        <!-- Populated by JavaScript -->
+            <aside class="map-sidebar" aria-label="Spatial summary">
+                <section class="sidebar-section summary-section" aria-label="Spatial summary">
+                    <h2 class="sidebar-section-title">Spatial Summary</h2>
+
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <span class="summary-stat-value" id="summary-sites">0</span>
+                            <span class="summary-stat-label">Survey Sites</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-stat-value" id="summary-avg">—</span>
+                            <span class="summary-stat-label">Avg. Coral Coverage</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-block">
+                        <h3 class="summary-block-title">Reef Health Distribution</h3>
+                        <div class="summary-bar" id="summary-bar"></div>
+                        <div class="summary-legend" id="summary-legend"></div>
+                    </div>
+
+                    <div class="summary-block">
+                        <h3 class="summary-block-title">Highlights</h3>
+                        <div class="summary-extremes" id="summary-extremes"></div>
                     </div>
                 </section>
             </aside>
@@ -238,7 +232,6 @@
 {% block extra_js %}
 <!-- Leaflet Map Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.1/leaflet.markercluster.min.js"></script>
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Custom Global Script (profile menu, logout modal) -->
