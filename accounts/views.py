@@ -21,8 +21,9 @@ from django.db.models.functions import TruncMonth
 from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
-from .models import User, ImageBatch, BatchImage, Report
+from .models import User, ImageBatch, BatchImage, Report, CPCE_CODES
 from .report_generator import ReportGenerator
+from .image_annotator import render_annotated_bytes
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -1211,6 +1212,31 @@ def map_view(request):
 
 
 @login_required(login_url='login')
+@login_required
+def batch_image_annotated(request, image_id):
+    """Serve a survey photo with the quadrat and numbered CPCE points drawn in.
+
+    Rendered on demand so it always reflects the current point data.
+    """
+    if request.user.is_pending():
+        return HttpResponse('Account pending approval.', status=403)
+
+    if request.user.is_admin():
+        image = get_object_or_404(BatchImage, id=image_id)
+    else:
+        image = get_object_or_404(BatchImage, id=image_id, batch__user=request.user)
+
+    try:
+        payload = render_annotated_bytes(image)
+    except (FileNotFoundError, OSError):
+        # Original file missing/unreadable — fall back to the stored image
+        return redirect(image.image.url)
+
+    response = HttpResponse(payload, content_type='image/jpeg')
+    response['Cache-Control'] = 'private, max-age=300'
+    return response
+
+
 def batch_detail(request, batch_id):
     """Show uploaded images and metadata for a single batch."""
     if request.user.is_pending():
@@ -1303,6 +1329,19 @@ def batch_detail(request, batch_id):
         coral_coverage = round((coral_count / len(all_point_classes)) * 100)
     else:
         coral_coverage = 0
+
+    # Attach a display-ready per-point legend (number + CPCE code + class name)
+    # so the template can show what each numbered marker on the image is.
+    images = list(images)
+    for image in images:
+        image.point_rows = [
+            {
+                'number': index,
+                'code': CPCE_CODES.get(class_name, '--'),
+                'name': class_name or 'Unclassified',
+            }
+            for index, class_name in enumerate(image.point_classes or [], start=1)
+        ]
 
     context = {
         'user': request.user,

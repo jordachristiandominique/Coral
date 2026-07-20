@@ -24,11 +24,17 @@ const initializeUploadBatch = function () {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        const setPin = function (latlng) {
+        // updateInputs=false when the change came from the user typing, so we
+        // don't overwrite/reformat the field mid-keystroke.
+        const setPin = function (latlng, updateInputs) {
             if (!pin) {
                 pin = L.marker(latlng).addTo(map);
             } else {
                 pin.setLatLng(latlng);
+            }
+
+            if (updateInputs === false) {
+                return;
             }
 
             if (latInput) {
@@ -41,6 +47,49 @@ const initializeUploadBatch = function () {
 
         map.on('click', function (event) {
             setPin(event.latlng);
+        });
+
+        const parseCoord = function (raw) {
+            const trimmed = String(raw == null ? '' : raw).trim();
+            if (!trimmed) {
+                return null;
+            }
+            const num = Number(trimmed);
+            return Number.isFinite(num) ? num : null;
+        };
+
+        // Typing coordinates moves the pin (the other half of the two-way bind)
+        const syncPinFromInputs = function () {
+            if (!latInput || !lngInput) {
+                return;
+            }
+
+            const lat = parseCoord(latInput.value);
+            const lng = parseCoord(lngInput.value);
+            // Ignore partial/invalid entries such as "", "-" or "7." while typing
+            if (lat === null || lng === null) {
+                return;
+            }
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                return;
+            }
+
+            const latlng = L.latLng(lat, lng);
+            setPin(latlng, false);
+
+            // Only recenter when the pin would otherwise be off-screen, so the
+            // map doesn't jump around on every keystroke.
+            if (!map.getBounds().contains(latlng)) {
+                map.panTo(latlng);
+            }
+        };
+
+        [latInput, lngInput].forEach(function (input) {
+            if (!input) {
+                return;
+            }
+            input.addEventListener('input', syncPinFromInputs);
+            input.addEventListener('change', syncPinFromInputs);
         });
 
         if (surveyPointsScript) {
@@ -95,6 +144,7 @@ const initializeUploadBatch = function () {
     const imagePrevBtn = document.getElementById('image-prev-btn');
     const imageNextBtn = document.getElementById('image-next-btn');
     const imageNavCounter = document.getElementById('image-nav-counter');
+    const imageLoupe = document.getElementById('image-loupe');
     const processOpenBtn = document.getElementById('process-open-btn');
     const analyzeAllBtn = document.getElementById('analyze-all-btn');
     const analyzeHint = document.getElementById('analyze-hint');
@@ -419,6 +469,52 @@ const initializeUploadBatch = function () {
         quadratCanvas.style.height = `${rect.height}px`;
     };
 
+    /**
+     * Draw a CPCE-style survey point: a cross (+) marker with its number
+     * beside it. Both are drawn with a dark halo so they stay readable over
+     * any substrate (pale sand, dark coral, bright algae).
+     */
+    const drawCpcePoint = function (ctx, x, y, label, options) {
+        const opts = options || {};
+        const arm = opts.arm || 7;             // half-length of each cross arm
+        const lineWidth = opts.lineWidth || 1.5;
+        const color = opts.color || '#ffffff';
+        const font = opts.font || 'bold 11px "Segoe UI", Arial, sans-serif';
+
+        const strokeCross = function () {
+            ctx.beginPath();
+            ctx.moveTo(x - arm, y);
+            ctx.lineTo(x + arm, y);
+            ctx.moveTo(x, y - arm);
+            ctx.lineTo(x, y + arm);
+            ctx.stroke();
+        };
+
+        ctx.save();
+        ctx.lineCap = 'butt';
+
+        // Dark halo underneath, then the bright cross on top
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.lineWidth = lineWidth + 2;
+        strokeCross();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        strokeCross();
+
+        // Number label sits at the upper-right of the cross
+        ctx.font = font;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.strokeText(label, x + arm + 2, y - 2);
+        ctx.fillStyle = color;
+        ctx.fillText(label, x + arm + 2, y - 2);
+
+        ctx.restore();
+    };
+
     const drawQuadratAndPoints = function (quadratBbox, points) {
         if (!quadratCanvas || !quadratImage) {
             return;
@@ -472,24 +568,16 @@ const initializeUploadBatch = function () {
         ctx.lineWidth = 2;
         ctx.strokeRect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
 
-        // Draw points with classification labels
+        // Draw CPCE-style cross markers with point numbers
         if (points && points.length) {
             points.forEach(function (point, index) {
                 const x = rectPx.x + point.x * rectPx.w;
                 const y = rectPx.y + point.y * rectPx.h;
-
-                // Draw point circle
-                ctx.fillStyle = '#e53b2c';
-                ctx.beginPath();
-                ctx.arc(x, y, 5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Draw point number
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(index + 1, x, y);
+                drawCpcePoint(ctx, x, y, index + 1, {
+                    arm: 7,
+                    lineWidth: 1.5,
+                    font: 'bold 11px "Segoe UI", Arial, sans-serif'
+                });
             });
         }
     };
@@ -1326,13 +1414,14 @@ const initializeUploadBatch = function () {
         });
 
         if (state.points.length) {
-            ctx.fillStyle = '#e53b2c';
-            ctx.font = '12px "Segoe UI", Arial, sans-serif';
             state.points.forEach(function (point, index) {
                 const x = rectPx.x + point.x * rectPx.w;
                 const y = rectPx.y + point.y * rectPx.h;
-                const indexLabel = index + 1;
-                ctx.fillText(`+${indexLabel}`, x + 6, y - 6);
+                drawCpcePoint(ctx, x, y, index + 1, {
+                    arm: 7,
+                    lineWidth: 1.5,
+                    font: 'bold 11px "Segoe UI", Arial, sans-serif'
+                });
             });
         }
     };
@@ -1353,6 +1442,151 @@ const initializeUploadBatch = function () {
             imageNextBtn.hidden = !showNav;
             imageNextBtn.disabled = activeFileIndex >= total - 1;
         }
+    };
+
+    // ---- Hover magnifier (loupe) ----
+    // Shows a magnified crop of the image under the cursor, with the numbered
+    // points drawn in, so the expert can inspect what each point sits on.
+    const LOUPE_SIZE = 190;
+    const LOUPE_ZOOM = 3;
+
+    // Display geometry of the letterboxed image inside the canvas —
+    // same math as drawQuadratAndPoints so overlays stay aligned.
+    const getImageDisplayGeometry = function () {
+        const size = getCanvasSize();
+        const naturalWidth = quadratImage ? quadratImage.naturalWidth : 0;
+        const naturalHeight = quadratImage ? quadratImage.naturalHeight : 0;
+        if (!size.width || !size.height || !naturalWidth || !naturalHeight) {
+            return null;
+        }
+
+        const containerAspect = size.width / size.height;
+        const imageAspect = naturalWidth / naturalHeight;
+        let displayWidth, displayHeight, offsetX, offsetY;
+
+        if (imageAspect > containerAspect) {
+            displayWidth = size.width;
+            displayHeight = size.width / imageAspect;
+            offsetX = 0;
+            offsetY = (size.height - displayHeight) / 2;
+        } else {
+            displayHeight = size.height;
+            displayWidth = size.height * imageAspect;
+            offsetX = (size.width - displayWidth) / 2;
+            offsetY = 0;
+        }
+
+        return {
+            offsetX: offsetX,
+            offsetY: offsetY,
+            displayWidth: displayWidth,
+            displayHeight: displayHeight,
+            naturalWidth: naturalWidth,
+            naturalHeight: naturalHeight
+        };
+    };
+
+    const hideLoupe = function () {
+        if (imageLoupe) {
+            imageLoupe.hidden = true;
+        }
+    };
+
+    const updateLoupe = function (event) {
+        if (!imageLoupe || !quadratImage || !quadratCanvas) {
+            return;
+        }
+        const activeFile = getActiveFile();
+        if (!activeFile || !quadratImage.getAttribute('src')) {
+            hideLoupe();
+            return;
+        }
+
+        const geo = getImageDisplayGeometry();
+        if (!geo) {
+            hideLoupe();
+            return;
+        }
+
+        const pos = getPointerPos(event);
+        // Ignore the letterboxed margins — only magnify over the actual image
+        const withinImage = pos.x >= geo.offsetX && pos.x <= geo.offsetX + geo.displayWidth &&
+            pos.y >= geo.offsetY && pos.y <= geo.offsetY + geo.displayHeight;
+        if (!withinImage) {
+            hideLoupe();
+            return;
+        }
+
+        // Cursor position in the image's natural pixel space
+        const u = (pos.x - geo.offsetX) / geo.displayWidth;
+        const v = (pos.y - geo.offsetY) / geo.displayHeight;
+        const nx = u * geo.naturalWidth;
+        const ny = v * geo.naturalHeight;
+
+        // Source crop: LOUPE_SIZE / LOUPE_ZOOM natural px, but scaled so the
+        // magnification is relative to what's currently displayed on screen.
+        const displayToNatural = geo.naturalWidth / geo.displayWidth;
+        const cropSize = (LOUPE_SIZE / LOUPE_ZOOM) * displayToNatural;
+        const half = cropSize / 2;
+        const sx = nx - half;
+        const sy = ny - half;
+
+        imageLoupe.width = LOUPE_SIZE;
+        imageLoupe.height = LOUPE_SIZE;
+        const ctx = imageLoupe.getContext('2d');
+        if (!ctx) {
+            return;
+        }
+
+        ctx.clearRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
+        ctx.drawImage(quadratImage, sx, sy, cropSize, cropSize, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
+
+        // Overlay the quadrat box + numbered points inside the magnified crop
+        const results = aiResultsByFileKey[getFileKey(activeFile)];
+        if (results && results.quadrat_bbox) {
+            const b = results.quadrat_bbox;
+            const scale = LOUPE_SIZE / cropSize; // natural px -> loupe px
+            const toLoupe = function (natX, natY) {
+                return { x: (natX - sx) * scale, y: (natY - sy) * scale };
+            };
+
+            const rect = {
+                x: b.x * geo.naturalWidth,
+                y: b.y * geo.naturalHeight,
+                w: b.w * geo.naturalWidth,
+                h: b.h * geo.naturalHeight
+            };
+            const rTL = toLoupe(rect.x, rect.y);
+            ctx.strokeStyle = '#ff8a3d';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(rTL.x, rTL.y, rect.w * scale, rect.h * scale);
+
+            (results.points || []).forEach(function (point, index) {
+                const p = toLoupe(rect.x + point.x * rect.w, rect.y + point.y * rect.h);
+                if (p.x < -20 || p.y < -20 || p.x > LOUPE_SIZE + 20 || p.y > LOUPE_SIZE + 20) {
+                    return; // outside the magnified view
+                }
+                drawCpcePoint(ctx, p.x, p.y, index + 1, {
+                    arm: 12,
+                    lineWidth: 2,
+                    font: 'bold 14px "Segoe UI", Arial, sans-serif'
+                });
+            });
+        }
+
+        // Position the loupe near the cursor, kept inside the preview box
+        const wrapW = quadratCanvas.clientWidth;
+        const wrapH = quadratCanvas.clientHeight;
+        let left = pos.x + 24;
+        let top = pos.y - LOUPE_SIZE - 24;
+        if (left + LOUPE_SIZE > wrapW) left = pos.x - LOUPE_SIZE - 24;
+        if (left < 0) left = 0;
+        if (top < 0) top = pos.y + 24;
+        if (top + LOUPE_SIZE > wrapH) top = Math.max(0, wrapH - LOUPE_SIZE);
+
+        imageLoupe.style.left = left + 'px';
+        imageLoupe.style.top = top + 'px';
+        imageLoupe.hidden = false;
     };
 
     const updateQuadratPreview = function () {
@@ -1588,6 +1822,12 @@ const initializeUploadBatch = function () {
         imageNextBtn.addEventListener('click', function () {
             setActiveFileIndex(activeFileIndex + 1);
         });
+    }
+
+    // Hover over the preview to magnify; the loupe never blocks quadrat editing
+    if (quadratCanvas && imageLoupe) {
+        quadratCanvas.addEventListener('mousemove', updateLoupe);
+        quadratCanvas.addEventListener('mouseleave', hideLoupe);
     }
 
     const reanalyzeBtn = document.getElementById('reanalyze-btn');

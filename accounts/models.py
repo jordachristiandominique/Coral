@@ -2,6 +2,20 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+# CPCE (Coral Point Count with Excel extensions) short codes for each
+# benthic class. Stored point_classes always use the full name; the code is
+# purely for display so existing coverage logic is unaffected.
+CPCE_CODES = {
+    'Hard Coral': 'HC',
+    'Soft Coral': 'SC',
+    'Macroalgae': 'MA',
+    'Halimeda': 'HA',
+    'Algae Assemblage': 'AA',
+    'Abiotic': 'AB',
+    'Other Biota': 'OB',
+}
+
+
 class User(AbstractUser):
     ROLE_CHOICES = [
         ('superadmin', 'Super Admin'),

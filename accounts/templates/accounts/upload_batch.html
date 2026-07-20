@@ -257,6 +257,7 @@
                                 aria-label="Previous image" title="Previous image" hidden>&#8249;</button>
                             <button type="button" class="image-nav image-nav-next" id="image-next-btn"
                                 aria-label="Next image" title="Next image" hidden>&#8250;</button>
+                            <canvas class="image-loupe" id="image-loupe" hidden></canvas>
                             <div class="image-nav-counter" id="image-nav-counter" hidden>1 / 1</div>
                             <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
                         </div>
@@ -382,6 +383,7 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}

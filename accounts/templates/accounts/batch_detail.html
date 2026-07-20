@@ -283,19 +283,38 @@
                         <div class="batch-image-thumb">
                             <div class="batch-image-canvas" data-rect-id="rect-data-{{ image.id }}"
                                 data-points-id="points-data-{{ image.id }}" data-class-key="image-{{ image.id }}">
-                                <img src="{{ image.image.url }}" alt="{{ image.image.name }}">
-                                <canvas class="batch-quadrat-canvas" aria-hidden="true"></canvas>
+                                <img src="{% url 'batch_image_annotated' image.id %}"
+                                    data-plain-src="{{ image.image.url }}"
+                                    data-annotated-src="{% url 'batch_image_annotated' image.id %}"
+                                    alt="{{ image.image.name }}">
                             </div>
                         </div>
                         <div class="batch-image-body">
                             <h3>{{ image.image.name|default:"Image" }}</h3>
-                            <p class="batch-image-meta">Quadrat points: {{ image.quadrat_points|length }}</p>
                             <p class="batch-image-coverage">
                                 Coral Coverage: <strong id="image-coverage-{{ image.id }}">--</strong>%
                                 <span class="batch-class-badge class-{{ image.coverage_class|default:" pending"|lower }}">
                                     Class {{ image.coverage_class|default:"Pending" }}
                                 </span>
                             </p>
+
+                            <div class="point-legend" aria-label="Point classifications">
+                                <p class="point-legend-title">
+                                    Point Classifications
+                                    <span class="point-legend-count">{{ image.quadrat_points|length }} points</span>
+                                </p>
+                                <ul class="point-legend-list">
+                                    {% for row in image.point_rows %}
+                                    <li class="point-legend-item" data-code="{{ row.code }}">
+                                        <span class="point-legend-num">{{ row.number }}</span>
+                                        <span class="point-legend-code">{{ row.code }}</span>
+                                        <span class="point-legend-name">{{ row.name }}</span>
+                                    </li>
+                                    {% empty %}
+                                    <li class="point-legend-empty">No point classifications recorded.</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
                         </div>
                     </article>
                     {% empty %}

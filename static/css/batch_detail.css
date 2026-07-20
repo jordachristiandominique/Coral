@@ -164,19 +164,17 @@
     height: 16px;
 }
 
-.batch-images-card.hide-overlays .batch-quadrat-canvas {
-    opacity: 0;
-}
-
 .batch-images-card {
     display: grid;
     gap: 12px;
 }
 
+/* One card per row so each survey photo is large enough to read the
+   quadrat box and the numbered points. */
 .batch-images-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
 }
 
 .batch-image-card {
@@ -185,53 +183,136 @@
     background: #ffffff;
     overflow: hidden;
     display: grid;
-    grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
-    gap: 12px;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
 }
 
 .batch-image-thumb {
-    background: #e9f2f5;
+    background: #0d2b33;
     position: relative;
 }
 
 .batch-image-canvas {
     position: relative;
     width: 100%;
-    height: 100%;
-    min-height: 160px;
-    aspect-ratio: 4 / 3;
 }
 
+/* contain (not cover) so the whole quadrat area stays visible */
 .batch-image-thumb img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
     display: block;
-}
-
-.batch-quadrat-canvas {
-    position: absolute;
-    inset: 0;
     width: 100%;
-    height: 100%;
-    z-index: 1;
-    pointer-events: none;
+    height: auto;
+    max-height: 460px;
+    object-fit: contain;
+    background: #0d2b33;
 }
 
 .batch-image-body {
-    padding: 12px 12px 12px 0;
+    padding: 14px 14px 14px 0;
     display: grid;
-    gap: 6px;
+    gap: 10px;
+    align-content: start;
 }
 
 .batch-image-body h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     color: #1c5f6d;
+    word-break: break-all;
 }
+
+/* ===== Per-point class legend ===== */
+.point-legend {
+    border-top: 1px solid rgba(28, 95, 109, 0.12);
+    padding-top: 10px;
+}
+
+.point-legend-title {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #1c5f6d;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.point-legend-count {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #688792;
+}
+
+.point-legend-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.point-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 7px;
+    border: 1px solid rgba(28, 95, 109, 0.14);
+    border-radius: 7px;
+    background: #f8fcfd;
+    font-size: 11px;
+    min-width: 0;
+}
+
+/* The numbered badge mirrors the marker drawn on the photo */
+.point-legend-num {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #1c5f6d;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.point-legend-code {
+    flex: 0 0 auto;
+    font-weight: 800;
+    color: #1f5160;
+    letter-spacing: 0.3px;
+}
+
+.point-legend-name {
+    flex: 1 1 auto;
+    color: #688792;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.point-legend-empty {
+    grid-column: 1 / -1;
+    font-size: 12px;
+    color: #688792;
+}
+
+/* Colour-code the chip by benthic class (matches the analysis charts) */
+.point-legend-item[data-code="HC"] { border-left: 3px solid #d4a574; }
+.point-legend-item[data-code="SC"] { border-left: 3px solid #e85d75; }
+.point-legend-item[data-code="MA"] { border-left: 3px solid #f5d76e; }
+.point-legend-item[data-code="HA"] { border-left: 3px solid #7ec8c8; }
+.point-legend-item[data-code="AA"] { border-left: 3px solid #a8d5a8; }
+.point-legend-item[data-code="AB"] { border-left: 3px solid #b0b0b0; }
+.point-legend-item[data-code="OB"] { border-left: 3px solid #d8a5d5; }
 
 
 .batch-image-edit {
@@ -319,6 +400,16 @@
 
     .batch-image-body {
         padding: 0 12px 12px;
+    }
+
+    .batch-image-thumb img {
+        max-height: 380px;
+    }
+}
+
+@media (max-width: 560px) {
+    .point-legend-list {
+        grid-template-columns: 1fr;
     }
 }
 
