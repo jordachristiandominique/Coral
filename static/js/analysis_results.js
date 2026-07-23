@@ -1,3 +1,13 @@
+// Keep in sync with COVERAGE_CLASS_LABELS in accounts/models.py.
+const COVERAGE_CLASS_LABELS = {
+    A: 'High coral coverage',
+    B: 'Moderate coral coverage',
+    C: 'Low coral coverage'
+};
+function describeCoverageClass(code) {
+    return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
+}
+
 const initializeAnalysisResults = function () {
     const chartScript = document.getElementById('analysis-chart-data');
     let labels = [];
@@ -382,7 +392,7 @@ const initializeAnalysisResults = function () {
                             weight: 2,
                             opacity: 1,
                             fillOpacity: 0.8
-                        }).bindPopup(`<strong>${batch.name}</strong><br>Area: ${batch.area_name}<br>Class: ${batch.coverage_class}`).addTo(map);
+                        }).bindPopup(`<strong>${batch.name}</strong><br>Area: ${batch.area_name}<br>Class: ${batch.coverage_class} - ${describeCoverageClass(batch.coverage_class)}`).addTo(map);
                     }
                 });
             } catch (error) {

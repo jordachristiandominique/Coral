@@ -140,6 +140,12 @@
                         <span class="batch-class-badge class-{{ coverage_class|default:" pending"|lower }}" id="batchCoverageClassBadge">
                             Class {{ coverage_class|default:"Pending" }}
                         </span>
+                        <span class="class-meaning" id="batchCoverageClassMeaning">
+                            {% if coverage_class == 'A' %}High coral coverage
+                            {% elif coverage_class == 'B' %}Moderate coral coverage
+                            {% elif coverage_class == 'C' %}Low coral coverage
+                            {% else %}Awaiting analysis{% endif %}
+                        </span>
                     </div>
                     <label class="batch-edit-field span-full">
                         <span>Surveyors</span>
@@ -259,6 +265,25 @@
             <section class="surface-card batch-images-card">
                 <div class="card-header">
                     <h2>Uploaded Images</h2>
+                    {% if images|length > 1 %}
+                    <div class="image-viewer-nav">
+                        <button type="button" class="viewer-nav-btn" id="image-viewer-prev"
+                            aria-label="Previous image" title="Previous image">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span class="viewer-nav-counter" id="image-viewer-counter">1 / {{ images|length }}</span>
+                        <button type="button" class="viewer-nav-btn" id="image-viewer-next"
+                            aria-label="Next image" title="Next image">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Embed batch point class data for visualization -->
@@ -277,14 +302,16 @@
                 </script>
                 {% endfor %}
 
-                <div class="batch-images-grid" aria-label="Batch images">
+                <div class="batch-images-viewer" aria-label="Batch images">
+                    <div class="batch-images-stage">
                     {% for image in images %}
-                    <article class="batch-image-card">
+                    <article class="batch-image-card" data-image-index="{{ forloop.counter0 }}"
+                        {% if not forloop.first %}hidden{% endif %}>
                         <div class="batch-image-thumb">
                             <div class="batch-image-canvas" data-rect-id="rect-data-{{ image.id }}"
                                 data-points-id="points-data-{{ image.id }}" data-class-key="image-{{ image.id }}">
                                 <img src="{% url 'batch_image_annotated' image.id %}"
-                                    data-plain-src="{{ image.image.url }}"
+                                    data-plain-src="{% url 'batch_image_annotated' image.id %}?plain=1"
                                     data-annotated-src="{% url 'batch_image_annotated' image.id %}"
                                     alt="{{ image.image.name }}">
                             </div>
@@ -295,6 +322,12 @@
                                 Coral Coverage: <strong id="image-coverage-{{ image.id }}">--</strong>%
                                 <span class="batch-class-badge class-{{ image.coverage_class|default:" pending"|lower }}">
                                     Class {{ image.coverage_class|default:"Pending" }}
+                                </span>
+                                <span class="class-meaning">
+                                    {% if image.coverage_class == 'A' %}High coral coverage
+                                    {% elif image.coverage_class == 'B' %}Moderate coral coverage
+                                    {% elif image.coverage_class == 'C' %}Low coral coverage
+                                    {% else %}Awaiting analysis{% endif %}
                                 </span>
                             </p>
 
@@ -320,6 +353,21 @@
                     {% empty %}
                     <p class="batch-empty">No images uploaded yet.</p>
                     {% endfor %}
+                    </div>
+
+                    {% if images|length > 1 %}
+                    <div class="batch-thumb-strip" role="tablist" aria-label="Select image">
+                        {% for image in images %}
+                        <button type="button" class="batch-thumb{% if forloop.first %} is-active{% endif %}"
+                            data-image-index="{{ forloop.counter0 }}" role="tab"
+                            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+                            title="{{ image.image.name }}">
+                            <img src="{% url 'batch_image_annotated' image.id %}?w=200" alt="" loading="lazy">
+                            <span class="batch-thumb-num">{{ forloop.counter }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             </section>
         </form>

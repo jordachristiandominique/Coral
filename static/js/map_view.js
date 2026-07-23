@@ -12,9 +12,9 @@ const DAVAO_GULF_ZOOM = 10;
 
 // Reef-health class colors (match coverage badges in map_view.css)
 const CLASS_COLORS = {
-    A: '#2e8b57',       // healthy   (>= 60%)
-    B: '#d9a441',       // moderate  (40-59%)
-    C: '#c95a5a',       // poor      (< 40%)
+    A: '#2e8b57',       // High coral coverage      (>= 60%)
+    B: '#d9a441',       // Moderate coral coverage  (40-59%)
+    C: '#c95a5a',       // Low coral coverage       (< 40%)
     Pending: '#2a8793', // not analyzed
 };
 
@@ -113,9 +113,9 @@ class CoralSenseMap {
             const div = L.DomUtil.create('div', 'map-legend');
             div.innerHTML = `
                 <div class="map-legend-title">Reef Health Class</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.A}"></span> Class A &mdash; Healthy (&ge;60%)</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.B}"></span> Class B &mdash; Moderate (40&ndash;59%)</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.C}"></span> Class C &mdash; Poor (&lt;40%)</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.A}"></span> Class A &mdash; High coral coverage (&ge;60%)</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.B}"></span> Class B &mdash; Moderate coral coverage (40&ndash;59%)</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.C}"></span> Class C &mdash; Low coral coverage (&lt;40%)</div>
                 <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.Pending}"></span> Pending analysis</div>
                 <div class="map-legend-title" style="margin-top:8px;">Circle size = coverage %</div>
                 <div class="map-legend-sizes">
@@ -426,7 +426,7 @@ class CoralSenseMap {
         // Per-class counts legend
         const legend = document.getElementById('summary-legend');
         if (legend) {
-            const labels = { A: 'Class A · Healthy', B: 'Class B · Moderate', C: 'Class C · Poor', Pending: 'Pending' };
+            const labels = { A: 'Class A · High', B: 'Class B · Moderate', C: 'Class C · Low', Pending: 'Pending' };
             legend.innerHTML = ['A', 'B', 'C', 'Pending'].map(cls => `
                 <div class="summary-legend-row">
                     <span class="summary-legend-dot" style="background:${CLASS_COLORS[cls]}"></span>

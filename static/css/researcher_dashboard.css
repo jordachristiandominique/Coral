@@ -1061,3 +1061,53 @@ body {
         padding: 16px;
     }
 }
+/* ===== Reef health class key (shared partial) ===== */
+.coverage-class-key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(28, 95, 109, 0.14);
+    border-radius: 10px;
+    background: #f8fcfd;
+    font-size: 12px;
+    color: #4a6069;
+}
+
+.coverage-class-key-title {
+    font-weight: 700;
+    color: #1c5f6d;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11px;
+}
+
+.coverage-class-key-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.coverage-class-key-item strong {
+    color: #1c5f6d;
+    font-weight: 700;
+}
+
+.coverage-class-key-item em {
+    font-style: normal;
+    color: #7d949d;
+}
+
+.coverage-class-key-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.coverage-class-key-dot.key-a { background: #2e8b57; }
+.coverage-class-key-dot.key-b { background: #d9a441; }
+.coverage-class-key-dot.key-c { background: #c95a5a; }

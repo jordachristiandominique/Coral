@@ -38,18 +38,38 @@ def _as_float(value, default=0.0):
         return default
 
 
-def render_annotated_image(batch_image):
+def render_annotated_image(batch_image, max_width=None, annotate=True):
     """Return a PIL Image of ``batch_image`` with quadrat + points drawn on.
 
-    If the image has no quadrat data the original photo is returned unchanged.
+    ``max_width`` downscales the photo *before* the markers are drawn, so
+    thumbnails stay cheap to produce and their markers stay crisp rather than
+    being shrunk along with the pixels. If the image has no quadrat data (or
+    ``annotate`` is False) the plain photo is returned.
     """
     with batch_image.image.open('rb') as handle:
         raw = handle.read()
-    image = Image.open(io.BytesIO(raw)).convert('RGB')
+    image = Image.open(io.BytesIO(raw))
+
+    if max_width:
+        # JPEG fast path: decode straight to a reduced scale instead of
+        # unpacking the full-resolution frame just to shrink it afterwards.
+        try:
+            image.draft('RGB', (max_width, max_width))
+        except (AttributeError, ValueError):
+            pass
+
+    image = image.convert('RGB')
+
+    if max_width and image.width > max_width:
+        ratio = max_width / float(image.width)
+        image = image.resize(
+            (max_width, max(1, int(image.height * ratio))),
+            Image.LANCZOS,
+        )
 
     rect = batch_image.quadrat_rect or None
     points = batch_image.quadrat_points or []
-    if not rect:
+    if not annotate or not rect:
         return image
 
     width, height = image.size
@@ -97,9 +117,9 @@ def render_annotated_image(batch_image):
     return image
 
 
-def render_annotated_bytes(batch_image, quality=88):
+def render_annotated_bytes(batch_image, max_width=None, annotate=True, quality=88):
     """Return annotated JPEG bytes ready to serve or embed in a report."""
-    image = render_annotated_image(batch_image)
+    image = render_annotated_image(batch_image, max_width=max_width, annotate=annotate)
     buffer = io.BytesIO()
     image.save(buffer, format='JPEG', quality=quality)
     return buffer.getvalue()

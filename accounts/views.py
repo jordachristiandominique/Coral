@@ -1226,8 +1226,16 @@ def batch_image_annotated(request, image_id):
     else:
         image = get_object_or_404(BatchImage, id=image_id, batch__user=request.user)
 
+    # ?w=<px> serves a downscaled render (thumbnails); ?plain=1 omits markers
     try:
-        payload = render_annotated_bytes(image)
+        max_width = int(request.GET.get('w', 1600))
+    except (TypeError, ValueError):
+        max_width = 1600
+    max_width = max(120, min(max_width, 2400))
+    annotate = request.GET.get('plain') != '1'
+
+    try:
+        payload = render_annotated_bytes(image, max_width=max_width, annotate=annotate)
     except (FileNotFoundError, OSError):
         # Original file missing/unreadable — fall back to the stored image
         return redirect(image.image.url)

@@ -142,9 +142,9 @@
             </article>
             <article class="stat-card surface-card">
                 <div class="stat-icon" aria-hidden="true"><i data-lucide="leaf"></i></div>
-                <p class="stat-label">Healthy Reefs</p>
+                <p class="stat-label">High Coverage Sites</p>
                 <p class="stat-value">{{ healthy_reefs|default:0 }}</p>
-                <p class="stat-sub">Class A performance</p>
+                <p class="stat-sub">Class A - High coral coverage</p>
             </article>
             <article class="stat-card surface-card">
                 <div class="stat-icon" aria-hidden="true"><i data-lucide="map-pin"></i></div>
@@ -190,6 +190,8 @@
                 <h2>Latest Transactions</h2>
                 <a href="#" class="ghost-link">View all</a>
             </div>
+
+            {% include 'accounts/partials/coverage_class_key.html' %}
 
             <div class="batch-list">
                 {% for row in recent_submissions %}

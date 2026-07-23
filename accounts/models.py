@@ -15,6 +15,19 @@ CPCE_CODES = {
     'Other Biota': 'OB',
 }
 
+# Reef health classes. Coverage = (Hard Coral + Soft Coral) / total points.
+# Keep these descriptions identical everywhere they are shown to users.
+COVERAGE_CLASS_LABELS = {
+    'A': 'High coral coverage',
+    'B': 'Moderate coral coverage',
+    'C': 'Low coral coverage',
+}
+COVERAGE_CLASS_RANGES = {
+    'A': '60% and above',
+    'B': '40-59%',
+    'C': 'below 40%',
+}
+
 
 class User(AbstractUser):
     ROLE_CHOICES = [

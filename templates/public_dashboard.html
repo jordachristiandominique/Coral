@@ -43,9 +43,9 @@
                 <label for="class-filter">Class
                     <select id="class-filter" name="class-filter">
                         <option value="ALL">All Classes</option>
-                        <option value="A">Class A</option>
-                        <option value="B">Class B</option>
-                        <option value="C">Class C</option>
+                        <option value="A">Class A - High coral coverage</option>
+                        <option value="B">Class B - Moderate coral coverage</option>
+                        <option value="C">Class C - Low coral coverage</option>
                     </select>
                 </label>
                 <label for="start-date">From
@@ -59,12 +59,9 @@
             <div id="public-survey-map" class="public-map" aria-label="Survey locations map"></div>
 
             <div class="legend-row" aria-label="Map legend">
-                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-a);"></span>Class
-                    A</span>
-                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-b);"></span>Class
-                    B</span>
-                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-c);"></span>Class
-                    C</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-a);"></span>Class A - High coral coverage</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-b);"></span>Class B - Moderate coral coverage</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-c);"></span>Class C - Low coral coverage</span>
             </div>
         </section>
 
@@ -104,9 +101,9 @@
                 <div class="donut-wrap">
                     <div id="distribution-donut" class="donut" aria-hidden="true"></div>
                     <div class="donut-legend" aria-live="polite">
-                        <div><strong>Class A</strong><span id="legend-a">0 sites</span></div>
-                        <div><strong>Class B</strong><span id="legend-b">0 sites</span></div>
-                        <div><strong>Class C</strong><span id="legend-c">0 sites</span></div>
+                        <div><strong>Class A <em class="class-desc">High coral coverage</em></strong><span id="legend-a">0 sites</span></div>
+                        <div><strong>Class B <em class="class-desc">Moderate coral coverage</em></strong><span id="legend-b">0 sites</span></div>
+                        <div><strong>Class C <em class="class-desc">Low coral coverage</em></strong><span id="legend-c">0 sites</span></div>
                     </div>
                 </div>
             </article>
@@ -144,9 +141,11 @@
         <section class="edu-panel" aria-label="Educational panel">
             <h2>What do these numbers mean?</h2>
             <p>
-                Class A means coral coverage is at least 60% and generally indicates strong reef condition. Class B
-                (40-59%) reflects moderate health with stable recovery potential. Class C (below 40%) signals a reef
-                area that needs closer monitoring and targeted restoration support.
+                <strong>Class A - High coral coverage</strong> means live coral covers at least 60% of the survey
+                points, and generally indicates strong reef condition. <strong>Class B - Moderate coral coverage</strong>
+                (40-59%) reflects moderate health with stable recovery potential. <strong>Class C - Low coral
+                coverage</strong> (below 40%) signals a reef area that needs closer monitoring and targeted restoration
+                support.
             </p>
         </section>
 

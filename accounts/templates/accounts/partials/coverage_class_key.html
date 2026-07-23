@@ -1,0 +1,21 @@
+{% comment %}
+Shared reef-health class key. Include on any page that shows Class A/B/C
+badges so the letters are always explained in plain language:
+
+    {% include 'accounts/partials/coverage_class_key.html' %}
+{% endcomment %}
+<div class="coverage-class-key" aria-label="Reef health class guide">
+    <span class="coverage-class-key-title">Reef health classes:</span>
+    <span class="coverage-class-key-item">
+        <span class="coverage-class-key-dot key-a" aria-hidden="true"></span>
+        <strong>Class A</strong> High coral coverage <em>(60% and above)</em>
+    </span>
+    <span class="coverage-class-key-item">
+        <span class="coverage-class-key-dot key-b" aria-hidden="true"></span>
+        <strong>Class B</strong> Moderate coral coverage <em>(40-59%)</em>
+    </span>
+    <span class="coverage-class-key-item">
+        <span class="coverage-class-key-dot key-c" aria-hidden="true"></span>
+        <strong>Class C</strong> Low coral coverage <em>(below 40%)</em>
+    </span>
+</div>

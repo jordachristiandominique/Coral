@@ -1,3 +1,26 @@
+// Plain-language meaning for each reef health class. Keep in sync with
+// COVERAGE_CLASS_LABELS in accounts/models.py.
+const COVERAGE_CLASS_LABELS = {
+    A: 'High coral coverage',
+    B: 'Moderate coral coverage',
+    C: 'Low coral coverage'
+};
+function describeCoverageClass(code) {
+    return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
+}
+// Badge text and its adjacent description must always move together,
+// otherwise a recalculated class leaves a stale meaning on screen.
+function setClassBadge(badge, coverageClass) {
+    badge.className = `batch-class-badge class-${coverageClass.toLowerCase()}`;
+    badge.textContent = `Class ${coverageClass}`;
+    const meaning = badge.parentElement
+        ? badge.parentElement.querySelector('.class-meaning')
+        : null;
+    if (meaning) {
+        meaning.textContent = describeCoverageClass(coverageClass);
+    }
+}
+
 /**
  * Batch Visualization - 7 Coral Classes
  * Displays pie chart, map, and statistics for coral detection analysis
@@ -317,8 +340,7 @@ function updateStatistics(distribution, latitude, longitude) {
     }
     
     if (batchClassBadge) {
-        batchClassBadge.className = `batch-class-badge class-${coverageClass.toLowerCase()}`;
-        batchClassBadge.textContent = `Class ${coverageClass}`;
+        setClassBadge(batchClassBadge, coverageClass);
     }
 
     // Style the coverage class
@@ -542,10 +564,7 @@ function updatePerImageCoverage(metrics) {
                 const badge = imageBadges[0].closest('.batch-image-coverage')?.querySelector('.batch-class-badge') 
                            || imageBadges[0].closest('p')?.querySelector('.batch-class-badge');
                 if (badge) {
-                    // Remove old class styling
-                    badge.className = `batch-class-badge class-${coverageClass.toLowerCase()}`;
-                    // Update text
-                    badge.textContent = `Class ${coverageClass}`;
+                    setClassBadge(badge, coverageClass);
                 }
             }
         }

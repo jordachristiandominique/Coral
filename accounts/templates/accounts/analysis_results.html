@@ -151,9 +151,9 @@
                 <span>Class</span>
                 <select name="coverage_class">
                     <option value="">All classes</option>
-                    <option value="A">Class A</option>
-                    <option value="B">Class B</option>
-                    <option value="C">Class C</option>
+                    <option value="A">Class A - High coral coverage</option>
+                    <option value="B">Class B - Moderate coral coverage</option>
+                    <option value="C">Class C - Low coral coverage</option>
                     <option value="pending">Pending
                     </option>
                 </select>
@@ -315,6 +315,8 @@
                 <h2>Results</h2>
                 <span class="table-meta">{{ total_batches }} batches</span>
             </div>
+            {% include 'accounts/partials/coverage_class_key.html' %}
+
             <div class="table-scroll">
                 <table class="analysis-table">
                     <thead>

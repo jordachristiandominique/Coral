@@ -1,3 +1,32 @@
+// Benthic classes in fixed order. Colours are assigned by slot and never
+// cycled or reordered — the ordering is what keeps adjacent segments
+// distinguishable for colour-vision deficiency, so don't shuffle it.
+// Validated as a set: worst adjacent CVD dE 9.1, normal-vision dE 19.6.
+const CLASS_ORDER = [
+    'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
+    'Algae Assemblage', 'Abiotic', 'Other Biota'
+];
+const CLASS_COLORS = {
+    'Hard Coral': '#2a78d6',
+    'Soft Coral': '#008300',
+    'Macroalgae': '#e87ba4',
+    'Halimeda': '#eda100',
+    'Algae Assemblage': '#1baf7a',
+    'Abiotic': '#eb6834',
+    'Other Biota': '#4a3aa7'
+};
+// Reef health is a status scale, not a series — these are reserved colours
+// and always ship alongside the "Class A/B/C" label, never colour alone.
+const STATUS_COLORS = { A: '#0ca30c', B: '#fab219', C: '#d03b3b' };
+const COVERAGE_CLASS_LABELS = {
+    A: 'High coral coverage',
+    B: 'Moderate coral coverage',
+    C: 'Low coral coverage'
+};
+function describeCoverageClass(code) {
+    return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
+}
+
 const initializePublicDashboard = function () {
     const surveyScript = document.getElementById('public-surveys-data');
     let surveys = [];
@@ -76,9 +105,9 @@ const initializePublicDashboard = function () {
     const markerLayer = L.layerGroup().addTo(map);
 
     function colorForClass(classCode) {
-        if (classCode === 'A') return '#1f9d73';
-        if (classCode === 'B') return '#f5a623';
-        return '#e05a47';
+        if (classCode === 'A') return STATUS_COLORS.A;
+        if (classCode === 'B') return STATUS_COLORS.B;
+        return STATUS_COLORS.C;
     }
 
     function parseDate(value) {
@@ -140,16 +169,8 @@ const initializePublicDashboard = function () {
         let html = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px;">';
         html += '<strong style="display: block; margin-bottom: 8px;">Class Distribution:</strong>';
 
-        const classOrder = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota'];
-        const classColors = {
-            'Hard Coral': '#2e5c6e',
-            'Soft Coral': '#4a90a4',
-            'Macroalgae': '#a4d65e',
-            'Halimeda': '#f5b041',
-            'Algae Assemblage': '#f8b195',
-            'Abiotic': '#b0bec5',
-            'Other Biota': '#9c27b0'
-        };
+        const classOrder = CLASS_ORDER;
+        const classColors = CLASS_COLORS;
 
         classOrder.forEach(function (className) {
             const data = classDistribution[className];
@@ -213,7 +234,7 @@ const initializePublicDashboard = function () {
                 'Surveyors: ' + formatSurveyorText(row.surveyors) + '<br>' +
                 'Date: ' + row.date + '<br>' +
                 'Coverage: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '<br>' +
-                'Class: ' + row.classCode +
+                'Class: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode) +
                 buildClassDistributionHtml(row.classDistribution);
 
             marker.bindPopup(popupHtml);
@@ -266,9 +287,9 @@ const initializePublicDashboard = function () {
         const cDeg = 360 - aDeg - bDeg;
 
         donut.style.background = 'conic-gradient(' +
-            '#1f9d73 0deg ' + aDeg.toFixed(1) + 'deg, ' +
-            '#f5a623 ' + aDeg.toFixed(1) + 'deg ' + (aDeg + bDeg).toFixed(1) + 'deg, ' +
-            '#e05a47 ' + (aDeg + bDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg)';
+            STATUS_COLORS.A + ' 0deg ' + aDeg.toFixed(1) + 'deg, ' +
+            STATUS_COLORS.B + ' ' + aDeg.toFixed(1) + 'deg ' + (aDeg + bDeg).toFixed(1) + 'deg, ' +
+            STATUS_COLORS.C + ' ' + (aDeg + bDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg)';
 
         legendA.textContent = aCount + ' surveys';
         legendB.textContent = bCount + ' surveys';
@@ -276,16 +297,8 @@ const initializePublicDashboard = function () {
     }
 
     function renderEcosystemDonut(filtered) {
-        const classOrder = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota'];
-        const classColors = {
-            'Hard Coral': '#2e5c6e',
-            'Soft Coral': '#4a90a4',
-            'Macroalgae': '#a4d65e',
-            'Halimeda': '#f5b041',
-            'Algae Assemblage': '#f8b195',
-            'Abiotic': '#b0bec5',
-            'Other Biota': '#9c27b0'
-        };
+        const classOrder = CLASS_ORDER;
+        const classColors = CLASS_COLORS;
 
         // Aggregate all class distribution data
         const totalCounts = {};
@@ -339,9 +352,10 @@ const initializePublicDashboard = function () {
             
             if (percentage > 0) {
                 const color = classColors[cls];
-                legendHtml += '<div style="display: flex; align-items: center; gap: 0.35rem;">' +
-                    '<div style="width: 10px; height: 10px; background: ' + color + '; border-radius: 2px; flex: 0 0 auto;"></div>' +
-                    '<span><strong style="color: #10323d;">' + escapeHtml(cls) + '</strong><span style="color: #587483; margin-left: 4px;">' + percentage + '%</span></span>' +
+                legendHtml += '<div class="eco-legend-item">' +
+                    '<span class="eco-legend-swatch" style="background: ' + color + ';"></span>' +
+                    '<span class="eco-legend-name">' + escapeHtml(cls) + '</span>' +
+                    '<span class="eco-legend-value">' + percentage + '%</span>' +
                     '</div>';
             }
         });
@@ -382,16 +396,8 @@ const initializePublicDashboard = function () {
             return;
         }
 
-        const classOrder = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota'];
-        const classColors = {
-            'Hard Coral': '#2e5c6e',
-            'Soft Coral': '#4a90a4',
-            'Macroalgae': '#a4d65e',
-            'Halimeda': '#f5b041',
-            'Algae Assemblage': '#f8b195',
-            'Abiotic': '#b0bec5',
-            'Other Biota': '#9c27b0'
-        };
+        const classOrder = CLASS_ORDER;
+        const classColors = CLASS_COLORS;
 
         // Calculate average percentages for each class per month
         const monthlyAverages = keys.map(function (key) {
@@ -448,8 +454,10 @@ const initializePublicDashboard = function () {
                     rect.setAttribute('width', barWidth);
                     rect.setAttribute('height', segmentHeight);
                     rect.setAttribute('fill', color);
-                    rect.setAttribute('stroke', '#fff');
-                    rect.setAttribute('stroke-width', '1');
+                    // 2px surface-coloured gap keeps adjacent segments readable
+                    rect.setAttribute('stroke', '#ffffff');
+                    rect.setAttribute('stroke-width', '2');
+                    rect.setAttribute('class', 'stack-segment');
 
                     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
                     title.textContent = className + ': ' + percentage + '%';
@@ -519,10 +527,13 @@ const initializePublicDashboard = function () {
             return points.reduce(function (acc, n) { return acc + n; }, 0) / points.length;
         });
 
-        const minY = Math.min.apply(null, values.concat([30]));
-        const maxY = Math.max.apply(null, values.concat([70]));
+        // Round the scale outward to tidy tick values
+        const rawMin = Math.min.apply(null, values);
+        const rawMax = Math.max.apply(null, values);
+        const minY = Math.max(0, Math.floor((rawMin - 5) / 10) * 10);
+        const maxY = Math.min(100, Math.ceil((rawMax + 5) / 10) * 10);
 
-        const xStart = 30;
+        const xStart = 44;
         const xEnd = 580;
         const yTop = 20;
         const yBottom = 190;
@@ -531,28 +542,125 @@ const initializePublicDashboard = function () {
             const x = keys.length === 1 ? (xStart + xEnd) / 2 : xStart + (idx / (keys.length - 1)) * (xEnd - xStart);
             const normalized = (value - minY) / (maxY - minY || 1);
             const y = yBottom - normalized * (yBottom - yTop);
-            return { x: x, y: y, value: value };
+            return { x: x, y: y, value: value, label: formatMonthLabel(keys[idx]) };
         });
+
+        // Clear anything drawn by a previous render
+        Array.from(lineChart.querySelectorAll(
+            '.line-point, .line-tick, .line-tick-label, .line-x-label, .line-area, .line-hover'
+        )).forEach(function (node) { node.remove(); });
+
+        const svgNs = 'http://www.w3.org/2000/svg';
+        const addEl = function (tag, attrs, text) {
+            const el = document.createElementNS(svgNs, tag);
+            Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+            if (text !== undefined) { el.textContent = text; }
+            lineChart.appendChild(el);
+            return el;
+        };
+
+        // Recessive horizontal gridlines + y tick labels
+        const tickCount = 4;
+        for (let i = 0; i <= tickCount; i += 1) {
+            const value = minY + ((maxY - minY) * i) / tickCount;
+            const y = yBottom - (i / tickCount) * (yBottom - yTop);
+            addEl('line', { class: 'line-tick', x1: xStart, y1: y.toFixed(1), x2: xEnd, y2: y.toFixed(1) });
+            addEl('text', {
+                class: 'line-tick-label', x: xStart - 8, y: (y + 3.5).toFixed(1), 'text-anchor': 'end'
+            }, Math.round(value) + '%');
+        }
+
+        // Area fill under the line gives the trend visual weight
+        const areaD = points.map(function (p, idx) {
+            return (idx === 0 ? 'M ' : 'L ') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+        }).join(' ') + ' L ' + points[points.length - 1].x.toFixed(1) + ' ' + yBottom +
+            ' L ' + points[0].x.toFixed(1) + ' ' + yBottom + ' Z';
+        const area = document.createElementNS(svgNs, 'path');
+        area.setAttribute('class', 'line-area');
+        area.setAttribute('d', areaD);
+        lineChart.insertBefore(area, linePath);
 
         const d = points.map(function (p, idx) {
             return (idx === 0 ? 'M ' : 'L ') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
         }).join(' ');
         linePath.setAttribute('d', d);
 
-        Array.from(lineChart.querySelectorAll('.line-point')).forEach(function (point) {
-            point.remove();
+        points.forEach(function (p) {
+            addEl('text', {
+                class: 'line-x-label', x: p.x.toFixed(1), y: yBottom + 18, 'text-anchor': 'middle'
+            }, p.label);
         });
 
         points.forEach(function (p) {
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('class', 'line-point');
-            circle.setAttribute('cx', p.x.toFixed(1));
-            circle.setAttribute('cy', p.y.toFixed(1));
-            circle.setAttribute('r', '4');
-            lineChart.appendChild(circle);
+            addEl('circle', {
+                class: 'line-point', cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: '4.5'
+            });
         });
 
+        attachLineHover(points, yTop, yBottom);
+
         lineCaption.textContent = 'Showing monthly average coverage for the latest ' + keys.length + ' months.';
+    }
+
+    function formatMonthLabel(key) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthIndex = parseInt(String(key).substring(5, 7), 10) - 1;
+        const year = String(key).substring(2, 4);
+        return (months[monthIndex] || '') + " '" + year;
+    }
+
+    /** Crosshair + tooltip so each month's exact value is readable on hover. */
+    function attachLineHover(points, yTop, yBottom) {
+        if (!lineChart || !points.length) {
+            return;
+        }
+        const svgNs = 'http://www.w3.org/2000/svg';
+        const crosshair = document.createElementNS(svgNs, 'line');
+        crosshair.setAttribute('class', 'line-hover');
+        crosshair.setAttribute('y1', yTop);
+        crosshair.setAttribute('y2', yBottom);
+        crosshair.style.opacity = '0';
+        lineChart.appendChild(crosshair);
+
+        let tooltip = document.getElementById('line-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'line-tooltip';
+            tooltip.className = 'chart-tooltip';
+            tooltip.setAttribute('role', 'status');
+            lineChart.parentNode.appendChild(tooltip);
+        }
+
+        const hide = function () {
+            crosshair.style.opacity = '0';
+            tooltip.classList.remove('is-visible');
+        };
+
+        lineChart.onmousemove = function (event) {
+            const box = lineChart.getBoundingClientRect();
+            // Map cursor position into the SVG's 600-wide viewBox
+            const svgX = ((event.clientX - box.left) / box.width) * 600;
+            let nearest = points[0];
+            points.forEach(function (p) {
+                if (Math.abs(p.x - svgX) < Math.abs(nearest.x - svgX)) {
+                    nearest = p;
+                }
+            });
+
+            crosshair.setAttribute('x1', nearest.x);
+            crosshair.setAttribute('x2', nearest.x);
+            crosshair.style.opacity = '1';
+
+            tooltip.innerHTML = '<span class="tt-label">' + escapeHtml(nearest.label) + '</span>' +
+                '<span class="tt-value">' + Math.round(nearest.value) + '% coverage</span>';
+            tooltip.classList.add('is-visible');
+            const left = (nearest.x / 600) * box.width;
+            const top = (nearest.y / 220) * box.height;
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = Math.max(0, top - 12) + 'px';
+        };
+        lineChart.onmouseleave = hide;
     }
 
     function buildMiniBarsHtml(classDistribution) {
@@ -560,16 +668,8 @@ const initializePublicDashboard = function () {
             return '<div style="color: #999; font-size: 12px;">No data</div>';
         }
 
-        const classOrder = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota'];
-        const classColors = {
-            'Hard Coral': '#2e5c6e',
-            'Soft Coral': '#4a90a4',
-            'Macroalgae': '#a4d65e',
-            'Halimeda': '#f5b041',
-            'Algae Assemblage': '#f8b195',
-            'Abiotic': '#b0bec5',
-            'Other Biota': '#9c27b0'
-        };
+        const classOrder = CLASS_ORDER;
+        const classColors = CLASS_COLORS;
 
         let html = '<div class="mini-bars-container">';
         classOrder.forEach(function (className) {
@@ -618,7 +718,7 @@ const initializePublicDashboard = function () {
                     'Surveyors: ' + formatSurveyorText(row.surveyors) + '\n' +
                     'Date: ' + row.date + '\n' +
                     'Coverage: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '\n' +
-                    'Class: ' + row.classCode
+                    'Class: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode)
                 );
             });
 

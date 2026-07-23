@@ -445,6 +445,11 @@
     background: rgba(20, 74, 85, 0.95);
 }
 
+/* Beats the `display: flex` above so the [hidden] attribute actually hides */
+.image-nav[hidden] {
+    display: none;
+}
+
 .image-nav:disabled {
     opacity: 0.35;
     cursor: default;

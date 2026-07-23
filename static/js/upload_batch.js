@@ -199,6 +199,16 @@ const initializeUploadBatch = function () {
     ];
     // CPCE code shown to the surveyor/expert for each class. The stored value
     // stays the full class name so backend coverage logic is unaffected.
+    // Plain-language meaning for each reef health class. Keep in sync with
+// COVERAGE_CLASS_LABELS in accounts/models.py.
+const COVERAGE_CLASS_LABELS = {
+    A: 'High coral coverage',
+    B: 'Moderate coral coverage',
+    C: 'Low coral coverage'
+};
+const describeCoverageClass = function (code) {
+    return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
+};
     const CPCE_CODES = {
         'Hard Coral': 'HC',
         'Soft Coral': 'SC',
@@ -1252,7 +1262,7 @@ const initializeUploadBatch = function () {
         if (!activeFile) {
             pointList.innerHTML = '<p class="thumb-empty-state">Select an image to view analysis results.</p>';
             if (coverageClassEl) {
-                coverageClassEl.textContent = 'Class: Pending';
+                coverageClassEl.textContent = 'Class: Pending - awaiting analysis';
             }
             if (coveragePercentEl) {
                 coveragePercentEl.textContent = 'Coverage: 0%';
@@ -1264,7 +1274,7 @@ const initializeUploadBatch = function () {
         if (!results || !results.points) {
             pointList.innerHTML = '<p class="thumb-empty-state">Run AI analysis to classify points.</p>';
             if (coverageClassEl) {
-                coverageClassEl.textContent = 'Class: Pending';
+                coverageClassEl.textContent = 'Class: Pending - awaiting analysis';
             }
             if (coveragePercentEl) {
                 coveragePercentEl.textContent = 'Coverage: 0%';
@@ -1276,7 +1286,7 @@ const initializeUploadBatch = function () {
         if (!points.length) {
             pointList.innerHTML = '<p class="thumb-empty-state">No points detected.</p>';
             if (coverageClassEl) {
-                coverageClassEl.textContent = 'Class: Pending';
+                coverageClassEl.textContent = 'Class: Pending - awaiting analysis';
             }
             if (coveragePercentEl) {
                 coveragePercentEl.textContent = 'Coral Coverage: 0%';
@@ -1287,7 +1297,8 @@ const initializeUploadBatch = function () {
         const updateCoverageLabels = function () {
             const pct = getCoralCoveragePercent(results.points);
             if (coverageClassEl) {
-                coverageClassEl.textContent = `Class: ${getCoverageClass(pct)}`;
+                const code = getCoverageClass(pct);
+                coverageClassEl.textContent = `Class: ${code} - ${describeCoverageClass(code)}`;
             }
             if (coveragePercentEl) {
                 coveragePercentEl.textContent = `Coral Coverage: ${pct}%`;

@@ -145,14 +145,16 @@
                 <span class="sr-only">Filter by class</span>
                 <select id="batch-class-filter" name="batch-class-filter">
                     <option value="">Class</option>
-                    <option value="A">Class A</option>
-                    <option value="B">Class B</option>
-                    <option value="C">Class C</option>
+                    <option value="A">Class A - High coral coverage</option>
+                    <option value="B">Class B - Moderate coral coverage</option>
+                    <option value="C">Class C - Low coral coverage</option>
                 </select>
             </label>
 
             <button type="button" class="filter-clear-btn" id="batch-clear-btn">Clear</button>
         </section>
+
+        {% include 'accounts/partials/coverage_class_key.html' %}
 
         <section class="batches-grid" aria-label="Batch cards list">
             {% for batch in batches %}

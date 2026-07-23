@@ -169,12 +169,125 @@
     gap: 12px;
 }
 
-/* One card per row so each survey photo is large enough to read the
-   quadrat box and the numbered points. */
-.batch-images-grid {
+/* Single-image viewer: one photo at a time so the section fits on screen
+   no matter how many images the batch holds. */
+.batch-images-viewer {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+    gap: 12px;
+}
+
+.image-viewer-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid rgba(28, 95, 109, 0.15);
+    border-radius: 10px;
+    background: #f8fcfd;
+}
+
+/* inline-flex centres the chevron exactly; a text glyph would sit on the
+   baseline and look low and undersized. */
+.viewer-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #1c5f6d;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.viewer-nav-btn svg {
+    display: block;
+}
+
+.viewer-nav-btn:hover:not(:disabled) {
+    background: #ffffff;
+    color: #2a8793;
+    box-shadow: 0 1px 3px rgba(28, 95, 109, 0.18);
+}
+
+.viewer-nav-btn:active:not(:disabled) {
+    background: #e6f4f5;
+}
+
+.viewer-nav-btn:focus-visible {
+    outline: 2px solid #2a8793;
+    outline-offset: 2px;
+}
+
+.viewer-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.viewer-nav-counter {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1c5f6d;
+    min-width: 46px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
+/* Thumbnail strip — scrolls sideways instead of growing the page */
+.batch-thumb-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 2px 8px;
+}
+
+.batch-thumb {
+    position: relative;
+    flex: 0 0 auto;
+    width: 84px;
+    height: 64px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #0d2b33;
+    opacity: 0.65;
+    transition: opacity 150ms ease, border-color 150ms ease;
+}
+
+.batch-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.batch-thumb:hover {
+    opacity: 0.9;
+}
+
+.batch-thumb.is-active {
+    opacity: 1;
+    border-color: #2a8793;
+}
+
+.batch-thumb-num {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(28, 95, 109, 0.85);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
 }
 
 .batch-image-card {
@@ -188,6 +301,12 @@
     align-items: start;
 }
 
+/* Must win over the `display: grid` above, otherwise the [hidden] attribute
+   set by the viewer has no effect and every image renders at once. */
+.batch-image-card[hidden] {
+    display: none;
+}
+
 .batch-image-thumb {
     background: #0d2b33;
     position: relative;
@@ -198,12 +317,14 @@
     width: 100%;
 }
 
-/* contain (not cover) so the whole quadrat area stays visible */
+/* contain (not cover) so the whole quadrat area stays visible.
+   Height is viewport-relative so the viewer fits without page scrolling. */
 .batch-image-thumb img {
     display: block;
     width: 100%;
     height: auto;
-    max-height: 460px;
+    max-height: 52vh;
+    min-height: 240px;
     object-fit: contain;
     background: #0d2b33;
 }
@@ -255,6 +376,9 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
+    /* scroll inside the panel rather than stretching the page */
+    max-height: 38vh;
+    overflow-y: auto;
 }
 
 .point-legend-item {
@@ -576,4 +700,11 @@
     .quadrat-view-header {
         padding: 16px;
     }
+}
+/* Plain-language meaning shown next to a Class A/B/C badge */
+.class-meaning {
+    font-size: 12px;
+    font-weight: 600;
+    color: #688792;
+    white-space: nowrap;
 }
