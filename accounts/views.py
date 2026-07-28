@@ -21,7 +21,7 @@ from django.db.models.functions import TruncMonth
 from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
-from .models import User, ImageBatch, BatchImage, Report, CPCE_CODES
+from .models import User, ImageBatch, BatchImage, Report, CPCE_CODES, compute_coverage
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 
@@ -1330,16 +1330,12 @@ def batch_detail(request, batch_id):
         if image.point_classes:
             all_point_classes.extend(image.point_classes)
     
-    if all_point_classes:
-        # Coral Coverage: Only Hard Coral + Soft Coral
-        coral_classes = ['Hard Coral', 'Soft Coral']
-        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
-        coral_coverage = round((coral_count / len(all_point_classes)) * 100)
-    else:
-        coral_coverage = 0
+    # Batch-level coverage breakdown (shows the CPCE computation, not just the %)
+    batch_coverage = compute_coverage(all_point_classes)
+    coral_coverage = batch_coverage['percent'] or 0
 
     # Attach a display-ready per-point legend (number + CPCE code + class name)
-    # so the template can show what each numbered marker on the image is.
+    # plus a per-image coverage breakdown so the template can show its work.
     images = list(images)
     for image in images:
         image.point_rows = [
@@ -1350,6 +1346,7 @@ def batch_detail(request, batch_id):
             }
             for index, class_name in enumerate(image.point_classes or [], start=1)
         ]
+        image.coverage_breakdown = compute_coverage(image.point_classes)
 
     context = {
         'user': request.user,
@@ -1360,6 +1357,7 @@ def batch_detail(request, batch_id):
         'coverage_class': coverage_class,
         'point_classes_json': json.dumps({f'image-{img.id}': img.point_classes for img in images}),
         'coral_coverage': coral_coverage,
+        'batch_coverage': batch_coverage,
     }
     return render(request, 'accounts/batch_detail.html', context)
 

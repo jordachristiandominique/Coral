@@ -29,6 +29,40 @@ COVERAGE_CLASS_RANGES = {
 }
 
 
+def compute_coverage(point_classes):
+    """Coral coverage via the CPCE point-intercept method.
+
+    Coverage % = (Hard Coral + Soft Coral points) / total points x 100
+
+    Returns a breakdown dict so the UI can *show its work* to reviewers:
+    {total, hard, soft, coral, percent, coverage_class}.
+    """
+    pcs = point_classes or []
+    total = len(pcs)
+    hard = sum(1 for p in pcs if p == 'Hard Coral')
+    soft = sum(1 for p in pcs if p == 'Soft Coral')
+    coral = hard + soft
+    percent = round((coral / total) * 100) if total else None
+
+    if percent is None:
+        coverage_class = None
+    elif percent >= 60:
+        coverage_class = 'A'
+    elif percent >= 40:
+        coverage_class = 'B'
+    else:
+        coverage_class = 'C'
+
+    return {
+        'total': total,
+        'hard': hard,
+        'soft': soft,
+        'coral': coral,
+        'percent': percent,
+        'coverage_class': coverage_class,
+    }
+
+
 class User(AbstractUser):
     ROLE_CHOICES = [
         ('superadmin', 'Super Admin'),

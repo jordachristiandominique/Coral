@@ -1111,3 +1111,64 @@ body {
 .coverage-class-key-dot.key-a { background: #2e8b57; }
 .coverage-class-key-dot.key-b { background: #d9a441; }
 .coverage-class-key-dot.key-c { background: #c95a5a; }
+
+.coverage-class-key-formula {
+    flex-basis: 100%;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(28, 95, 109, 0.18);
+    font-size: 12px;
+    font-weight: 600;
+    color: #2a8793;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== Transparent coral-coverage computation (CPCE point-intercept) ===== */
+.coverage-computation {
+    border: 1px solid rgba(42, 135, 147, 0.25);
+    border-radius: 10px;
+    background: #f2fafb;
+    padding: 10px 12px;
+    display: grid;
+    gap: 4px;
+}
+
+.coverage-computation-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #2a8793;
+}
+
+.coverage-formula {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f5160;
+}
+
+.coverage-substitution {
+    font-size: 13px;
+    color: #35606b;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+}
+
+.coverage-substitution .coverage-result {
+    color: #2a8793;
+    font-size: 15px;
+}
+
+/* Compact variant used per-image inside the batch viewer */
+.coverage-computation-sm {
+    padding: 7px 9px;
+    background: #f8fcfd;
+}
+
+.coverage-computation-sm .coverage-substitution {
+    font-size: 12px;
+}
+
+.coverage-computation-sm .coverage-substitution .coverage-result {
+    font-size: 13px;
+}

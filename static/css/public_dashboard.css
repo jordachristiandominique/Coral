@@ -705,6 +705,19 @@
     max-width: 76ch;
 }
 
+.edu-formula {
+    padding: 10px 12px;
+    background: rgba(42, 120, 214, 0.06);
+    border-left: 3px solid var(--series-hard-coral);
+    border-radius: 8px;
+}
+
+.edu-formula em {
+    font-style: normal;
+    font-weight: 700;
+    color: #1c5f6d;
+}
+
 .back-link {
     margin-top: 1.3rem;
 }

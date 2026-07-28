@@ -967,12 +967,9 @@ const describeCoverageClass = function (code) {
                         });
                     }
 
-                    // Calculate coverage: coral classes = HC, SC, MA, HA, AA, OB (6 out of 7)
-                    const coralClasses = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota'];
-                    const coralCount = points.filter(function (p) {
-                        return coralClasses.indexOf(p.class) !== -1;
-                    }).length;
-                    const coveragePercent = Math.round((coralCount / points.length) * 100);
+                    // Coral coverage = Hard Coral + Soft Coral only (must match
+                    // getCoralCoveragePercent() and the backend calculation).
+                    const coveragePercent = getCoralCoveragePercent(points);
 
                     const results = {
                         quadrat_bbox: quadratBbox,  // GUARANTEED to be set
@@ -1294,14 +1291,29 @@ const describeCoverageClass = function (code) {
             return;
         }
 
+        const substitutionEl = document.getElementById('coverage-substitution');
         const updateCoverageLabels = function () {
-            const pct = getCoralCoveragePercent(results.points);
+            const pts = results.points || [];
+            const total = pts.length;
+            const hc = pts.filter(function (p) { return p.class === 'Hard Coral'; }).length;
+            const sc = pts.filter(function (p) { return p.class === 'Soft Coral'; }).length;
+            const coral = hc + sc;
+            const pct = getCoralCoveragePercent(pts);
+            const code = getCoverageClass(pct);
+
             if (coverageClassEl) {
-                const code = getCoverageClass(pct);
                 coverageClassEl.textContent = `Class: ${code} - ${describeCoverageClass(code)}`;
             }
             if (coveragePercentEl) {
                 coveragePercentEl.textContent = `Coral Coverage: ${pct}%`;
+            }
+            // Show the computation with the actual numbers plugged in
+            if (substitutionEl) {
+                substitutionEl.innerHTML =
+                    `= (${hc} Hard + ${sc} Soft) &divide; ${total} points &times; 100 ` +
+                    `= <strong>${coral} &divide; ${total} &times; 100</strong> ` +
+                    `= <strong class="coverage-result">${pct}%</strong> ` +
+                    `&rarr; Class ${code}`;
             }
         };
 
