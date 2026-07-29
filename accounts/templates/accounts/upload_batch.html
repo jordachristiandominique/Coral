@@ -249,6 +249,29 @@
                         </div>
                     </div>
 
+                    <!-- Analysis result: prominent, full-width summary above the working area -->
+                    <section class="coverage-summary" aria-label="Coverage result">
+                        <div class="coverage-summary-metrics">
+                            <div class="coverage-metric">
+                                <span class="coverage-metric-label">Coral Coverage</span>
+                                <span class="coverage-metric-value" id="coral-coverage-percent">--%</span>
+                            </div>
+                            <div class="coverage-metric">
+                                <span class="coverage-metric-label">Reef Health Class</span>
+                                <span class="coverage-metric-badge class-pending" id="coverage-class">Pending</span>
+                            </div>
+                        </div>
+                        <div class="coverage-computation" id="coverage-computation" aria-live="polite">
+                            <span class="coverage-computation-label">How this is computed &mdash; CPCE point-intercept</span>
+                            <div class="coverage-formula">
+                                Coral Coverage = (Hard Coral + Soft Coral points) &divide; Total points &times; 100
+                            </div>
+                            <div class="coverage-substitution" id="coverage-substitution">
+                                Awaiting analysis&hellip;
+                            </div>
+                        </div>
+                    </section>
+
                     <div class="quadrat-body">
                         <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
                             <img id="quadrat-image" alt="Selected coral image" loading="lazy">
@@ -262,24 +285,10 @@
                             <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
                         </div>
 
-                        <div class="analysis-results-panel" aria-label="Automated analysis summary">
+                        <div class="analysis-results-panel" aria-label="Point classifications">
                             <div class="panel-head">
-                                <h4>Analysis Summary</h4>
-                                <div class="coverage-info">
-                                    <div class="coverage-class" id="coverage-class">Class: Pending</div>
-                                    <div class="coverage-percent" id="coral-coverage-percent" style="color: #2a8793;">Coral Coverage: 0%</div>
-                                </div>
-                            </div>
-
-                            <!-- Transparent coverage computation (CPCE point-intercept method) -->
-                            <div class="coverage-computation" id="coverage-computation" aria-live="polite">
-                                <span class="coverage-computation-label">How this is computed</span>
-                                <div class="coverage-formula">
-                                    Coral Coverage = (Hard Coral + Soft Coral points) &divide; Total points &times; 100
-                                </div>
-                                <div class="coverage-substitution" id="coverage-substitution">
-                                    Awaiting analysis&hellip;
-                                </div>
+                                <h4>Point Classifications</h4>
+                                <p class="panel-head-hint">Correct any point using its CPCE dropdown &mdash; coverage updates instantly.</p>
                             </div>
 
                             <div class="point-list" id="point-list">
@@ -290,7 +299,6 @@
                                     <i data-lucide="refresh-cw"></i>
                                     Re-analyze
                                 </button>
-                                <p class="hint-text">Each point below is editable — pick the correct class (CPCE code) to correct any misclassification. Coverage updates instantly.</p>
                             </div>
                         </div>
                     </div>

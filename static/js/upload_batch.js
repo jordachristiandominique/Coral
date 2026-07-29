@@ -1251,47 +1251,46 @@ const describeCoverageClass = function (code) {
         const coverageClassEl = document.getElementById('coverage-class');
         const coveragePercentEl = document.getElementById('coral-coverage-percent');
         
+        const substitutionEl = document.getElementById('coverage-substitution');
+
         if (!pointList) {
             return;
         }
 
+        const setCoveragePending = function () {
+            if (coveragePercentEl) {
+                coveragePercentEl.textContent = '--%';
+            }
+            if (coverageClassEl) {
+                coverageClassEl.textContent = 'Pending';
+                coverageClassEl.className = 'coverage-metric-badge class-pending';
+            }
+            if (substitutionEl) {
+                substitutionEl.innerHTML = 'Awaiting analysis&hellip;';
+            }
+        };
+
         const activeFile = getActiveFile();
         if (!activeFile) {
             pointList.innerHTML = '<p class="thumb-empty-state">Select an image to view analysis results.</p>';
-            if (coverageClassEl) {
-                coverageClassEl.textContent = 'Class: Pending - awaiting analysis';
-            }
-            if (coveragePercentEl) {
-                coveragePercentEl.textContent = 'Coverage: 0%';
-            }
+            setCoveragePending();
             return;
         }
 
         const results = aiResultsByFileKey[getFileKey(activeFile)];
         if (!results || !results.points) {
             pointList.innerHTML = '<p class="thumb-empty-state">Run AI analysis to classify points.</p>';
-            if (coverageClassEl) {
-                coverageClassEl.textContent = 'Class: Pending - awaiting analysis';
-            }
-            if (coveragePercentEl) {
-                coveragePercentEl.textContent = 'Coverage: 0%';
-            }
+            setCoveragePending();
             return;
         }
 
         const points = results.points || [];
         if (!points.length) {
             pointList.innerHTML = '<p class="thumb-empty-state">No points detected.</p>';
-            if (coverageClassEl) {
-                coverageClassEl.textContent = 'Class: Pending - awaiting analysis';
-            }
-            if (coveragePercentEl) {
-                coveragePercentEl.textContent = 'Coral Coverage: 0%';
-            }
+            setCoveragePending();
             return;
         }
 
-        const substitutionEl = document.getElementById('coverage-substitution');
         const updateCoverageLabels = function () {
             const pts = results.points || [];
             const total = pts.length;
@@ -1301,11 +1300,13 @@ const describeCoverageClass = function (code) {
             const pct = getCoralCoveragePercent(pts);
             const code = getCoverageClass(pct);
 
-            if (coverageClassEl) {
-                coverageClassEl.textContent = `Class: ${code} - ${describeCoverageClass(code)}`;
-            }
             if (coveragePercentEl) {
-                coveragePercentEl.textContent = `Coral Coverage: ${pct}%`;
+                coveragePercentEl.textContent = `${pct}%`;
+            }
+            if (coverageClassEl) {
+                const shortDesc = describeCoverageClass(code).replace(' coral coverage', '');
+                coverageClassEl.textContent = `Class ${code} - ${shortDesc}`;
+                coverageClassEl.className = `coverage-metric-badge class-${code.toLowerCase()}`;
             }
             // Show the computation with the actual numbers plugged in
             if (substitutionEl) {

@@ -568,30 +568,85 @@
     margin: 0;
 }
 
-.coverage-info {
+/* ===== Coverage summary bar (result shown prominently above the workspace) ===== */
+.coverage-summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+    border: 1px solid rgba(28, 95, 109, 0.15);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f2fafb 0%, #eef7f9 100%);
+    padding: 14px 18px;
+    margin-bottom: 12px;
+}
+
+.coverage-summary-metrics {
     display: flex;
-    gap: 12px;
-    margin-top: 8px;
+    gap: 28px;
+    align-items: center;
 }
 
-.coverage-class {
-    flex: 1;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: #e8f4f8;
+.coverage-metric {
+    display: grid;
+    gap: 6px;
+    align-content: center;
+}
+
+.coverage-metric-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b8893;
+}
+
+.coverage-metric-value {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
     color: #1c5f6d;
-    font-size: 13px;
-    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
-.coverage-percent {
-    flex: 1;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: rgba(42, 135, 147, 0.1);
-    color: #2a8793;
-    font-size: 13px;
+.coverage-metric-badge {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 14px;
     font-weight: 700;
+    background: rgba(42, 135, 147, 0.12);
+    color: #2a8793;
+    white-space: nowrap;
+}
+
+.coverage-metric-badge.class-a { background: rgba(46, 139, 87, 0.16); color: #2e8b57; }
+.coverage-metric-badge.class-b { background: rgba(217, 164, 65, 0.20); color: #a9781a; }
+.coverage-metric-badge.class-c { background: rgba(201, 90, 90, 0.16); color: #c95a5a; }
+.coverage-metric-badge.class-pending { background: rgba(42, 135, 147, 0.12); color: #2a8793; }
+
+/* The computation box (styled in researcher_dashboard.css) sits on the right,
+   on white so it stands out against the tinted bar. */
+.coverage-summary .coverage-computation {
+    background: #ffffff;
+}
+
+.panel-head-hint {
+    margin: 0;
+    color: #6b8893;
+    font-size: 12px;
+}
+
+@media (max-width: 760px) {
+    .coverage-summary {
+        grid-template-columns: 1fr;
+    }
+    .coverage-summary-metrics {
+        justify-content: space-between;
+        gap: 16px;
+    }
 }
 
 .species-list {

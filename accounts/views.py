@@ -188,14 +188,24 @@ def researcher_dashboard(request):
     # All users (admin and researchers) see all survey data
     batches = ImageBatch.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
 
-    # Recalculate coverage from point_classes for each batch (HC+SC only)
+    # Recalculate coverage from point_classes for each batch (HC+SC only),
+    # and aggregate the 7 benthic classes across every survey for the
+    # class-distribution chart.
+    BENTHIC_CLASSES = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
+                       'Algae Assemblage', 'Abiotic', 'Other Biota']
+    benthic_counts = {c: 0 for c in BENTHIC_CLASSES}
+
     batches_with_coverage = []
     for batch in batches:
         all_point_classes = []
         for image in batch.images.all():
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
-        
+
+        for pc in all_point_classes:
+            if pc in benthic_counts:
+                benthic_counts[pc] += 1
+
         # Calculate coral coverage (Hard Coral + Soft Coral only)
         coral_classes = ['Hard Coral', 'Soft Coral']
         coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
@@ -265,11 +275,30 @@ def researcher_dashboard(request):
             'coverage_class': coverage_class,
         })
 
+    # Benthic class distribution (7 classes) for the dashboard chart.
+    # Validated, colour-blind-safe palette (same as the public dashboard).
+    BENTHIC_COLORS = {
+        'Hard Coral': '#2a78d6', 'Soft Coral': '#008300', 'Macroalgae': '#e87ba4',
+        'Halimeda': '#eda100', 'Algae Assemblage': '#1baf7a', 'Abiotic': '#eb6834',
+        'Other Biota': '#4a3aa7',
+    }
+    benthic_total = sum(benthic_counts.values())
+    benthic_distribution = [
+        {
+            'label': c,
+            'code': CPCE_CODES.get(c, ''),
+            'count': benthic_counts[c],
+            'value': round((benthic_counts[c] / benthic_total) * 100, 1) if benthic_total else 0,
+            'color': BENTHIC_COLORS[c],
+        }
+        for c in BENTHIC_CLASSES
+    ]
+
     insight_total = class_counts['A'] + class_counts['B'] + class_counts['C']
     insight_items = [
-        {'label': 'Class A', 'value': round((class_counts['A'] / insight_total) * 100, 0) if insight_total else 0},
-        {'label': 'Class B', 'value': round((class_counts['B'] / insight_total) * 100, 0) if insight_total else 0},
-        {'label': 'Class C', 'value': round((class_counts['C'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Class A - High', 'value': round((class_counts['A'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Class B - Moderate', 'value': round((class_counts['B'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Class C - Low', 'value': round((class_counts['C'] / insight_total) * 100, 0) if insight_total else 0},
     ]
 
     context = {
@@ -286,6 +315,12 @@ def researcher_dashboard(request):
         },
         'insight_total': round(avg_coverage, 1) if avg_coverage is not None else None,
         'insight_items': insight_items,
+        'benthic_distribution': benthic_distribution,
+        'benthic_chart': json.dumps({
+            'labels': [b['label'] for b in benthic_distribution],
+            'values': [b['value'] for b in benthic_distribution],
+            'colors': [b['color'] for b in benthic_distribution],
+        }),
     }
     return render(request, 'accounts/researcher_dashboard.html', context)
 

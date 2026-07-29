@@ -5,73 +5,62 @@ const initializeResearcherDashboard = function () {
         window.lucide.createIcons();
     }
 
-    // ===== Dashboard Chart =====
-    const lineEl = document.getElementById('coverageTrendChart');
-    const chartScript = document.getElementById('dashboard-chart-data');
-    let chartLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
-    let chartValues = [42, 48, 41, 52, 58, 54, 56];
+    // ===== Benthic Class Distribution (doughnut) =====
+    const benthicEl = document.getElementById('benthicDistributionChart');
+    const benthicScript = document.getElementById('benthic-distribution-data');
 
-    if (chartScript) {
+    let labels = [];
+    let values = [];
+    let colors = [];
+    if (benthicScript) {
         try {
-            const payload = JSON.parse(chartScript.textContent || '{}');
-            if (payload.labels && payload.labels.length) {
-                chartLabels = payload.labels;
-                chartValues = payload.values || [];
-            }
+            const payload = JSON.parse(benthicScript.textContent || '{}');
+            labels = payload.labels || [];
+            values = payload.values || [];
+            colors = payload.colors || [];
         } catch (error) {
-            // Keep fallback values.
+            // no data
         }
     }
 
-    if (lineEl && window.Chart) {
-        new Chart(lineEl, {
-            type: 'bar',
+    const hasData = values.some(function (v) { return v > 0; });
+
+    if (benthicEl && window.Chart && hasData) {
+        new Chart(benthicEl, {
+            type: 'doughnut',
             data: {
-                labels: chartLabels,
-                datasets: [
-                    {
-                        label: 'Coverage',
-                        data: chartValues,
-                        backgroundColor: 'rgba(42, 135, 147, 0.85)',
-                        borderRadius: 8,
-                        barThickness: 14
-                    },
-                    {
-                        type: 'line',
-                        label: 'Trend',
-                        data: chartValues,
-                        borderColor: '#1c5f6d',
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#1c5f6d',
-                        tension: 0.3
-                    }
-                ]
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '58%',
                 plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            boxWidth: 10,
-                            usePointStyle: true,
-                            pointStyle: 'circle'
+                    legend: { display: false },  // custom legend rendered in the template
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                return ctx.label + ': ' + ctx.parsed + '%';
+                            }
                         }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: { color: 'rgba(28, 95, 109, 0.08)' }
-                    },
-                    y: {
-                        beginAtZero: false,
-                        grid: { color: 'rgba(28, 95, 109, 0.08)' }
                     }
                 }
             }
         });
+    } else if (benthicEl) {
+        // No classified points yet — show a friendly placeholder
+        const ctx = benthicEl.getContext('2d');
+        ctx.font = '13px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#688792';
+        ctx.textAlign = 'center';
+        ctx.fillText('No classified points yet', benthicEl.width / 2, benthicEl.height / 2);
     }
 };
 
