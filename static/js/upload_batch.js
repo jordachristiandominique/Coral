@@ -170,6 +170,8 @@ const initializeUploadBatch = function () {
     const summarySurveyors = document.getElementById('summary-surveyors');
     const summaryLocation = document.getElementById('summary-location');
     const summaryImages = document.getElementById('summary-images');
+    const summaryCoverage = document.getElementById('summary-coverage');
+    const summaryClass = document.getElementById('summary-class');
 
     const setTodayIfEmpty = function () {
         if (!surveyDateInput || surveyDateInput.value) {
@@ -272,6 +274,36 @@ const describeCoverageClass = function (code) {
                     return sum + file.size;
                 }, 0);
                 summaryImages.textContent = `${selectedFiles.length} file(s) (${formatFileSize(totalBytes)} total)`;
+            }
+        }
+
+        // Batch-level coral coverage: aggregate every classified point across
+        // all analyzed images (same HC+SC ÷ total formula as per-image).
+        if (summaryCoverage && summaryClass) {
+            const classes = [];
+            selectedFiles.forEach(function (file) {
+                const res = aiResultsByFileKey[getFileKey(file)];
+                if (res && res.points) {
+                    res.points.forEach(function (p) { classes.push(p.class); });
+                }
+            });
+            const total = classes.length;
+            if (!total) {
+                summaryCoverage.textContent = '--';
+                summaryClass.textContent = 'Pending';
+                summaryClass.className = 'summary-class-badge class-pending';
+            } else {
+                const coral = classes.filter(function (c) {
+                    return c === 'Hard Coral' || c === 'Soft Coral';
+                }).length;
+                const pct = Math.round((coral / total) * 100);
+                let code, meaning;
+                if (pct >= 60) { code = 'A'; meaning = 'High'; }
+                else if (pct >= 40) { code = 'B'; meaning = 'Moderate'; }
+                else { code = 'C'; meaning = 'Low'; }
+                summaryCoverage.textContent = `${pct}% (${coral} of ${total} coral points)`;
+                summaryClass.textContent = `Class ${code} - ${meaning}`;
+                summaryClass.className = `summary-class-badge class-${code.toLowerCase()}`;
             }
         }
     };
@@ -921,6 +953,7 @@ const describeCoverageClass = function (code) {
         renderPointList();
         updateThumbPointsStatus();
         updateSubmitState();
+        updateSummary();   // refresh the batch-level coverage/class in Step 3
     };
 
     const generateMockAIResults = function (file) {
@@ -1340,7 +1373,8 @@ const describeCoverageClass = function (code) {
                 const idx = parseInt(this.getAttribute('data-index'), 10);
                 if (!isNaN(idx) && results.points[idx]) {
                     results.points[idx].class = this.value;
-                    updateCoverageLabels();
+                    updateCoverageLabels();  // this image
+                    updateSummary();          // whole-batch total in Step 3
                     if (typeof updateSubmitState === 'function') {
                         updateSubmitState();
                     }
