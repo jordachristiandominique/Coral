@@ -548,7 +548,7 @@ function updatePerImageCoverage(metrics) {
             const coralCoveragePercent = data.totalCoralPts > 0 
                 ? Math.round(((data.hardCoralPts + data.softCoralPts) / data.totalPts) * 100)
                 : 0;
-            coverageEl.textContent = coralCoveragePercent;
+            coverageEl.textContent = `${coralCoveragePercent}%`;
             
             // Determine coverage class based on HC+SC percentage
             let coverageClass = 'C'; // < 40%

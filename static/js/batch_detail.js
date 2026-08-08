@@ -39,9 +39,11 @@ const initializeBatchDetail = function () {
     // never turns the page into a long scroll.
     const imageCards = Array.from(document.querySelectorAll('.batch-image-card'));
     const thumbs = Array.from(document.querySelectorAll('.batch-thumb'));
-    const prevBtn = document.getElementById('image-viewer-prev');
-    const nextBtn = document.getElementById('image-viewer-next');
-    const counter = document.getElementById('image-viewer-counter');
+    // Prev/next arrows are overlaid on each image (one static set per card),
+    // so the counter text and disabled state are rendered server-side per card.
+    // JS only needs to switch which card is visible.
+    const prevButtons = Array.from(document.querySelectorAll('.image-nav-prev'));
+    const nextButtons = Array.from(document.querySelectorAll('.image-nav-next'));
     let activeIndex = 0;
 
     const showImage = function (index) {
@@ -58,16 +60,6 @@ const initializeBatchDetail = function () {
             thumb.classList.toggle('is-active', isActive);
             thumb.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
-
-        if (counter) {
-            counter.textContent = (activeIndex + 1) + ' / ' + imageCards.length;
-        }
-        if (prevBtn) {
-            prevBtn.disabled = activeIndex === 0;
-        }
-        if (nextBtn) {
-            nextBtn.disabled = activeIndex === imageCards.length - 1;
-        }
     };
 
     if (imageCards.length) {
@@ -76,12 +68,12 @@ const initializeBatchDetail = function () {
                 showImage(parseInt(thumb.getAttribute('data-image-index'), 10) || 0);
             });
         });
-        if (prevBtn) {
-            prevBtn.addEventListener('click', function () { showImage(activeIndex - 1); });
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function () { showImage(activeIndex + 1); });
-        }
+        prevButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () { showImage(activeIndex - 1); });
+        });
+        nextButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () { showImage(activeIndex + 1); });
+        });
 
         // Arrow keys move between images (ignored while typing in the edit form)
         document.addEventListener('keydown', function (event) {

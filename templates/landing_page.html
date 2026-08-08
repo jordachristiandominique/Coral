@@ -23,8 +23,8 @@
         <p class="landing-eyebrow">Coral Reef Monitoring Platform</p>
         <h1>Coral Insights for<br>Davao Gulf</h1>
         <p class="landing-subtitle">
-            Monitor coral cover, map biodiversity patterns, and support restoration planning using field surveys and
-            analysis.
+            Monitor coral cover, map reef health across survey sites, and support conservation planning through field
+            surveys and image analysis.
         </p>
         <a href="{% url 'public_dashboard' %}" class="btn btn-outline landing-hero-cta">View Public Dashboard</a>
     </div>
@@ -38,10 +38,10 @@
             <h2>Our Approach</h2>
             <p>
                 This project helps researchers monitor the Davao Gulf with one connected workflow. Teams upload
-                geotagged reef images, evaluate biodiversity condition, and track long-term coral health through clear,
-                evidence-based reporting.
+                geotagged reef images, assess coral cover and reef health, and track long-term reef condition through
+                clear, evidence-based reporting.
             </p>
-            <a href="#" class="btn btn-outline">Read More</a>
+            <a href="#about-project" class="btn btn-outline">Read More</a>
         </div>
         <div class="landing-intro-card">
             <div id="davao-gulf-map" class="landing-map" aria-label="Map of Davao Gulf"></div>
@@ -69,7 +69,7 @@
                 <p class="feature-index">01</p>
                 <h3>Upload & Analyze</h3>
                 <p>
-                    Upload geotagged image batches and automatically assess coral cover and biodiversity condition.
+                    Upload geotagged image batches and automatically assess coral cover and assign a reef health class.
                 </p>
             </article>
 
@@ -131,7 +131,7 @@
             <article class="workflow-item left">
                 <div class="workflow-panel">
                     <h3>Automatic Analysis</h3>
-                    <p>OpenCV processes each image set and computes coral coverage metrics automatically.</p>
+                    <p>AI detection classifies the coral and benthic classes at sample points and computes coral coverage using the point-intercept (CPCE) method.</p>
                     <span class="workflow-pill">Step 03</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -140,9 +140,9 @@
 
             <article class="workflow-item right">
                 <div class="workflow-panel">
-                    <h3>Real-Time Results</h3>
-                    <p>Biodiversity class is assigned instantly to surface reef condition as soon as analysis finishes.
-                    </p>
+                    <h3>Instant Classification</h3>
+                    <p>A reef health class (A, B, or C) is assigned from the coral coverage as soon as the analysis
+                        finishes.</p>
                     <span class="workflow-pill">Step 04</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -152,7 +152,7 @@
             <article class="workflow-item left">
                 <div class="workflow-panel">
                     <h3>Dashboard Insights</h3>
-                    <p>Teams review trends and distribution maps to support restoration planning decisions.</p>
+                    <p>Teams review trends and distribution maps to support conservation and monitoring decisions.</p>
                     <span class="workflow-pill">Step 05</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -179,7 +179,7 @@
                 <h3>SDG 14: Life Below Water</h3>
                 <p>
                     This platform aligns with United Nations SDG 14 by helping teams measure reef condition,
-                    biodiversity trends, and restoration priorities.
+                    coral cover trends, and conservation priorities.
                 </p>
                 <span class="sdg-badge">SDG 14 Aligned</span>
             </article>
@@ -228,7 +228,7 @@
     <section class="biodiversity-section" aria-label="Biodiversity classification">
         <div class="biodiversity-header text-center">
             <p class="features-kicker">Reef Status Guide</p>
-            <h2>Biodiversity Classification</h2>
+            <h2>Reef Health Classification</h2>
         </div>
 
         <div class="biodiversity-grid">
@@ -323,7 +323,7 @@
 
         L.marker(davaoGulfCenter)
             .addTo(map)
-            .bindPopup('<strong>Davao Gulf</strong><br>Monitoring area.')
+            .bindPopup('<strong>Davao Gulf</strong><br>Survey area.')
             .openPopup();
     });
 </script>
