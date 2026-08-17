@@ -77,7 +77,12 @@ class User(AbstractUser):
         default='pending',
         help_text='User role in the system'
     )
-    
+
+    profile_photo = models.ImageField(
+        upload_to='profile_photos/', null=True, blank=True,
+        help_text='Optional avatar shown in the navbar and Settings page'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

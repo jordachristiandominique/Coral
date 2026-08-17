@@ -8,6 +8,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('pending-approval/', views.pending_approval, name='pending_approval'),
     path('researcher/dashboard/', views.researcher_dashboard, name='researcher_dashboard'),
+    path('researcher/settings/', views.account_settings, name='account_settings'),
     path('researcher/accept-researcher/', views.accept_researcher, name='accept_researcher'),
     path('researcher/manage-users/', views.manage_users, name='manage_users'),
     path('researcher/manage-users/<int:user_id>/deactivate/', views.deactivate_user, name='deactivate_user'),

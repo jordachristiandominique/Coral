@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Settings | CoralSense{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<header class="researcher-navbar" role="banner">
+    <div class="container nav-shell">
+        <a href="{% url 'researcher_dashboard' %}" class="nav-brand">
+            <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
+            <span></span>
+        </a>
+
+        <label class="nav-search" aria-label="Search dashboard">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search here">
+        </label>
+
+        <div class="nav-profile">
+            {% include 'accounts/partials/_profile_menu.html' %}
+            <div class="nav-user-meta" aria-label="Signed in user">
+                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="nav-user-role">{{ user.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container researcher-shell">
+    <aside class="researcher-sidebar" aria-label="Research sidebar">
+        <nav class="sidebar-nav">
+            <a href="{% url 'researcher_dashboard' %}">
+                <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'upload_batch' %}">
+                <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Upload New Batch</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                    <span>Batches</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="batches-dropdown" hidden>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'batches' %}">
+                <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Batches</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_results' %}">
+                <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Analysis Results</span>
+            </a>
+            <a href="{% url 'map_view' %}">
+                <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Map View</span>
+            </a>
+            <a href="{% url 'reports' %}">
+                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
+                <span>Reports</span>
+            </a>
+            {% if user.is_admin %}
+            <div class="sidebar-nav-dropdown">
+                <button class="sidebar-nav-toggle" data-toggle="users-dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <img src="{% static 'icons/accept-researcher.png' %}" alt="" aria-hidden="true"
+                        class="sidebar-icon">
+                    <span>User Management</span>
+                    <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
+                </button>
+                <div class="sidebar-nav-items" id="users-dropdown" hidden>
+                    <a href="{% url 'manage_users' %}" class="sidebar-nav-subitem"><span>Manage Users</span></a>
+                    <a href="{% url 'accept_researcher' %}" class="sidebar-nav-subitem"><span>Accept
+                            Researcher</span></a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <main class="researcher-main settings-main">
+        <section class="surface-card settings-head">
+            <h1>Settings</h1>
+            <p>Manage your account information and profile photo.</p>
+        </section>
+
+        <div class="settings-grid">
+            <!-- Profile Information -->
+            <section class="surface-card settings-card" aria-label="Profile information">
+                <h2>Profile Information</h2>
+                <p class="settings-card-sub">Update your name and username.</p>
+
+                <form method="post" class="settings-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="profile">
+
+                    <div class="settings-field-row">
+                        <label class="settings-field">
+                            <span class="settings-label">First Name</span>
+                            <input class="settings-input" type="text" name="first_name"
+                                value="{{ profile_user.first_name }}" autocomplete="given-name">
+                        </label>
+                        <label class="settings-field">
+                            <span class="settings-label">Last Name</span>
+                            <input class="settings-input" type="text" name="last_name"
+                                value="{{ profile_user.last_name }}" autocomplete="family-name">
+                        </label>
+                    </div>
+
+                    <label class="settings-field">
+                        <span class="settings-label">Username</span>
+                        <input class="settings-input" type="text" name="username"
+                            value="{{ profile_user.username }}" autocomplete="username" required>
+                    </label>
+
+                    <label class="settings-field">
+                        <span class="settings-label">Email <span class="settings-readonly-tag">read-only</span></span>
+                        <input class="settings-input" type="email" value="{{ profile_user.email }}" disabled>
+                        <span class="settings-hint">Email is your sign-in identifier and can't be changed here.</span>
+                    </label>
+
+                    <label class="settings-field">
+                        <span class="settings-label">Role</span>
+                        <input class="settings-input" type="text" value="{{ profile_user.get_role_display }}" disabled>
+                    </label>
+
+                    <div class="settings-actions">
+                        <button type="submit" class="primary-btn">Save Changes</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Profile Photo -->
+            <section class="surface-card settings-card" aria-label="Profile photo">
+                <h2>Profile Photo</h2>
+                <p class="settings-card-sub">Shown as your avatar in the top bar.</p>
+
+                <div class="settings-photo">
+                    <div class="settings-photo-preview">
+                        {% if profile_user.profile_photo %}
+                        <img src="{{ profile_user.profile_photo.url }}" alt="Current profile photo">
+                        {% else %}
+                        <span class="settings-photo-initial">{{ profile_user.first_name|default:profile_user.username|slice:":1"|upper }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="settings-photo-forms">
+                        <form method="post" enctype="multipart/form-data" class="settings-photo-upload">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="photo">
+                            <input class="settings-file" type="file" name="profile_photo" accept="image/*" required>
+                            <span class="settings-hint">JPG or PNG, up to 5&nbsp;MB.</span>
+                            <button type="submit" class="primary-btn">Upload Photo</button>
+                        </form>
+
+                        {% if profile_user.profile_photo %}
+                        <form method="post" class="settings-photo-remove">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_photo">
+                            <button type="submit" class="action-outline">Remove Photo</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<div class="logout-modal" aria-hidden="true" data-logout-modal>
+    <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
+        aria-describedby="logout-desc">
+        <img src="{% static 'images/exclamation.png' %}" alt="" aria-hidden="true" class="logout-modal__illustration">
+        <h2 id="logout-title">Are you logging out?</h2>
+        <p id="logout-desc">You are about to end your current session. You can log back in anytime.</p>
+        <div class="logout-modal__actions">
+            <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
+            <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'js/custom.js' %}"></script>
+{% endblock %}

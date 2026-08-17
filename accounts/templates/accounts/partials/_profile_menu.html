@@ -1,0 +1,22 @@
+{% load static %}
+<div class="profile-menu" data-profile-menu>
+    <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+        aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
+        {% if user.profile_photo %}
+        <img class="profile-avatar-img" src="{{ user.profile_photo.url }}" alt="Profile photo">
+        {% else %}
+        <span class="profile-avatar" aria-hidden="true">{{ user.first_name|default:user.username|slice:":1"|upper }}</span>
+        {% endif %}
+    </button>
+    <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
+        data-profile-dropdown>
+        <a href="{% url 'account_settings' %}" class="profile-dropdown-item" role="menuitem">
+            <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
+            <span>Settings</span>
+        </a>
+        <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
+            <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
+            <span>Logout</span>
+        </a>
+    </div>
+</div>

@@ -801,6 +801,64 @@ def batch_export_excel(request, batch_id):
 
 
 @login_required(login_url='login')
+@never_cache
+def account_settings(request):
+    """Self-service settings: edit profile info and manage a profile photo."""
+    if request.user.is_pending():
+        messages.info(request, 'Your account is still pending approval.')
+        return redirect('pending_approval')
+
+    user = request.user
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'profile':
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            username = request.POST.get('username', '').strip()
+
+            if not username:
+                messages.error(request, 'Username is required.')
+            elif User.objects.exclude(pk=user.pk).filter(username__iexact=username).exists():
+                messages.error(request, 'That username is already taken.')
+            else:
+                user.first_name = first_name
+                user.last_name = last_name
+                user.username = username
+                # Email is the login identifier (allauth) and is left unchanged.
+                user.save(update_fields=['first_name', 'last_name', 'username', 'updated_at'])
+                messages.success(request, 'Profile updated.')
+
+        elif action == 'photo':
+            photo = request.FILES.get('profile_photo')
+            if not photo:
+                messages.error(request, 'Please choose an image to upload.')
+            elif not (photo.content_type or '').startswith('image/'):
+                messages.error(request, 'That file is not an image.')
+            elif photo.size > 5 * 1024 * 1024:
+                messages.error(request, 'Image must be 5 MB or smaller.')
+            else:
+                # Drop the previous file so replaced photos don't pile up on disk.
+                if user.profile_photo:
+                    user.profile_photo.delete(save=False)
+                user.profile_photo = photo
+                user.save(update_fields=['profile_photo', 'updated_at'])
+                messages.success(request, 'Profile photo updated.')
+
+        elif action == 'remove_photo':
+            if user.profile_photo:
+                user.profile_photo.delete(save=False)
+                user.profile_photo = None
+                user.save(update_fields=['profile_photo', 'updated_at'])
+                messages.success(request, 'Profile photo removed.')
+
+        return redirect('account_settings')
+
+    return render(request, 'accounts/settings.html', {'profile_user': user})
+
+
+@login_required(login_url='login')
 @require_http_methods(["GET", "POST"])
 @csrf_protect
 def accept_researcher(request):

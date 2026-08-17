@@ -23,23 +23,7 @@
         </label>
 
         <div class="nav-profile">
-            <div class="profile-menu" data-profile-menu>
-                <button class="profile-trigger" type="button" aria-haspopup="true" aria-expanded="false"
-                    aria-label="Open profile menu" title="Profile menu" data-profile-trigger>
-                    <span class="profile-avatar" aria-hidden="true">{{ profile_name|slice:":1"|upper }}</span>
-                </button>
-                <div class="profile-dropdown" role="menu" aria-label="Profile menu" aria-hidden="true"
-                    data-profile-dropdown>
-                    <a href="#" class="profile-dropdown-item" role="menuitem">
-                        <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
-                        <span>Settings</span>
-                    </a>
-                    <a href="{% url 'logout' %}" class="profile-dropdown-item" role="menuitem" data-logout-link>
-                        <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </div>
+            {% include 'accounts/partials/_profile_menu.html' %}
             <div class="nav-user-meta" aria-label="Signed in user">
                 <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
                 <span class="nav-user-role">{{ user.get_role_display }}</span>

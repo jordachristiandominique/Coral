@@ -190,6 +190,16 @@ body {
     font-weight: 700;
 }
 
+/* Uploaded photo variant of the avatar (same footprint as the initial). */
+.profile-avatar-img {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
 .profile-menu {
     position: relative;
     display: inline-flex;
