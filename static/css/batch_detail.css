@@ -534,9 +534,9 @@
         padding: 0 12px 12px;
     }
 
-    .batch-image-thumb img {
+    /* .batch-image-thumb img {
         max-height: 380px;
-    }
+    } */
 }
 
 @media (max-width: 560px) {
@@ -848,6 +848,18 @@ textarea.field-input {
     margin: 0;
 }
 
+.batch-overview-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.batch-overview-actions .batch-download-btn {
+    display: inline-flex;
+    align-items: center;
+}
+
 @media (max-width: 860px) {
     .field-row {
         grid-template-columns: 1fr;
@@ -882,24 +894,34 @@ textarea.field-input {
     width: 40px;
     height: 40px;
     border-radius: 999px;
-    border: none;
-    background: rgba(28, 95, 109, 0.82);
+    /* Solid fill + white ring + drop shadow so the buttons stand out on any
+       background: the dark letterbox on wide screens and the bright image
+       when it fills the frame on narrow screens. */
+    border: 2px solid #ffffff;
+    background: #1c5f6d;
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
     transition: background 150ms ease, opacity 150ms ease;
 }
 
-.batch-image-thumb .image-nav svg {
+.batch-image-thumb .image-nav-icon {
     display: block;
-    stroke: #ffffff;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+/* The prev button reuses the right-arrow art, flipped to point left. */
+.batch-image-thumb .image-nav-icon-prev {
+    transform: scaleX(-1);
 }
 
 .batch-image-thumb .image-nav:hover:not(:disabled) {
-    background: rgba(20, 74, 85, 0.95);
+    background: #144a55;
 }
 
 .batch-image-thumb .image-nav:focus-visible {
@@ -908,7 +930,7 @@ textarea.field-input {
 }
 
 .batch-image-thumb .image-nav:disabled {
-    opacity: 0.35;
+    opacity: 0.5;
     cursor: default;
 }
 

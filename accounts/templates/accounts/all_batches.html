@@ -191,7 +191,7 @@
 
                 <div class="batch-actions">
                     <a href="{% url 'batch_detail' batch.id %}" class="action-outline">View Details</a>
-                    <a href="#" class="action-outline">Download</a>
+                    <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline">Download Excel</a>
                     <a href="#" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
                 </div>
             </article>

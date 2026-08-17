@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=4">
 {% endblock %}
 
 {% block content %}
@@ -282,6 +282,11 @@
                                 aria-label="Next image" title="Next image" hidden>&#8250;</button>
                             <canvas class="image-loupe" id="image-loupe" hidden></canvas>
                             <div class="image-nav-counter" id="image-nav-counter" hidden>1 / 1</div>
+                            <button type="button" class="quadrat-fs-btn" id="quadrat-fs-btn"
+                                aria-label="View image fullscreen" title="View fullscreen" hidden>
+                                <img src="{% static 'icons/fullscreen.png' %}" alt="" aria-hidden="true"
+                                    class="quadrat-fs-icon">
+                            </button>
                             <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
                         </div>
 
@@ -306,6 +311,25 @@
                     <p class="quadrat-footer">💡 Tip: Match each numbered point on the image to its dropdown on the right and correct it if the class is wrong.</p>
                 </div>
             </section>
+
+            <!-- Fullscreen image review. The image viewer and point panel are
+                 moved into #quadrat-fs-stage / #quadrat-fs-side by JS when opened,
+                 then returned to Step 2 on close. -->
+            <div class="quadrat-fs" id="quadrat-fs" role="dialog" aria-modal="true"
+                aria-label="Fullscreen image review" aria-hidden="true" hidden>
+                <div class="quadrat-fs-backdrop" data-fs-close></div>
+                <div class="quadrat-fs-shell">
+                    <button type="button" class="quadrat-fs-close" id="quadrat-fs-close"
+                        aria-label="Close fullscreen view" title="Close (Esc)">
+                        <img src="{% static 'icons/close.png' %}" alt="" aria-hidden="true"
+                            class="quadrat-fs-icon">
+                    </button>
+                    <div class="quadrat-fs-grid">
+                        <div class="quadrat-fs-stage" id="quadrat-fs-stage"></div>
+                        <div class="quadrat-fs-side" id="quadrat-fs-side"></div>
+                    </div>
+                </div>
+            </div>
 
             <section class="surface-card upload-step-card" aria-label="Step 3 review and submit">
                 <div class="step-title-row">
@@ -413,7 +437,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=2"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

@@ -16,6 +16,7 @@ urlpatterns = [
     path('researcher/batches/', views.batches, name='batches'),
     path('researcher/batches/all/', views.all_batches, name='all_batches'),
     path('researcher/batches/<int:batch_id>/', views.batch_detail, name='batch_detail'),
+    path('researcher/batches/<int:batch_id>/export/excel/', views.batch_export_excel, name='batch_export_excel'),
     path('researcher/batch-images/<int:image_id>/annotated/', views.batch_image_annotated,
          name='batch_image_annotated'),
     path('researcher/map-view/', views.map_view, name='map_view'),

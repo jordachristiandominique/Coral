@@ -30,16 +30,26 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeVisualization();
 });
 
-// 7 Coral Classes with their color scheme
+// 7 Coral Classes with their color scheme.
+// Uses the validated, colorblind-safe system palette (matches
+// accounts/views.py BENTHIC_COLORS and the public dashboard) so every
+// chart across the app reads as one consistent, professional system.
 const CORAL_CLASSES = {
-    'Hard Coral': { hex: '#CDDC39', label: 'HC' },
-    'Soft Coral': { hex: '#9C27B0', label: 'SC' },
-    'Macroalgae': { hex: '#E91E63', label: 'MA' },
-    'Halimeda': { hex: '#00E5FF', label: 'HA' },
-    'Algae Assemblage': { hex: '#FF9800', label: 'AA' },
-    'Abiotic': { hex: '#00BCD4', label: 'AB' },
-    'Other Biota': { hex: '#FFEB3B', label: 'OB' }
+    'Hard Coral': { hex: '#2a78d6', label: 'HC' },
+    'Soft Coral': { hex: '#008300', label: 'SC' },
+    'Macroalgae': { hex: '#e87ba4', label: 'MA' },
+    'Halimeda': { hex: '#eda100', label: 'HA' },
+    'Algae Assemblage': { hex: '#1baf7a', label: 'AA' },
+    'Abiotic': { hex: '#eb6834', label: 'AB' },
+    'Other Biota': { hex: '#4a3aa7', label: 'OB' }
 };
+
+// Shared accents for the coral (HC/SC) breakdown UI. HC = system blue,
+// SC = system green, totals = brand teal. Muted ink for secondary text.
+const CORAL_HC = '#2a78d6';
+const CORAL_SC = '#008300';
+const CORAL_TOTAL = '#1c5f6d';
+const CORAL_INK_MUTED = '#6b8893';
 
 // Coral classes for coverage (excludes Abiotic)
 const COVERAGE_CLASSES = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota'];
@@ -511,18 +521,26 @@ function renderCoralBreakdownTable(metrics) {
         const imageName = images[rowIndex]?.textContent || imageKey;
         
         const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #e0e0e0';
+        row.className = 'coral-table-row';
         row.innerHTML = `
-            <td style="padding: 0.75rem; color: #666;">${imageName}</td>
-            <td style="padding: 0.75rem; text-align: center; color: #CDDC39; font-weight: bold;">${data.hardCoralPts}</td>
-            <td style="padding: 0.75rem; text-align: center; color: #CDDC39;">${data.hardCoralPercent}%</td>
-            <td style="padding: 0.75rem; text-align: center; color: #9C27B0; font-weight: bold;">${data.softCoralPts}</td>
-            <td style="padding: 0.75rem; text-align: center; color: #9C27B0;">${data.softCoralPercent}%</td>
-            <td style="padding: 0.75rem; text-align: center; font-weight: bold; color: #1c5f6d;">${data.totalCoralPts}</td>
+            <td class="coral-cell-name">${imageName}</td>
+            <td class="coral-cell-num" style="color: ${CORAL_HC}; font-weight: 700;">${data.hardCoralPts}</td>
+            <td class="coral-cell-num" style="color: ${CORAL_INK_MUTED};">${data.hardCoralPercent}%</td>
+            <td class="coral-cell-num" style="color: ${CORAL_SC}; font-weight: 700;">${data.softCoralPts}</td>
+            <td class="coral-cell-num" style="color: ${CORAL_INK_MUTED};">${data.softCoralPercent}%</td>
+            <td class="coral-cell-num" style="color: ${CORAL_TOTAL}; font-weight: 700;">${data.totalCoralPts}</td>
         `;
         tableBody.appendChild(row);
         rowIndex++;
     });
+
+    // Show how many images the table holds (helps set expectations when a
+    // batch has many images and the table becomes scrollable).
+    const countEl = document.getElementById('coralTableCount');
+    if (countEl) {
+        const n = Object.keys(metrics.perImageMetrics).length;
+        countEl.textContent = n ? `${n} image${n === 1 ? '' : 's'}` : '';
+    }
 
     // If no per-image data, show message
     if (tableBody.children.length === 0) {

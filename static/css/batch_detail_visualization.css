@@ -82,6 +82,203 @@
     margin-top: 0.25rem;
 }
 
+.stat-subnote {
+    font-size: 0.85rem;
+    color: #587987;
+    margin-top: 0.5rem;
+}
+
+.stat-subnote strong {
+    color: #1c5f6d;
+}
+
+/* ===== Coral Type Breakdown — clean tiles with a thin class accent ===== */
+/* Neutral base tile; a 3px top rule carries the class color so the panel
+   reads calm and professional rather than fully color-filled. */
+.coral-tile {
+    background: #f7fafb;
+    border: 1px solid rgba(28, 95, 109, 0.10);
+    border-top: 3px solid #cfd8dc;
+    text-align: left;
+}
+
+.coral-tile .stat-label {
+    color: #587987;
+}
+
+.coral-tile-hc {
+    border-top-color: #2a78d6;
+}
+
+.coral-tile-hc .stat-value {
+    color: #2a78d6;
+}
+
+.coral-tile-sc {
+    border-top-color: #008300;
+}
+
+.coral-tile-sc .stat-value {
+    color: #008300;
+}
+
+.coral-tile-total {
+    border-top-color: #1c5f6d;
+}
+
+.coral-tile-total .stat-value {
+    color: #1c5f6d;
+}
+
+/* ===== HC vs SC ratio ===== */
+.coral-ratio-panel {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f7fafb;
+    border: 1px solid rgba(28, 95, 109, 0.10);
+    border-radius: 8px;
+}
+
+.coral-ratio-title {
+    font-weight: 700;
+    margin-bottom: 0.85rem;
+    color: #1c5f6d;
+    font-size: 0.95rem;
+}
+
+.coral-ratio-bar {
+    width: 100%;
+    height: 26px;
+    background: #e6edf0;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    /* 2px surface gap between the two fills (dataviz mark spec) */
+    gap: 2px;
+}
+
+.coral-ratio-seg {
+    height: 100%;
+    transition: flex 200ms ease;
+}
+
+.coral-ratio-seg-hc {
+    background-color: #2a78d6;
+}
+
+.coral-ratio-seg-sc {
+    background-color: #008300;
+}
+
+.coral-ratio-legend {
+    display: flex;
+    gap: 2rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    color: #1f5160;
+}
+
+.coral-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+}
+
+.coral-dot-hc {
+    background: #2a78d6;
+}
+
+.coral-dot-sc {
+    background: #008300;
+}
+
+/* ===== Per-Image Coral Comparison table ===== */
+.coral-table-head-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.coral-table-count {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #6b8893;
+    white-space: nowrap;
+}
+
+/* Cap the height so a 50-image batch stays compact and scrolls internally
+   instead of stretching the page; the header stays pinned while scrolling. */
+.coral-table-scroll {
+    max-height: 360px;
+    overflow: auto;
+    border: 1px solid rgba(28, 95, 109, 0.12);
+    border-radius: 8px;
+}
+
+.coral-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.coral-th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.7rem 0.75rem;
+    text-align: center;
+    font-weight: 700;
+    background: #eef4f6;
+    border-bottom: 2px solid #1c5f6d;
+    white-space: nowrap;
+}
+
+.coral-th-name {
+    text-align: left;
+    color: #1c5f6d;
+}
+
+.coral-th-hc {
+    color: #2a78d6;
+}
+
+.coral-th-sc {
+    color: #008300;
+}
+
+.coral-th-total {
+    color: #1c5f6d;
+}
+
+.coral-table-row {
+    border-bottom: 1px solid #eef2f4;
+}
+
+.coral-table-row:nth-child(even) {
+    background: #f8fbfc;
+}
+
+.coral-table-row:hover {
+    background: #eef4f6;
+}
+
+.coral-cell-name {
+    padding: 0.6rem 0.75rem;
+    color: #587987;
+    word-break: break-all;
+}
+
+.coral-cell-num {
+    padding: 0.6rem 0.75rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Responsive design */
 @media (max-width: 1400px) {
     .visualization-section {

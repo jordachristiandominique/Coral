@@ -772,6 +772,35 @@ def analysis_results_export_pdf(request):
 
 
 @login_required(login_url='login')
+@never_cache
+def batch_export_excel(request, batch_id):
+    """Download a single batch as a CPCE-style coral-coverage Excel workbook."""
+    if request.user.is_pending():
+        messages.info(request, 'Your account is still pending approval.')
+        return redirect('pending_approval')
+
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+
+    # Admins can export any batch; researchers only their own (same rule as
+    # batch_detail).
+    if request.user.is_admin():
+        batch = get_object_or_404(ImageBatch, id=batch_id)
+    else:
+        batch = get_object_or_404(ImageBatch, id=batch_id, user=request.user)
+
+    from .excel_export import build_batch_coverage_workbook, _safe_filename
+
+    buffer = build_batch_coverage_workbook(batch)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{_safe_filename(batch)}"'
+    return response
+
+
+@login_required(login_url='login')
 @require_http_methods(["GET", "POST"])
 @csrf_protect
 def accept_researcher(request):

@@ -145,6 +145,7 @@ const initializeUploadBatch = function () {
     const imageNextBtn = document.getElementById('image-next-btn');
     const imageNavCounter = document.getElementById('image-nav-counter');
     const imageLoupe = document.getElementById('image-loupe');
+    const fsBtn = document.getElementById('quadrat-fs-btn');
     const processOpenBtn = document.getElementById('process-open-btn');
     const analyzeAllBtn = document.getElementById('analyze-all-btn');
     const analyzeHint = document.getElementById('analyze-hint');
@@ -1304,6 +1305,15 @@ const describeCoverageClass = function (code) {
         };
 
         const activeFile = getActiveFile();
+
+        // The fullscreen/maximize button is offered only once the active image
+        // has analysis results (points), since the fullscreen view pairs the
+        // enlarged image with its point dropdowns.
+        if (fsBtn) {
+            const activeResults = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
+            fsBtn.hidden = !(activeResults && activeResults.points && activeResults.points.length);
+        }
+
         if (!activeFile) {
             pointList.innerHTML = '<p class="thumb-empty-state">Select an image to view analysis results.</p>';
             setCoveragePending();
@@ -1937,6 +1947,88 @@ const describeCoverageClass = function (code) {
             const results = aiResultsByFileKey[getFileKey(activeFile)];
             if (results && results.quadrat_bbox && results.points) {
                 drawQuadratAndPoints(results.quadrat_bbox, results.points);
+            }
+        });
+    }
+
+    // ---- Fullscreen image review ----
+    // Relocates the existing image viewer and point-classification panel into a
+    // large blurred-backdrop modal, then moves them back on close. Reusing the
+    // real DOM (not a copy) keeps the canvas overlay, prev/next arrows, loupe,
+    // and live CPCE dropdowns fully working with zero duplicated state.
+    const fsModal = document.getElementById('quadrat-fs');
+    const fsClose = document.getElementById('quadrat-fs-close');
+    const fsStage = document.getElementById('quadrat-fs-stage');
+    const fsSide = document.getElementById('quadrat-fs-side');
+    const analysisPanel = document.querySelector('.analysis-results-panel');
+    const quadratBody = quadratWrap ? quadratWrap.parentElement : null;
+
+    if (fsModal && fsBtn && fsStage && fsSide && quadratWrap && analysisPanel && quadratBody) {
+        // Re-run the same redraw the resize handler uses, so the overlay
+        // matches the container's new (larger or restored) size.
+        const redrawActiveOverlay = function () {
+            if (!getActiveFile()) {
+                return;
+            }
+            syncCanvasSize();
+            const results = aiResultsByFileKey[getFileKey(getActiveFile())];
+            if (results && results.quadrat_bbox && results.points) {
+                drawQuadratAndPoints(results.quadrat_bbox, results.points);
+            }
+        };
+
+        let fsIsOpen = false;
+
+        const openFullscreen = function () {
+            if (fsIsOpen) {
+                return;
+            }
+            fsStage.appendChild(quadratWrap);
+            fsSide.appendChild(analysisPanel);
+            fsModal.hidden = false;
+            // Force layout before adding the visible class so the size the
+            // canvas measures is the final modal size.
+            fsModal.classList.add('is-visible');
+            fsModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('modal-open');
+            fsIsOpen = true;
+            requestAnimationFrame(redrawActiveOverlay);
+            if (fsClose) {
+                fsClose.focus();
+            }
+        };
+
+        const closeFullscreen = function () {
+            if (!fsIsOpen) {
+                return;
+            }
+            // Restore original order inside .quadrat-body: image wrap, then panel.
+            quadratBody.appendChild(quadratWrap);
+            quadratBody.appendChild(analysisPanel);
+            fsModal.classList.remove('is-visible');
+            fsModal.setAttribute('aria-hidden', 'true');
+            fsModal.hidden = true;
+            document.body.classList.remove('modal-open');
+            fsIsOpen = false;
+            requestAnimationFrame(redrawActiveOverlay);
+            if (fsBtn && !fsBtn.hidden) {
+                fsBtn.focus();
+            }
+        };
+
+        fsBtn.addEventListener('click', openFullscreen);
+        if (fsClose) {
+            fsClose.addEventListener('click', closeFullscreen);
+        }
+        // Click on the blurred backdrop (any element flagged data-fs-close) closes.
+        fsModal.addEventListener('click', function (event) {
+            if (event.target.hasAttribute('data-fs-close')) {
+                closeFullscreen();
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && fsIsOpen) {
+                closeFullscreen();
             }
         });
     }
