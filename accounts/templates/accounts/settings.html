@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=1">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -149,33 +149,62 @@
                 <h2>Profile Photo</h2>
                 <p class="settings-card-sub">Shown as your avatar in the top bar.</p>
 
-                <div class="settings-photo">
-                    <div class="settings-photo-preview">
-                        {% if profile_user.profile_photo %}
-                        <img src="{{ profile_user.profile_photo.url }}" alt="Current profile photo">
-                        {% else %}
-                        <span class="settings-photo-initial">{{ profile_user.first_name|default:profile_user.username|slice:":1"|upper }}</span>
-                        {% endif %}
+                <form method="post" enctype="multipart/form-data" class="settings-photo" id="photo-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="photo">
+
+                    <div class="settings-photo-avatar">
+                        <div class="settings-photo-preview" id="photo-preview">
+                            {% if profile_user.profile_photo %}
+                            <img src="{{ profile_user.profile_photo.url }}" alt="Current profile photo">
+                            {% else %}
+                            <span class="settings-photo-initial">{{ profile_user.first_name|default:profile_user.username|slice:":1"|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <label class="settings-photo-badge" for="profile-photo-input"
+                            title="Change photo" aria-label="Change photo">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ffffff"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                        </label>
                     </div>
 
-                    <div class="settings-photo-forms">
-                        <form method="post" enctype="multipart/form-data" class="settings-photo-upload">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="photo">
-                            <input class="settings-file" type="file" name="profile_photo" accept="image/*" required>
-                            <span class="settings-hint">JPG or PNG, up to 5&nbsp;MB.</span>
-                            <button type="submit" class="primary-btn">Upload Photo</button>
-                        </form>
-
-                        {% if profile_user.profile_photo %}
-                        <form method="post" class="settings-photo-remove">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="remove_photo">
-                            <button type="submit" class="action-outline">Remove Photo</button>
-                        </form>
-                        {% endif %}
+                    <div class="settings-photo-controls">
+                        <input class="settings-photo-input" id="profile-photo-input" type="file"
+                            name="profile_photo" accept="image/*">
+                        <label class="settings-photo-choose" for="profile-photo-input">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span>Choose image</span>
+                        </label>
+                        <p class="settings-photo-filename" id="photo-filename">No file selected</p>
+                        <p class="settings-hint">JPG or PNG &middot; up to 5&nbsp;MB</p>
+                        <div class="settings-photo-actions">
+                            <button type="submit" class="primary-btn" id="photo-upload-btn" disabled>Upload Photo</button>
+                        </div>
                     </div>
-                </div>
+                </form>
+
+                {% if profile_user.profile_photo %}
+                <form method="post" class="settings-photo-remove">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_photo">
+                    <button type="submit" class="settings-remove-btn">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>Remove current photo</span>
+                    </button>
+                </form>
+                {% endif %}
             </section>
         </div>
     </main>
@@ -198,4 +227,47 @@
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'js/custom.js' %}"></script>
+<script>
+    // Profile photo: live preview + filename + enable Upload only once a valid
+    // image is chosen (mirrors the 5 MB server-side cap).
+    (function () {
+        var input = document.getElementById('profile-photo-input');
+        if (!input) { return; }
+        var preview = document.getElementById('photo-preview');
+        var filename = document.getElementById('photo-filename');
+        var uploadBtn = document.getElementById('photo-upload-btn');
+        var MAX = 5 * 1024 * 1024;
+        var objectUrl = null;
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            if (!file) {
+                filename.textContent = 'No file selected';
+                filename.classList.remove('is-error');
+                uploadBtn.disabled = true;
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                filename.textContent = 'That file is not an image.';
+                filename.classList.add('is-error');
+                uploadBtn.disabled = true;
+                return;
+            }
+            if (file.size > MAX) {
+                filename.textContent = 'Image is larger than 5 MB.';
+                filename.classList.add('is-error');
+                uploadBtn.disabled = true;
+                return;
+            }
+            filename.textContent = file.name;
+            filename.classList.remove('is-error');
+            uploadBtn.disabled = false;
+
+            // Swap the avatar to a preview of the chosen image.
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); }
+            objectUrl = URL.createObjectURL(file);
+            preview.innerHTML = '<img src="' + objectUrl + '" alt="Selected photo preview">';
+        });
+    })();
+</script>
 {% endblock %}

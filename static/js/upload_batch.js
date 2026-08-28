@@ -943,7 +943,14 @@ const describeCoverageClass = function (code) {
         }
 
         if (analyzeStatus) {
-            analyzeStatus.textContent = '✓ Analysis complete. Review the classified points below.';
+            analyzeStatus.textContent = 'Analysis complete. Review the classified points below.';
+        }
+        if (analyzeModal) {
+            analyzeModal.classList.add('is-complete');
+        }
+        var analyzeTitleDone = document.getElementById('analyze-title');
+        if (analyzeTitleDone) {
+            analyzeTitleDone.textContent = 'Analysis Complete';
         }
         if (analyzeCloseBtn) {
             analyzeCloseBtn.disabled = false;
@@ -1201,6 +1208,13 @@ const describeCoverageClass = function (code) {
         if (analyzeStatus) {
             analyzeStatus.textContent = 'Preparing analysis...';
         }
+        if (analyzeModal) {
+            analyzeModal.classList.remove('is-complete');
+        }
+        var analyzeTitleReset = document.getElementById('analyze-title');
+        if (analyzeTitleReset) {
+            analyzeTitleReset.textContent = 'Analysis in Progress';
+        }
         if (analyzeProgressList) {
             analyzeProgressList.innerHTML = '';
         }
@@ -1218,7 +1232,15 @@ const describeCoverageClass = function (code) {
         selectedFiles.forEach(function (file) {
             const item = document.createElement('li');
             item.setAttribute('data-file-key', getFileKey(file));
-            item.innerHTML = `<span>${escapeHtml(file.name)} - Pending</span><em class="dot dot-pending"></em>`;
+            item.innerHTML =
+                '<span class="process-file">' +
+                    '<svg class="process-file-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
+                    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
+                    'aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect>' +
+                    '<circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>' +
+                    '<span class="process-file-name">' + escapeHtml(file.name) + '</span>' +
+                '</span>' +
+                '<span class="process-badge process-badge-pending">Pending</span>';
             analyzeProgressList.appendChild(item);
         });
     };
@@ -1245,14 +1267,13 @@ const describeCoverageClass = function (code) {
             if (item.getAttribute('data-file-key') !== fileKey) {
                 return;
             }
-            const label = item.querySelector('span');
-            if (label) {
-                label.textContent = label.textContent.replace('Pending', 'Done');
+            const badge = item.querySelector('.process-badge');
+            if (badge) {
+                badge.textContent = 'Done';
+                badge.classList.remove('process-badge-pending');
+                badge.classList.add('process-badge-done');
             }
-            item.querySelectorAll('em').forEach(function (node) {
-                node.classList.remove('dot-pending');
-                node.classList.add('dot-a');
-            });
+            item.classList.add('is-done');
         });
     };
 
@@ -1554,6 +1575,73 @@ const describeCoverageClass = function (code) {
         };
     };
 
+    // ---- Click-to-zoom on a point (fullscreen only) ----
+    // In the fullscreen review, clicking a point row zooms the image in on that
+    // point; clicking the image (or navigating) zooms back out. The zoom is a
+    // CSS transform applied to the image AND its cross overlay together, using
+    // the point's own position as the transform-origin, so the numbered markers
+    // stay perfectly aligned while magnified.
+    const POINT_ZOOM = 2.6;
+    let zoomedPointIndex = -1;
+
+    const isFullscreen = function () {
+        return !!(quadratWrap && quadratWrap.closest('.quadrat-fs'));
+    };
+
+    const resetPointZoom = function () {
+        zoomedPointIndex = -1;
+        [quadratImage, quadratCanvas].forEach(function (el) {
+            if (el) { el.style.transformOrigin = ''; el.style.transform = ''; }
+        });
+        if (quadratCanvas) { quadratCanvas.style.cursor = 'default'; }
+        if (quadratWrap) { quadratWrap.classList.remove('is-point-zoomed'); }
+        if (pointList) {
+            pointList.querySelectorAll('.point-row.is-zoomed').forEach(function (r) {
+                r.classList.remove('is-zoomed');
+            });
+        }
+    };
+
+    const zoomToPoint = function (index) {
+        const activeFile = getActiveFile();
+        if (!activeFile) { return; }
+        const results = aiResultsByFileKey[getFileKey(activeFile)];
+        if (!results || !results.points || !results.points[index] || !results.quadrat_bbox) {
+            return;
+        }
+        const size = getCanvasSize();
+        const geo = getImageDisplayGeometry();
+        if (!size.width || !size.height || !geo) { return; }
+
+        // Same letterbox math as drawQuadratAndPoints: point pixel position
+        // inside the canvas box, expressed as a 0-1 fraction of that box.
+        const bbox = results.quadrat_bbox;
+        const pt = results.points[index];
+        const px = geo.offsetX + (bbox.x + pt.x * bbox.w) * geo.displayWidth;
+        const py = geo.offsetY + (bbox.y + pt.y * bbox.h) * geo.displayHeight;
+        const fx = Math.max(0, Math.min(1, px / size.width));
+        const fy = Math.max(0, Math.min(1, py / size.height));
+        const origin = (fx * 100).toFixed(2) + '% ' + (fy * 100).toFixed(2) + '%';
+
+        [quadratImage, quadratCanvas].forEach(function (el) {
+            if (el) {
+                el.style.transformOrigin = origin;
+                el.style.transform = 'scale(' + POINT_ZOOM + ')';
+            }
+        });
+        zoomedPointIndex = index;
+        if (quadratCanvas) { quadratCanvas.style.cursor = 'zoom-out'; }
+        if (quadratWrap) { quadratWrap.classList.add('is-point-zoomed'); }
+        if (pointList) {
+            pointList.querySelectorAll('.point-row.is-zoomed').forEach(function (r) {
+                r.classList.remove('is-zoomed');
+            });
+            const sel = pointList.querySelector('.point-class-select[data-index="' + index + '"]');
+            const row = sel ? sel.closest('.point-row') : null;
+            if (row) { row.classList.add('is-zoomed'); }
+        }
+    };
+
     const hideLoupe = function () {
         if (imageLoupe) {
             imageLoupe.hidden = true;
@@ -1562,6 +1650,11 @@ const describeCoverageClass = function (code) {
 
     const updateLoupe = function (event) {
         if (!imageLoupe || !quadratImage || !quadratCanvas) {
+            return;
+        }
+        // The hover magnifier and the click-to-zoom shouldn't fight each other.
+        if (zoomedPointIndex >= 0) {
+            hideLoupe();
             return;
         }
         const activeFile = getActiveFile();
@@ -1872,6 +1965,15 @@ const describeCoverageClass = function (code) {
             if (speciesItem) {
                 speciesItem.classList.toggle('selected');
             }
+            // In fullscreen, clicking a point row zooms the image to that point.
+            const pointRow = event.target.closest('.point-row');
+            if (pointRow && isFullscreen()) {
+                const sel = pointRow.querySelector('.point-class-select');
+                const idx = sel ? parseInt(sel.getAttribute('data-index'), 10) : NaN;
+                if (!isNaN(idx)) {
+                    zoomToPoint(idx);
+                }
+            }
         });
     }
 
@@ -1883,12 +1985,23 @@ const describeCoverageClass = function (code) {
 
     if (imagePrevBtn) {
         imagePrevBtn.addEventListener('click', function () {
+            resetPointZoom();
             setActiveFileIndex(activeFileIndex - 1);
         });
     }
     if (imageNextBtn) {
         imageNextBtn.addEventListener('click', function () {
+            resetPointZoom();
             setActiveFileIndex(activeFileIndex + 1);
+        });
+    }
+
+    // Click the (zoomed) image to zoom back out.
+    if (quadratCanvas) {
+        quadratCanvas.addEventListener('click', function () {
+            if (isFullscreen() && zoomedPointIndex >= 0) {
+                resetPointZoom();
+            }
         });
     }
 
@@ -2002,6 +2115,7 @@ const describeCoverageClass = function (code) {
             if (!fsIsOpen) {
                 return;
             }
+            resetPointZoom();
             // Restore original order inside .quadrat-body: image wrap, then panel.
             quadratBody.appendChild(quadratWrap);
             quadratBody.appendChild(analysisPanel);
