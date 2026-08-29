@@ -246,7 +246,7 @@
                             </div>
                         </div>
                         <div class="coverage-computation" id="coverage-computation" aria-live="polite">
-                            <span class="coverage-computation-label">How this is computed &mdash; CPCE point-intercept</span>
+                            <span class="coverage-computation-label">How this is computed &mdash; point-intercept method</span>
                             <div class="coverage-formula">
                                 Coral Coverage = (Hard Coral + Soft Coral points) &divide; Total points &times; 100
                             </div>
@@ -277,7 +277,7 @@
                         <div class="analysis-results-panel" aria-label="Point classifications">
                             <div class="panel-head">
                                 <h4>Point Classifications</h4>
-                                <p class="panel-head-hint">Correct any point using its CPCE dropdown &mdash; coverage updates instantly.</p>
+                                <p class="panel-head-hint">Correct any point using its dropdown &mdash; coverage updates instantly.</p>
                             </div>
 
                             <div class="point-list" id="point-list">
@@ -426,7 +426,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=4"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=5"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

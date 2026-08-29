@@ -1404,8 +1404,9 @@ const describeCoverageClass = function (code) {
                 const idx = parseInt(this.getAttribute('data-index'), 10);
                 if (!isNaN(idx) && results.points[idx]) {
                     results.points[idx].class = this.value;
-                    updateCoverageLabels();  // this image
-                    updateSummary();          // whole-batch total in Step 3
+                    updateCoverageLabels();       // this image
+                    updateThumbPointsStatus();    // this image's thumbnail coverage
+                    updateSummary();              // whole-batch total in Step 3
                     if (typeof updateSubmitState === 'function') {
                         updateSubmitState();
                     }
