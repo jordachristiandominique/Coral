@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=6">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=10">
 {% endblock %}
 
 {% block content %}
@@ -278,6 +278,20 @@
                             <div class="panel-head">
                                 <h4>Point Classifications</h4>
                                 <p class="panel-head-hint">Correct any point using its dropdown &mdash; coverage updates instantly.</p>
+                                <!-- Step through / zoom to each point (fullscreen only, shown via CSS) -->
+                                <div class="point-zoom-nav" id="point-zoom-nav" aria-label="Zoom through points">
+                                    <button type="button" class="point-zoom-btn" id="point-zoom-prev"
+                                        aria-label="Previous point" title="Previous point">
+                                        <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
+                                            class="point-zoom-icon point-zoom-icon-prev">
+                                    </button>
+                                    <span class="point-zoom-label" id="point-zoom-label">Points</span>
+                                    <button type="button" class="point-zoom-btn" id="point-zoom-next"
+                                        aria-label="Next point" title="Next point">
+                                        <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
+                                            class="point-zoom-icon">
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="point-list" id="point-list">
@@ -426,7 +440,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=5"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=6"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

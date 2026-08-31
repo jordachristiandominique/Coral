@@ -636,10 +636,23 @@ body.modal-open {
     padding-top: 4px;
 }
 
+/* In fullscreen, keep the panel header (with the point stepper) fixed and let
+   only the point list scroll — so stepping to a lower point never scrolls the
+   stepper out of view. */
 .quadrat-fs-side .analysis-results-panel {
     max-height: none;
     height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.quadrat-fs-side .analysis-results-panel .point-list {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    padding-right: 4px;
 }
 
 /* ---- Click-to-zoom on a point (fullscreen) ---- */
@@ -658,6 +671,65 @@ body.modal-open {
     border-color: #2a8793;
     background: #e6f4f5;
     box-shadow: 0 0 0 2px rgba(42, 135, 147, 0.25);
+}
+
+/* Point stepper — lives in the panel head, shown only in fullscreen so it
+   never covers the image. */
+.point-zoom-nav {
+    display: none;
+}
+
+.quadrat-fs .point-zoom-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    justify-self: center;
+    margin-top: 10px;
+    padding: 5px;
+    border: 1px solid rgba(28, 95, 109, 0.15);
+    border-radius: 999px;
+    background: #f4f9fa;
+}
+
+.point-zoom-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: #2a8793;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 150ms ease;
+}
+
+.point-zoom-btn:hover {
+    background: #1c5f6d;
+}
+
+.point-zoom-icon {
+    display: block;
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+}
+
+/* Reuse the right-arrow art, flipped, for the previous button. */
+.point-zoom-icon-prev {
+    transform: scaleX(-1);
+}
+
+.point-zoom-label {
+    min-width: 84px;
+    text-align: center;
+    color: #1c5f6d;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
 }
 
 @media (max-width: 860px) {

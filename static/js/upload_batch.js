@@ -235,6 +235,9 @@ const describeCoverageClass = function (code) {
     const ANALYZE_VAL_MIN = 0.18;
     let activeFileIndex = 0;
     let activeImageUrl = null;
+    // Index of the point currently zoomed/highlighted in the fullscreen view
+    // (-1 = none). Declared here so drawQuadratAndPoints can highlight it.
+    let zoomedPointIndex = -1;
     let aiResultsByFileKey = {};
     let isAnalyzing = false;
 
@@ -616,6 +619,18 @@ const describeCoverageClass = function (code) {
             points.forEach(function (point, index) {
                 const x = rectPx.x + point.x * rectPx.w;
                 const y = rectPx.y + point.y * rectPx.h;
+                // Highlight the point currently selected/zoomed in fullscreen.
+                if (index === zoomedPointIndex) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(x, y, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 209, 71, 0.22)';
+                    ctx.fill();
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#ffd147';
+                    ctx.stroke();
+                    ctx.restore();
+                }
                 drawCpcePoint(ctx, x, y, index + 1, {
                     arm: 7,
                     lineWidth: 1.5,
@@ -1583,13 +1598,40 @@ const describeCoverageClass = function (code) {
     // the point's own position as the transform-origin, so the numbered markers
     // stay perfectly aligned while magnified.
     const POINT_ZOOM = 2.6;
-    let zoomedPointIndex = -1;
 
     const isFullscreen = function () {
         return !!(quadratWrap && quadratWrap.closest('.quadrat-fs'));
     };
 
+    // Redraw the quadrat + crosses for the active image (picks up the current
+    // highlight for zoomedPointIndex).
+    const redrawPoints = function () {
+        const activeFile = getActiveFile();
+        if (!activeFile) { return; }
+        const results = aiResultsByFileKey[getFileKey(activeFile)];
+        if (results && results.quadrat_bbox && results.points) {
+            drawQuadratAndPoints(results.quadrat_bbox, results.points);
+        }
+    };
+
+    // Keeps the "Point N / total" label in the on-image control in sync.
+    const updatePointNavLabel = function () {
+        const label = document.getElementById('point-zoom-label');
+        if (!label) { return; }
+        const activeFile = getActiveFile();
+        const results = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
+        const total = results && results.points ? results.points.length : 0;
+        if (zoomedPointIndex >= 0 && total) {
+            label.textContent = 'Point ' + (zoomedPointIndex + 1) + ' / ' + total;
+        } else if (total) {
+            label.textContent = total + ' points';
+        } else {
+            label.textContent = 'Points';
+        }
+    };
+
     const resetPointZoom = function () {
+        const wasZoomed = zoomedPointIndex >= 0;
         zoomedPointIndex = -1;
         [quadratImage, quadratCanvas].forEach(function (el) {
             if (el) { el.style.transformOrigin = ''; el.style.transform = ''; }
@@ -1601,6 +1643,24 @@ const describeCoverageClass = function (code) {
                 r.classList.remove('is-zoomed');
             });
         }
+        if (wasZoomed) { redrawPoints(); }   // clear the highlight
+        updatePointNavLabel();
+    };
+
+    // Step to the next/previous point (wraps around), zooming to it.
+    const stepPoint = function (delta) {
+        const activeFile = getActiveFile();
+        if (!activeFile) { return; }
+        const results = aiResultsByFileKey[getFileKey(activeFile)];
+        if (!results || !results.points || !results.points.length) { return; }
+        const total = results.points.length;
+        let next;
+        if (zoomedPointIndex < 0) {
+            next = delta > 0 ? 0 : total - 1;
+        } else {
+            next = (zoomedPointIndex + delta + total) % total;
+        }
+        zoomToPoint(next);
     };
 
     const zoomToPoint = function (index) {
@@ -1631,6 +1691,7 @@ const describeCoverageClass = function (code) {
             }
         });
         zoomedPointIndex = index;
+        redrawPoints();   // draw the highlight ring on the active point
         if (quadratCanvas) { quadratCanvas.style.cursor = 'zoom-out'; }
         if (quadratWrap) { quadratWrap.classList.add('is-point-zoomed'); }
         if (pointList) {
@@ -1639,8 +1700,13 @@ const describeCoverageClass = function (code) {
             });
             const sel = pointList.querySelector('.point-class-select[data-index="' + index + '"]');
             const row = sel ? sel.closest('.point-row') : null;
-            if (row) { row.classList.add('is-zoomed'); }
+            if (row) {
+                row.classList.add('is-zoomed');
+                // Bring the highlighted row into view in the scrolling panel.
+                row.scrollIntoView({ block: 'nearest' });
+            }
         }
+        updatePointNavLabel();
     };
 
     const hideLoupe = function () {
@@ -2006,6 +2072,16 @@ const describeCoverageClass = function (code) {
         });
     }
 
+    // On-image point stepper (fullscreen): jump/zoom to previous/next point.
+    const pointZoomPrev = document.getElementById('point-zoom-prev');
+    const pointZoomNext = document.getElementById('point-zoom-next');
+    if (pointZoomPrev) {
+        pointZoomPrev.addEventListener('click', function () { stepPoint(-1); });
+    }
+    if (pointZoomNext) {
+        pointZoomNext.addEventListener('click', function () { stepPoint(1); });
+    }
+
     // Hover over the preview to magnify; the loupe never blocks quadrat editing
     if (quadratCanvas && imageLoupe) {
         quadratCanvas.addEventListener('mousemove', updateLoupe);
@@ -2107,6 +2183,7 @@ const describeCoverageClass = function (code) {
             document.body.classList.add('modal-open');
             fsIsOpen = true;
             requestAnimationFrame(redrawActiveOverlay);
+            updatePointNavLabel();
             if (fsClose) {
                 fsClose.focus();
             }
