@@ -360,6 +360,9 @@ const describeCoverageClass = function (code) {
     };
 
     const setActiveFileIndex = function (index) {
+        // Any image change clears the point zoom (instantly, so the new image
+        // never inherits a lingering transform) and refreshes the stepper label.
+        resetPointZoom(true);
         if (!selectedFiles.length) {
             activeFileIndex = 0;
             updateQuadratPreview();
@@ -370,6 +373,7 @@ const describeCoverageClass = function (code) {
         updateThumbActiveState();
         updateQuadratPreview();
         renderPointList();
+        updatePointNavLabel();
     };
 
     const isReadyToAnalyze = function () {
@@ -503,16 +507,20 @@ const describeCoverageClass = function (code) {
             return;
         }
 
-        const rect = quadratImage.getBoundingClientRect();
-        if (!rect.width || !rect.height) {
+        // Use clientWidth/Height (the layout box), NOT getBoundingClientRect,
+        // which would include the point-zoom CSS transform and size the canvas
+        // wrong while a zoom is applied or mid-transition.
+        const w = quadratImage.clientWidth;
+        const h = quadratImage.clientHeight;
+        if (!w || !h) {
             return;
         }
 
         const dpr = window.devicePixelRatio || 1;
-        quadratCanvas.width = rect.width * dpr;
-        quadratCanvas.height = rect.height * dpr;
-        quadratCanvas.style.width = `${rect.width}px`;
-        quadratCanvas.style.height = `${rect.height}px`;
+        quadratCanvas.width = w * dpr;
+        quadratCanvas.height = h * dpr;
+        quadratCanvas.style.width = `${w}px`;
+        quadratCanvas.style.height = `${h}px`;
     };
 
     /**
@@ -1603,6 +1611,36 @@ const describeCoverageClass = function (code) {
         return !!(quadratWrap && quadratWrap.closest('.quadrat-fs'));
     };
 
+    // Inline (two-column) layout only: match the point panel's height to the
+    // image so the columns line up and there's no tall white gap under a short
+    // image. Fullscreen and the stacked (narrow) layout manage their own sizes.
+    const syncInlinePanelHeight = function () {
+        const panel = document.querySelector('.quadrat-body .analysis-results-panel');
+        if (!panel) {
+            return;
+        }
+        if (isFullscreen() || !window.matchMedia('(min-width: 1101px)').matches) {
+            panel.style.height = '';
+            panel.style.maxHeight = '';
+            return;
+        }
+        const imgH = quadratWrap ? quadratWrap.offsetHeight : 0;
+        if (!imgH) {
+            return;
+        }
+        // Measure the panel's natural height, then only cap it (and scroll) when
+        // it's taller than the image — so a long point list stops leaving a wide
+        // white gap under a short image, without stretching a short list.
+        panel.style.height = '';
+        panel.style.maxHeight = 'none';
+        if (panel.scrollHeight > imgH) {
+            panel.style.height = imgH + 'px';
+            panel.style.maxHeight = imgH + 'px';
+        } else {
+            panel.style.maxHeight = '';
+        }
+    };
+
     // Redraw the quadrat + crosses for the active image (picks up the current
     // highlight for zoomedPointIndex).
     const redrawPoints = function () {
@@ -1630,12 +1668,23 @@ const describeCoverageClass = function (code) {
         }
     };
 
-    const resetPointZoom = function () {
+    const resetPointZoom = function (instant) {
         const wasZoomed = zoomedPointIndex >= 0;
         zoomedPointIndex = -1;
         [quadratImage, quadratCanvas].forEach(function (el) {
-            if (el) { el.style.transformOrigin = ''; el.style.transform = ''; }
+            if (!el) { return; }
+            // Instant reset (used when switching images) skips the zoom-out
+            // animation so the next image never inherits a lingering transform.
+            if (instant) { el.style.transition = 'none'; }
+            el.style.transformOrigin = '';
+            el.style.transform = '';
         });
+        if (instant && quadratWrap) {
+            void quadratWrap.offsetWidth;   // force the reset to apply now
+            [quadratImage, quadratCanvas].forEach(function (el) {
+                if (el) { el.style.transition = ''; }
+            });
+        }
         if (quadratCanvas) { quadratCanvas.style.cursor = 'default'; }
         if (quadratWrap) { quadratWrap.classList.remove('is-point-zoomed'); }
         if (pointList) {
@@ -1863,6 +1912,7 @@ const describeCoverageClass = function (code) {
                 drawQuadratAndPoints(results.quadrat_bbox, results.points);
             }
             renderPointList();
+            syncInlinePanelHeight();
         };
     };
 
@@ -2052,13 +2102,11 @@ const describeCoverageClass = function (code) {
 
     if (imagePrevBtn) {
         imagePrevBtn.addEventListener('click', function () {
-            resetPointZoom();
             setActiveFileIndex(activeFileIndex - 1);
         });
     }
     if (imageNextBtn) {
         imageNextBtn.addEventListener('click', function () {
-            resetPointZoom();
             setActiveFileIndex(activeFileIndex + 1);
         });
     }
@@ -2138,6 +2186,7 @@ const describeCoverageClass = function (code) {
             if (results && results.quadrat_bbox && results.points) {
                 drawQuadratAndPoints(results.quadrat_bbox, results.points);
             }
+            syncInlinePanelHeight();
         });
     }
 
@@ -2175,6 +2224,10 @@ const describeCoverageClass = function (code) {
             }
             fsStage.appendChild(quadratWrap);
             fsSide.appendChild(analysisPanel);
+            // Drop the inline height used to balance the two-column layout so the
+            // panel can fill the fullscreen side column.
+            analysisPanel.style.height = '';
+            analysisPanel.style.maxHeight = '';
             fsModal.hidden = false;
             // Force layout before adding the visible class so the size the
             // canvas measures is the final modal size.
@@ -2202,7 +2255,10 @@ const describeCoverageClass = function (code) {
             fsModal.hidden = true;
             document.body.classList.remove('modal-open');
             fsIsOpen = false;
-            requestAnimationFrame(redrawActiveOverlay);
+            requestAnimationFrame(function () {
+                redrawActiveOverlay();
+                syncInlinePanelHeight();   // rebalance the inline columns
+            });
             if (fsBtn && !fsBtn.hidden) {
                 fsBtn.focus();
             }
