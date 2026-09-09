@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=12">
 {% endblock %}
 
 {% block content %}
@@ -130,7 +130,7 @@
                     <label class="field-floating">
                         <textarea id="surveyor-names" name="surveyor_names" placeholder=" " rows="2"
                             required>{{ user_full_name }}</textarea>
-                        <span>Surveyor Name(s)</span>
+                        <span>Survey By</span>
                         <small class="field-help">Separate multiple names with commas. Press Enter to add another
                             name.</small>
                     </label>
@@ -261,9 +261,15 @@
                             <img id="quadrat-image" alt="Selected coral image" loading="lazy">
                             <canvas id="quadrat-canvas" aria-label="Detected quadrat area with confidence overlay"></canvas>
                             <button type="button" class="image-nav image-nav-prev" id="image-prev-btn"
-                                aria-label="Previous image" title="Previous image" hidden>&#8249;</button>
+                                aria-label="Previous image" title="Previous image" hidden>
+                                <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
+                                    class="image-nav-icon image-nav-icon-prev">
+                            </button>
                             <button type="button" class="image-nav image-nav-next" id="image-next-btn"
-                                aria-label="Next image" title="Next image" hidden>&#8250;</button>
+                                aria-label="Next image" title="Next image" hidden>
+                                <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
+                                    class="image-nav-icon">
+                            </button>
                             <canvas class="image-loupe" id="image-loupe" hidden></canvas>
                             <div class="image-nav-counter" id="image-nav-counter" hidden>1 / 1</div>
                             <button type="button" class="quadrat-fs-btn" id="quadrat-fs-btn"
@@ -337,7 +343,7 @@
 
                 <div class="summary-box">
                     <p><strong>Batch:</strong> <span id="summary-batch">Not set</span></p>
-                    <p><strong>Surveyors:</strong> <span id="summary-surveyors">Not set</span></p>
+                    <p><strong>Survey by:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
                     <p><strong>Batch Coral Coverage:</strong> <span id="summary-coverage">--</span></p>
@@ -440,7 +446,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=8"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=10"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

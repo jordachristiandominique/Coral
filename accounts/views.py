@@ -693,7 +693,7 @@ def analysis_results_export_csv(request):
     response['Content-Disposition'] = 'attachment; filename="analysis_results.csv"'
     writer = csv.writer(response)
     writer.writerow([
-        'Batch Name', 'Survey Date', 'Area', 'Surveyors', 'Images', 'Avg Coverage', 'Class'
+        'Batch Name', 'Survey Date', 'Area', 'Survey By', 'Images', 'Avg Coverage', 'Class'
     ])
     for row in rows:
         writer.writerow([
@@ -1015,7 +1015,7 @@ def upload_batch(request):
         if not survey_date:
             errors.append('Survey date is required.')
         if not surveyor_names:
-            errors.append('Surveyor name(s) are required.')
+            errors.append('Survey by is required.')
         if not area_name:
             errors.append('Area name is required.')
         if not latitude_raw or not longitude_raw:
@@ -1405,7 +1405,7 @@ def batch_detail(request, batch_id):
         if not area_name:
             errors.append('Area name is required.')
         if not surveyor_names:
-            errors.append('Surveyor name(s) are required.')
+            errors.append('Survey by is required.')
 
         try:
             latitude = Decimal(latitude_raw)

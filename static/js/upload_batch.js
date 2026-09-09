@@ -111,7 +111,7 @@ const initializeUploadBatch = function () {
                     const nameParts = [point.user__first_name, point.user__last_name].filter(Boolean);
                     const researcherName = nameParts.length ? nameParts.join(' ') : point.user__username;
                     const dateLabel = point.survey_date ? `Survey date: ${point.survey_date}` : null;
-                    const surveyorLabel = point.surveyor_names ? `Surveyors: ${point.surveyor_names}` : null;
+                    const surveyorLabel = point.surveyor_names ? `Survey by: ${point.surveyor_names}` : null;
                     const researcherLabel = researcherName ? `Uploaded by: ${researcherName}` : null;
                     const title = point.name || 'Survey location';
                     const lines = [title, dateLabel, surveyorLabel, researcherLabel].filter(Boolean).join('<br>');
@@ -1986,6 +1986,99 @@ const describeCoverageClass = function (code) {
         updateSummary();
     };
 
+    // ---- Drag-and-drop folder support ----
+    // Accepted image types (matches the file input's `accept`).
+    const isAcceptedImage = function (file) {
+        const name = (file && file.name ? file.name : '').toLowerCase();
+        const byExt = /\.(jpe?g|png)$/.test(name);
+        const byType = /^image\/(jpe?g|png)$/.test(file && file.type ? file.type : '');
+        return byExt || byType;
+    };
+
+    // readEntries returns a directory's children in batches; keep reading until
+    // it returns an empty batch.
+    const readAllDirectoryEntries = function (reader) {
+        return new Promise(function (resolve) {
+            const all = [];
+            const readBatch = function () {
+                reader.readEntries(function (batch) {
+                    if (!batch.length) {
+                        resolve(all);
+                        return;
+                    }
+                    all.push.apply(all, batch);
+                    readBatch();
+                }, function () { resolve(all); });
+            };
+            readBatch();
+        });
+    };
+
+    // Recursively collect accepted image files from a FileSystem entry
+    // (file or directory, including nested subfolders).
+    const collectFilesFromEntry = function (entry, out) {
+        return new Promise(function (resolve) {
+            if (!entry) {
+                resolve();
+                return;
+            }
+            if (entry.isFile) {
+                entry.file(function (file) {
+                    if (isAcceptedImage(file)) {
+                        out.push(file);
+                    }
+                    resolve();
+                }, function () { resolve(); });
+            } else if (entry.isDirectory) {
+                readAllDirectoryEntries(entry.createReader()).then(function (entries) {
+                    let i = 0;
+                    const next = function () {
+                        if (i >= entries.length) {
+                            resolve();
+                            return;
+                        }
+                        collectFilesFromEntry(entries[i++], out).then(next);
+                    };
+                    next();
+                });
+            } else {
+                resolve();
+            }
+        });
+    };
+
+    // Gather image files from a drop, expanding any dropped folders.
+    const collectDroppedImageFiles = function (dataTransfer) {
+        return new Promise(function (resolve) {
+            const items = dataTransfer && dataTransfer.items;
+            // Capture entries synchronously — the items list is only valid during
+            // the drop event, though the entry objects stay readable afterwards.
+            const entries = [];
+            if (items && items.length && typeof items[0].webkitGetAsEntry === 'function') {
+                for (let i = 0; i < items.length; i++) {
+                    const entry = items[i].webkitGetAsEntry();
+                    if (entry) { entries.push(entry); }
+                }
+            }
+            if (entries.length) {
+                const out = [];
+                let i = 0;
+                const next = function () {
+                    if (i >= entries.length) {
+                        resolve(out);
+                        return;
+                    }
+                    collectFilesFromEntry(entries[i++], out).then(next);
+                };
+                next();
+            } else {
+                // Fallback: plain file list, filtered to accepted images.
+                const files = dataTransfer && dataTransfer.files ? Array.from(dataTransfer.files) : [];
+                resolve(files.filter(isAcceptedImage));
+            }
+        });
+    };
+
     if (dropzone) {
         ['dragenter', 'dragover'].forEach(function (eventName) {
             dropzone.addEventListener(eventName, function (event) {
@@ -2004,24 +2097,34 @@ const describeCoverageClass = function (code) {
         });
 
         dropzone.addEventListener('drop', function (event) {
-            const droppedFiles = event.dataTransfer && event.dataTransfer.files;
-            if (!droppedFiles || !droppedFiles.length) {
+            if (!event.dataTransfer) {
                 return;
             }
-
-            syncFiles(droppedFiles);
-
-            if (uploadInput) {
-                try {
-                    const transfer = new DataTransfer();
-                    Array.from(droppedFiles).forEach(function (file) {
-                        transfer.items.add(file);
-                    });
-                    uploadInput.files = transfer.files;
-                } catch (error) {
-                    // Fallback for environments that prevent assigning FileList directly.
+            // Expand dropped folders into their image files before loading.
+            collectDroppedImageFiles(event.dataTransfer).then(function (imageFiles) {
+                if (!imageFiles.length) {
+                    return;
                 }
-            }
+                // Stable, name-sorted order (folder traversal order is arbitrary).
+                imageFiles.sort(function (a, b) {
+                    return (a.name || '').localeCompare(b.name || '');
+                });
+
+                let finalList = imageFiles;
+                if (uploadInput) {
+                    try {
+                        const transfer = new DataTransfer();
+                        imageFiles.forEach(function (file) {
+                            transfer.items.add(file);
+                        });
+                        uploadInput.files = transfer.files;
+                        finalList = uploadInput.files;
+                    } catch (error) {
+                        // Fallback for environments that prevent assigning FileList directly.
+                    }
+                }
+                syncFiles(finalList);
+            });
         });
     }
 

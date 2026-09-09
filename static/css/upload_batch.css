@@ -441,6 +441,18 @@
     transition: background 150ms ease, opacity 150ms ease;
 }
 
+/* White PNG arrow (rendered reliably; the prev button reuses it flipped). */
+.image-nav-icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.image-nav-icon-prev {
+    transform: scaleX(-1);
+}
+
 .image-nav:hover {
     background: rgba(20, 74, 85, 0.95);
 }

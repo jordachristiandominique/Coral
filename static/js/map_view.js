@@ -305,7 +305,7 @@ class CoralSenseMap {
                     <span class="popup-value">${this.escapeHtml(batch.uploadedBy || 'N/A')}</span>
                 </div>
                 <div class="popup-item">
-                    <span class="popup-label">Surveyors:</span>
+                    <span class="popup-label">Survey by:</span>
                     <span class="popup-value">${this.escapeHtml(batch.surveyors || 'N/A')}</span>
                 </div>
                 ${coverageHtml}

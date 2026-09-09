@@ -231,7 +231,7 @@ const initializePublicDashboard = function () {
 
             const popupHtml = 
                 '<strong>' + escapeHtml(row.area) + '</strong><br>' +
-                'Surveyors: ' + formatSurveyorText(row.surveyors) + '<br>' +
+                'Survey by: ' + formatSurveyorText(row.surveyors) + '<br>' +
                 'Date: ' + row.date + '<br>' +
                 'Coverage: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '<br>' +
                 'Class: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode) +
@@ -715,7 +715,7 @@ const initializePublicDashboard = function () {
             tr.querySelector('button').addEventListener('click', function () {
                 window.alert(
                     'Area: ' + row.area + '\n' +
-                    'Surveyors: ' + formatSurveyorText(row.surveyors) + '\n' +
+                    'Survey by: ' + formatSurveyorText(row.surveyors) + '\n' +
                     'Date: ' + row.date + '\n' +
                     'Coverage: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '\n' +
                     'Class: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode)

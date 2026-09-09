@@ -162,7 +162,7 @@
 
                 <p class="batch-surveyors">
                     <i data-lucide="users"></i>
-                    <span>{{ batch.surveyor_names|default:"Surveyors" }}</span>
+                    <span>{{ batch.surveyor_names|default:"Survey by" }}</span>
                 </p>
                 <p class="batch-coverage">
                     {% with coverage=batch.avg_coverage|default_if_none:"--"|floatformat:0 %}
