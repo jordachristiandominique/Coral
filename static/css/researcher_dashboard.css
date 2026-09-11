@@ -529,6 +529,19 @@ body {
         display: flex;
     }
 
+    /* The active section is rendered with .is-open, whose base rule uses
+       `display: flex !important` to show the submenu inline. In collapsed mode
+       that pins the flyout open permanently, so override it (with !important to
+       win) — the flyout is then hover/focus-driven only. */
+    .sidebar-collapsed .sidebar-nav-dropdown.is-open .sidebar-nav-items {
+        display: none !important;
+    }
+
+    .sidebar-collapsed .sidebar-nav-dropdown.is-open:hover .sidebar-nav-items,
+    .sidebar-collapsed .sidebar-nav-dropdown.is-open:focus-within .sidebar-nav-items {
+        display: flex !important;
+    }
+
     /* After a sub-item is clicked, keep the flyout closed (until the pointer
        leaves and re-enters) so it never lingers over the page content. */
     .sidebar-collapsed .sidebar-nav-dropdown.flyout-dismissed .sidebar-nav-items {
