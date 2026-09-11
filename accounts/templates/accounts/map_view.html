@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Map View | CoralSense{% endblock %}
+{% block title %}Surveyed Sites | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/map_view.css' %}">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -43,25 +43,25 @@
             </a>
             <a href="{% url 'upload_batch' %}">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
             {% if user.is_admin %}
             <div class="sidebar-nav-dropdown">
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown" hidden>
-                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
-                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Data Repositories</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Data Repositories</span></a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
             <a href="{% url 'analysis_results' %}">
@@ -70,7 +70,7 @@
             </a>
             <a href="{% url 'map_view' %}" class="is-active">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -219,7 +219,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Custom Global Script (profile menu, logout modal) -->
-<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/custom.js' %}?v=4"></script>
 <!-- Map View Script -->
 <script>
     window.mapData = JSON.parse('{{ geojson_data|default:"{\"type\":\"FeatureCollection\",\"features\":[]}"|escapejs }}');

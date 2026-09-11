@@ -512,6 +512,14 @@ const initializeCoralSense = () => {
     sidebarDropdowns.forEach(function (toggle) {
         toggle.addEventListener('click', function (event) {
             event.preventDefault();
+            // When collapsed to the icon rail, dropdowns use the CSS hover flyout
+            // instead of the inline expand. Blur so the click doesn't leave the
+            // button focused (which would keep the flyout open via :focus-within
+            // after the cursor leaves).
+            if (document.documentElement.classList.contains('sidebar-collapsed')) {
+                toggle.blur();
+                return;
+            }
             const dropdown = toggle.closest('.sidebar-nav-dropdown');
             const isOpen = dropdown.classList.contains('is-open');
 
@@ -528,6 +536,79 @@ const initializeCoralSense = () => {
             }
         });
     });
+
+    // ===== Sidebar Collapse (icon-only rail) =====
+    (function () {
+        const sidebar = document.querySelector('.researcher-sidebar');
+        if (!sidebar) {
+            return;
+        }
+        // Idempotent — some pages load custom.js twice.
+        if (sidebar.querySelector('.sidebar-collapse-btn')) {
+            return;
+        }
+
+        const STORAGE_KEY = 'coralsense-sidebar-collapsed';
+        const root = document.documentElement;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sidebar-collapse-btn';
+        btn.innerHTML = '<span class="sidebar-collapse-icon" aria-hidden="true"></span>';
+        sidebar.insertBefore(btn, sidebar.firstChild);
+
+        // Native tooltips so labels are still discoverable in the icon-only state.
+        sidebar.querySelectorAll('.sidebar-nav > a, .sidebar-nav-toggle').forEach(function (item) {
+            const label = item.querySelector('span');
+            if (label && !item.title) {
+                item.title = label.textContent.trim();
+            }
+        });
+
+        const syncButton = function () {
+            const collapsed = root.classList.contains('sidebar-collapsed');
+            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        };
+        syncButton();
+
+        btn.addEventListener('click', function () {
+            const collapsed = root.classList.toggle('sidebar-collapsed');
+            if (collapsed) {
+                // Reset any inline-expanded dropdown so collapsed mode uses the
+                // hover flyout cleanly.
+                sidebar.querySelectorAll('.sidebar-nav-dropdown.is-open').forEach(function (d) {
+                    d.classList.remove('is-open');
+                    const t = d.querySelector('.sidebar-nav-toggle');
+                    if (t) { t.setAttribute('aria-expanded', 'false'); }
+                    const items = d.querySelector('.sidebar-nav-items');
+                    if (items) { items.setAttribute('hidden', ''); }
+                });
+            }
+            try {
+                localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+            } catch (e) { /* storage blocked — ignore */ }
+            syncButton();
+        });
+
+        // Collapsed hover-flyout dismissal: clicking a sub-item should close the
+        // flyout immediately (blur releases :focus-within; the transient class
+        // hides it so it never lingers over content during navigation). The class
+        // is cleared once the pointer leaves so the next hover reopens normally.
+        sidebar.querySelectorAll('.sidebar-nav-dropdown').forEach(function (dd) {
+            dd.querySelectorAll('.sidebar-nav-items a').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    dd.classList.add('flyout-dismissed');
+                    if (document.activeElement && document.activeElement.blur) {
+                        document.activeElement.blur();
+                    }
+                });
+            });
+            dd.addEventListener('mouseleave', function () {
+                dd.classList.remove('flyout-dismissed');
+            });
+        });
+    })();
 
     // ===== Profile Menu Dropdown =====
     const profileMenu = document.querySelector('[data-profile-menu]');

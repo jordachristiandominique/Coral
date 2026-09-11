@@ -430,7 +430,7 @@ const describeCoverageClass = function (code) {
 
         if (submitHint) {
             if (ready) {
-                submitHint.textContent = 'Image analysis complete! Review coverage data and click Upload to save the batch.';
+                submitHint.textContent = 'Image analysis complete! Review coverage data and click Upload to save the data repository.';
                 submitHint.style.color = '#2a8793';
             } else {
                 submitHint.textContent = 'Upload images and run AI analysis to detect coral coverage.';
@@ -2450,7 +2450,7 @@ const describeCoverageClass = function (code) {
             if (!isReadyToAnalyze()) {
                 event.preventDefault();
                 console.warn('Form submission blocked: AI analysis not complete for all images');
-                alert('Please complete AI analysis for all images before uploading the batch.');
+                alert('Please complete AI analysis for all images before uploading the data repository.');
                 updateSubmitState();
                 return;
             }

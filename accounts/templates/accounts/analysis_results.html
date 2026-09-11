@@ -4,7 +4,7 @@
 {% block title %}Analysis Results | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/analysis_results.css' %}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
@@ -42,25 +42,25 @@
             </a>
             <a href="{% url 'upload_batch' %}">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
             {% if user.is_admin %}
             <div class="sidebar-nav-dropdown">
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown" hidden>
-                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
-                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Data Repositories</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Data Repositories</span></a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
             <a href="{% url 'analysis_results' %}" class="is-active">
@@ -69,7 +69,7 @@
             </a>
             <a href="{% url 'map_view' %}">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -98,8 +98,8 @@
         <section class="surface-card analysis-page-head">
             <div>
                 <p class="page-kicker">Analysis Results</p>
-                <h1>Batch Insights</h1>
-                <p class="page-sub">Showing {{ total_batches }} batches · {{ total_images }} images</p>
+                <h1>Data Repository Insights</h1>
+                <p class="page-sub">Showing {{ total_batches }} data repositories · {{ total_images }} images</p>
             </div>
             <div class="analysis-export-actions">
                 <a href="{% url 'analysis_results_export_csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}"
@@ -161,7 +161,7 @@
         <section class="analysis-section" aria-labelledby="overview-title">
             <div class="section-header">
                 <h2 id="overview-title">Overview</h2>
-                <p class="section-description">General batch metrics and coverage classification</p>
+                <p class="section-description">General data repository metrics and coverage classification</p>
             </div>
             <div class="analysis-charts" aria-label="Overview charts">
             <article class="surface-card chart-card compact-chart">
@@ -229,7 +229,7 @@
                     <thead>
                         <tr>
                             <th>Month</th>
-                            <th>Batches</th>
+                            <th>Data Repositories</th>
                             <th>Images</th>
                             <th>Avg Coverage</th>
                             <th>Hard Coral %</th>
@@ -283,7 +283,7 @@
             <div class="surface-card analysis-map-wrap" aria-label="Survey locations map">
             <div class="map-head">
                 <h2>Survey Locations</h2>
-                <span class="map-sub">Geographic distribution of batches</span>
+                <span class="map-sub">Geographic distribution of data repositories</span>
             </div>
             <div id="analysisMap" class="analysis-map"></div>
             </div>
@@ -297,7 +297,7 @@
             <div class="surface-card analysis-table-wrap" aria-label="Analysis results table">
             <div class="table-head">
                 <h2>Results</h2>
-                <span class="table-meta">{{ total_batches }} batches</span>
+                <span class="table-meta">{{ total_batches }} data repositories</span>
             </div>
             {% include 'accounts/partials/coverage_class_key.html' %}
 
@@ -305,7 +305,7 @@
                 <table class="analysis-table">
                     <thead>
                         <tr>
-                            <th>Batch</th>
+                            <th>Data Repository</th>
                             <th>Date</th>
                             <th>Area</th>
                             <th>Survey By</th>
@@ -350,7 +350,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="table-empty">No batches match the selected filters.</td>
+                            <td colspan="8" class="table-empty">No data repositories match the selected filters.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -382,7 +382,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/researcher_dashboard.js' %}"></script>
 <script src="{% static 'js/analysis_results.js' %}"></script>
 {% endblock %}

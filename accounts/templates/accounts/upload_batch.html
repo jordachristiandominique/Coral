@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Upload New Batch | CoralSense{% endblock %}
+{% block title %}Upload New Data Repository | CoralSense{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=12">
 {% endblock %}
 
@@ -43,25 +43,25 @@
             </a>
             <a href="{% url 'upload_batch' %}" class="is-active">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
             {% if user.is_admin %}
             <div class="sidebar-nav-dropdown">
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown" hidden>
-                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
-                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Data Repositories</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Data Repositories</span></a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
             <a href="{% url 'analysis_results' %}">
@@ -70,7 +70,7 @@
             </a>
             <a href="{% url 'map_view' %}">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -98,23 +98,23 @@
     <main class="researcher-main upload-page-main">
         <section class="surface-card upload-page-header">
             <p class="upload-kicker">Image Ingestion Workflow</p>
-            <h1>Upload New Image Batch</h1>
+            <h1>Upload New Data Repository</h1>
             <p>Add underwater photos for coral analysis</p>
         </section>
 
         <form id="upload-batch-form" class="upload-batch-form" method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
-            <section class="surface-card upload-step-card" aria-label="Step 1 batch information">
+            <section class="surface-card upload-step-card" aria-label="Step 1 data repository information">
                 <div class="step-title-row">
                     <span class="step-pill">Step 1</span>
-                    <h2>Batch Information</h2>
+                    <h2>Data Repository Information</h2>
                 </div>
 
                 <div class="upload-form-grid">
                     <label class="field-floating">
                         <input type="text" id="batch-name" name="batch_name" placeholder=" " value="">
-                        <span>Batch Name</span>
+                        <span>Data Repository Name</span>
                     </label>
 
                     <label class="field-floating">
@@ -342,15 +342,15 @@
                 </div>
 
                 <div class="summary-box">
-                    <p><strong>Batch:</strong> <span id="summary-batch">Not set</span></p>
+                    <p><strong>Data Repository:</strong> <span id="summary-batch">Not set</span></p>
                     <p><strong>Survey by:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
-                    <p><strong>Batch Coral Coverage:</strong> <span id="summary-coverage">--</span></p>
-                    <p><strong>Batch Reef Health Class:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
+                    <p><strong>Data Repository Coral Coverage:</strong> <span id="summary-coverage">--</span></p>
+                    <p><strong>Data Repository Reef Health Class:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
                     <p><strong>AI Confidence:</strong> <span id="summary-confidence">N/A</span></p>
                 </div>
-                <p class="summary-box-note">Batch coverage pools every classified point across all analyzed images: (Hard&nbsp;Coral&nbsp;+&nbsp;Soft&nbsp;Coral&nbsp;points)&nbsp;&divide;&nbsp;total&nbsp;points&nbsp;&times;&nbsp;100.</p>
+                <p class="summary-box-note">Data repository coverage pools every classified point across all analyzed images: (Hard&nbsp;Coral&nbsp;+&nbsp;Soft&nbsp;Coral&nbsp;points)&nbsp;&divide;&nbsp;total&nbsp;points&nbsp;&times;&nbsp;100.</p>
 
                 <p class="submit-hint" id="submit-hint">Upload at least one image. AI will auto-analyze. Review and approve results.
                 </p>
@@ -446,7 +446,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=10"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=13"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

@@ -693,7 +693,7 @@ def analysis_results_export_csv(request):
     response['Content-Disposition'] = 'attachment; filename="analysis_results.csv"'
     writer = csv.writer(response)
     writer.writerow([
-        'Batch Name', 'Survey Date', 'Area', 'Survey By', 'Images', 'Avg Coverage', 'Class'
+        'Data Repository Name', 'Survey Date', 'Area', 'Survey By', 'Images', 'Avg Coverage', 'Class'
     ])
     for row in rows:
         writer.writerow([
@@ -742,7 +742,7 @@ def analysis_results_export_pdf(request):
 
     y = height - 90
     pdf.setFont('Helvetica-Bold', 9)
-    pdf.drawString(40, y, 'Batch')
+    pdf.drawString(40, y, 'Data Repository')
     pdf.drawString(200, y, 'Date')
     pdf.drawString(270, y, 'Area')
     pdf.drawString(380, y, 'Coverage')
@@ -1011,7 +1011,7 @@ def upload_batch(request):
 
         errors = []
         if not batch_name:
-            errors.append('Batch name is required.')
+            errors.append('Data repository name is required.')
         if not survey_date:
             errors.append('Survey date is required.')
         if not surveyor_names:
@@ -1103,7 +1103,7 @@ def upload_batch(request):
                     coverage_class=coverage_class,
                 )
 
-        messages.success(request, 'Batch uploaded successfully.')
+        messages.success(request, 'Data repository uploaded successfully.')
         return redirect('batches')
 
     context = {
@@ -1183,7 +1183,7 @@ def all_batches(request):
     
     # Only admin users can view all batches
     if not request.user.is_admin():
-        messages.error(request, 'You do not have permission to view all batches.')
+        messages.error(request, 'You do not have permission to view all data repositories.')
         return redirect('batches')
     
     batches_qs = ImageBatch.objects.all()
@@ -1399,7 +1399,7 @@ def batch_detail(request, batch_id):
         errors = []
 
         if not batch_name:
-            errors.append('Batch name is required.')
+            errors.append('Data repository name is required.')
         if not survey_date:
             errors.append('Survey date is required.')
         if not area_name:
@@ -1443,7 +1443,7 @@ def batch_detail(request, batch_id):
                         image.description = desc
                         image.save(update_fields=['description'])
 
-            messages.success(request, 'Batch updated successfully.')
+            messages.success(request, 'Data repository updated successfully.')
             return redirect('batch_detail', batch_id=batch.id)
 
     # Calculate Coral Coverage (Hard Coral + Soft Coral only)

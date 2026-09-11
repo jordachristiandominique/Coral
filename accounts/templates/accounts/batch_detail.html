@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Batch Details | CoralSense{% endblock %}
+{% block title %}Data Repository Details | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=5">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -43,25 +43,25 @@
             </a>
             <a href="{% url 'upload_batch' %}">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
             {% if user.is_admin %}
             <div class="sidebar-nav-dropdown">
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown" hidden>
-                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
-                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Data Repositories</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Data Repositories</span></a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}" class="is-active">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
             <a href="{% url 'analysis_results' %}">
@@ -70,7 +70,7 @@
             </a>
             <a href="{% url 'map_view' %}">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -99,12 +99,12 @@
         <form class="batch-edit-form" method="post">
             {% csrf_token %}
             <section class="surface-card batch-detail-header">
-                <p class="batch-detail-kicker">Batch Overview</p>
+                <p class="batch-detail-kicker">Data Repository Overview</p>
 
                 <!-- Editable survey metadata -->
                 <div class="batch-fields">
                     <label class="field field-full">
-                        <span class="field-label">Batch Name</span>
+                        <span class="field-label">Data Repository Name</span>
                         <input class="field-input field-title" type="text" name="name" value="{{ batch.name }}" required>
                     </label>
                     <div class="field-row">
@@ -418,7 +418,7 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/batch_detail.js' %}?v=3"></script>
 <script src="{% static 'js/batch_visualization.js' %}?v=4"></script>
 {% endblock %}

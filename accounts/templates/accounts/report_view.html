@@ -4,7 +4,7 @@
 {% block title %}{{ report.title }} | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <style>
     .report-view-container {
         display: flex;
@@ -349,5 +349,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/lucide@latest"></script><script src="{% static 'js/custom.js' %}"></script><script src="{% static 'js/reports.js' %}"></script>
+<script src="https://unpkg.com/lucide@latest"></script><script src="{% static 'js/custom.js' %}?v=4"></script><script src="{% static 'js/reports.js' %}"></script>
 {% endblock %}

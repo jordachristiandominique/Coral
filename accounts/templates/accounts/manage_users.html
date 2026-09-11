@@ -4,7 +4,7 @@
 {% block title %}Manage Users | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/manage_users.css' %}">
 {% endblock %}
 
@@ -41,7 +41,7 @@
             </a>
             <a href="{% url 'upload_batch' %}">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
 
             <!-- Batches Dropdown (Admin only) or Simple Link (Researcher) -->
@@ -50,18 +50,18 @@
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown" hidden>
-                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
-                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Data Repositories</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Data Repositories</span></a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
 
@@ -71,7 +71,7 @@
             </a>
             <a href="{% url 'map_view' %}">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -140,7 +140,7 @@
                             <th scope="col">Email</th>
                             <th scope="col">Role</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Batches</th>
+                            <th scope="col">Data Repositories</th>
                             <th scope="col">Reports</th>
                             <th scope="col">Joined</th>
                             <th scope="col">Actions</th>
@@ -164,7 +164,7 @@
                                     {% if u.is_active %}Active{% else %}Inactive{% endif %}
                                 </span>
                             </td>
-                            <td data-label="Batches" class="text-center">
+                            <td data-label="Data Repositories" class="text-center">
                                 <span class="stat-number">{{ u.batch_count }}</span>
                             </td>
                             <td data-label="Reports" class="text-center">
@@ -261,6 +261,6 @@
 </div>
 
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/manage_users.js' %}"></script>
 {% endblock %}

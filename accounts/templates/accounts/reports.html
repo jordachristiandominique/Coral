@@ -4,7 +4,7 @@
 {% block title %}Reports | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}">
 {% endblock %}
 
@@ -41,25 +41,25 @@
             </a>
             <a href="{% url 'upload_batch' %}">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
             {% if user.is_admin %}
             <div class="sidebar-nav-dropdown">
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown" hidden>
-                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Batches</span></a>
-                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Batches</span></a>
+                    <a href="{% url 'batches' %}" class="sidebar-nav-subitem"><span>My Data Repositories</span></a>
+                    <a href="{% url 'all_batches' %}" class="sidebar-nav-subitem"><span>All Data Repositories</span></a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
             <a href="{% url 'analysis_results' %}">
@@ -68,7 +68,7 @@
             </a>
             <a href="{% url 'map_view' %}">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}" class="is-active">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -128,8 +128,8 @@
                             <label class="report-type-option">
                                 <input type="radio" name="report_type" value="batch-specific" data-report-type>
                                 <div class="option-content">
-                                    <p class="option-title">Batch-Specific Report</p>
-                                    <p class="option-desc">Detailed analysis of a single survey batch</p>
+                                    <p class="option-title">Single Data Repository Report</p>
+                                    <p class="option-desc">Detailed analysis of a single data repository</p>
                                     <p class="option-use">Best for: Field notes, individual site analysis</p>
                                 </div>
                             </label>
@@ -204,9 +204,9 @@
                                 <div class="checkbox-group">
                                     <label class="checkbox-option">
                                         <input type="checkbox" name="include_all" value="all" checked
-                                            data-include-option aria-label="Include all batches">
-                                        <span>All my batches</span>
-                                        <span class="option-meta">({{ total_surveys }} batches)</span>
+                                            data-include-option aria-label="Include all data repositories">
+                                        <span>All my data repositories</span>
+                                        <span class="option-meta">({{ total_surveys }} data repositories)</span>
                                     </label>
                                     <label class="checkbox-option">
                                         <input type="checkbox" name="specific_locations" value="locations"
@@ -225,7 +225,7 @@
                             <div class="data-summary">
                                 <p class="summary-text">
                                     <strong>Show:</strong>
-                                    <span id="summary-batches">{{ total_surveys }}</span> batches,
+                                    <span id="summary-batches">{{ total_surveys }}</span> data repositories,
                                     <span id="summary-images">{{ total_images }}</span> images
                                 </p>
                             </div>
@@ -235,17 +235,17 @@
                         <div class="data-selection-form" id="data-batch-specific" style="display: none;">
                             <!-- Search Batches -->
                             <div class="form-group">
-                                <label for="batch-search" class="form-label">Search Batches</label>
+                                <label for="batch-search" class="form-label">Search Data Repositories</label>
                                 <div class="search-input-wrapper">
                                     <i data-lucide="search" aria-hidden="true"></i>
                                     <input type="text" id="batch-search" name="batch_search" class="form-control"
-                                        placeholder="Search batches..." aria-label="Search batches">
+                                        placeholder="Search data repositories..." aria-label="Search data repositories">
                                 </div>
                             </div>
 
                             <!-- Recent Batches Selection -->
                             <div class="form-group">
-                                <label class="form-label">Select Batch</label>
+                                <label class="form-label">Select Data Repository</label>
                                 <div class="batch-list">
                                     {% for batch in recent_batches %}
                                     {% if batch.image_count > 0 %}
@@ -269,15 +269,15 @@
                                     </label>
                                     {% endif %}
                                     {% empty %}
-                                    <p style="color: #999; font-size: 0.9rem;">No batches available. <a
-                                            href="{% url 'upload_batch' %}">Upload your first batch →</a></p>
+                                    <p style="color: #999; font-size: 0.9rem;">No data repositories available. <a
+                                            href="{% url 'upload_batch' %}">Upload your first data repository →</a></p>
                                     {% endfor %}
                                 </div>
                             </div>
 
                             <!-- View All Batches Link -->
                             <div class="form-group">
-                                <a href="{% url 'batches' %}" class="view-all-link">View All Batches →</a>
+                                <a href="{% url 'batches' %}" class="view-all-link">View All Data Repositories →</a>
                             </div>
                         </div>
 
@@ -686,7 +686,7 @@
                                     Data Coverage:
                                 </span>
                                 <span class="review-value" id="review-coverage">
-                                    <span id="review-batches">0</span> batches, <span id="review-images">0</span> images
+                                    <span id="review-batches">0</span> data repositories, <span id="review-images">0</span> images
                                 </span>
                             </div>
 
@@ -760,7 +760,7 @@
                         <select id="filter-type" class="filter-select" aria-label="Filter by report type">
                             <option value="">All Types</option>
                             <option value="summary">Summary</option>
-                            <option value="batch-specific">Batch-Specific</option>
+                            <option value="batch-specific">Single Data Repository</option>
                             <option value="trend-analysis">Trend Analysis</option>
                             <option value="location-comparison">Location Comparison</option>
                             <option value="biodiversity">Biodiversity</option>
@@ -901,9 +901,9 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Custom Global Script (profile menu, logout modal) -->
-<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/custom.js' %}?v=4"></script>
 <!-- Reports Main Script (includes profile menu, logout modal, PDF export) -->
 <script src="{% static 'js/reports.js' %}"></script>
 <!-- Reports Builder Script (handles report type and data selection) -->
-<script src="{% static 'js/reports_builder.js' %}"></script>
+<script src="{% static 'js/reports_builder.js' %}?v=2"></script>
 {% endblock %}

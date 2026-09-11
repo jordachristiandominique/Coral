@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="report-summary">
                             <h3 style="margin-top: 0; color: #1c5f6d;">Report Summary</h3>
                             <ul style="font-size: 13px; line-height: 1.8; color: #555;">
-                                <li><strong>${totalBatches} survey batches</strong> analyzed</li>
+                                <li><strong>${totalBatches} survey data repositories</strong> analyzed</li>
                                 <li><strong>${totalImages} images</strong> processed</li>
                                 <li>Coverage distribution with Class A/B/C breakdown</li>
                                 <li>Temporal trends and geographic patterns</li>
@@ -330,14 +330,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 `
             },
             'batch-specific': {
-                title: 'Batch-Specific Report',
+                title: 'Single Data Repository Report',
                 coverContent: `
                     <div class="report-mockup">
                         <div class="report-cover">
                             <div class="cover-top">
                                 
                                 <h1 style="margin: 20px 0; font-size: 30px; color: #1c5f6d;">${reportTitle}</h1>
-                                <p style="margin: 20px 0; font-size: 14px; color: #666;">Detailed Batch Analysis Report</p>
+                                <p style="margin: 20px 0; font-size: 14px; color: #666;">Detailed Data Repository Analysis Report</p>
                             </div>
                             <div class="cover-middle">
                                 <div style="width: 60px; height: 60px; background: #2a8793; border-radius: 8px; margin: 40px auto;"></div>
@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="report-summary">
                             <h3 style="margin-top: 0; color: #1c5f6d;">Report Contents</h3>
                             <ul style="font-size: 13px; line-height: 1.8; color: #555;">
-                                <li>Batch metadata and survey details</li>
+                                <li>Data repository metadata and survey details</li>
                                 <li>Individual image analysis results</li>
                                 <li>Coverage percentage and biodiversity class</li>
                                 <li>Location map with survey marker</li>
@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="report-summary">
                             <h3 style="margin-top: 0; color: #1c5f6d;">Report Contents</h3>
                             <ul style="font-size: 13px; line-height: 1.8; color: #555;">
-                                <li>Based on ${totalBatches} survey batches</li>
+                                <li>Based on ${totalBatches} survey data repositories</li>
                                 <li>Includes ${totalImages} processed images</li>
                                 <li>Custom section selection from available modules</li>
                                 <li>Personalized analysis based on your needs</li>
@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Get batch/image counts
         const batchCount = document.getElementById('summary-batches')?.textContent || '0';
         const imageCount = document.getElementById('summary-images')?.textContent || '0';
-        const coverage = `${batchCount} batches, ${imageCount} images`;
+        const coverage = `${batchCount} data repositories, ${imageCount} images`;
 
         // Get export format label
         const formatLabel = exportFormatRadio.closest('.format-option')?.querySelector('.format-title')?.textContent || exportFormatRadio.value;

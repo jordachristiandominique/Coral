@@ -13,6 +13,15 @@
         rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     {% block extra_css %}{% endblock %}
+    <script>
+        // Apply the saved sidebar-collapsed state before the body paints so the
+        // rail doesn't flash from expanded to collapsed on load.
+        try {
+            if (localStorage.getItem('coralsense-sidebar-collapsed') === '1') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        } catch (e) { /* storage blocked — ignore */ }
+    </script>
 </head>
 
 <body>
@@ -46,7 +55,7 @@
     </footer>
 
     <!-- JavaScript -->
-    <script src="{% static 'js/custom.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}?v=4"></script>
     {% block extra_js %}{% endblock %}
 </body>
 

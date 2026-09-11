@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}My Batches | CoralSense{% endblock %}
+{% block title %}My Data Repositories | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=7">
 <link rel="stylesheet" href="{% static 'css/batches.css' %}">
 {% endblock %}
 
@@ -41,7 +41,7 @@
             </a>
             <a href="{% url 'upload_batch' %}">
                 <img src="{% static 'icons/upload.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Upload New Batch</span>
+                <span>Upload Repository</span>
             </a>
 
             <!-- Batches Dropdown (Admin only) or Simple Link (Researcher) -->
@@ -50,24 +50,24 @@
                 <button class="sidebar-nav-toggle" data-toggle="batches-dropdown" aria-haspopup="true"
                     aria-expanded="true">
                     <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                    <span>Batches</span>
+                    <span>Data Repositories</span>
                     <img src="{% static 'images/down.png' %}" alt="" aria-hidden="true" class="sidebar-dropdown-arrow">
                 </button>
                 <div class="sidebar-nav-items" id="batches-dropdown">
                     <a href="{% url 'batches' %}"
                         class="sidebar-nav-subitem {% if batch_type == 'my_batches' or not batch_type %}is-active{% endif %}">
-                        <span>My Batches</span>
+                        <span>My Data Repositories</span>
                     </a>
                     <a href="{% url 'all_batches' %}"
                         class="sidebar-nav-subitem {% if batch_type == 'all_batches' %}is-active{% endif %}">
-                        <span>All Batches</span>
+                        <span>All Data Repositories</span>
                     </a>
                 </div>
             </div>
             {% else %}
             <a href="{% url 'batches' %}">
                 <img src="{% static 'icons/batches.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Batches</span>
+                <span>Data Repositories</span>
             </a>
             {% endif %}
 
@@ -77,7 +77,7 @@
             </a>
             <a href="{% url 'map_view' %}">
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Map View</span>
+                <span>Surveyed Sites</span>
             </a>
             <a href="{% url 'reports' %}">
                 <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
@@ -107,13 +107,13 @@
 
     <main class="researcher-main batches-main">
         <section class="surface-card batches-page-head" aria-label="My image batches header">
-            <h1><i data-lucide="folder"></i>My Image Batches</h1>
+            <h1><i data-lucide="folder"></i>My Data Repositories</h1>
         </section>
 
         <section class="surface-card batches-filter-bar" aria-label="Batch filters">
             <label class="batch-filter-search" for="batch-search">
                 <i data-lucide="search" aria-hidden="true"></i>
-                <input id="batch-search" type="text" placeholder="Search batches...">
+                <input id="batch-search" type="text" placeholder="Search data repositories...">
             </label>
 
             <label class="batch-filter-select" for="batch-date-filter">
@@ -182,10 +182,10 @@
             {% empty %}
             <article class="surface-card batch-card">
                 <header class="batch-card-head">
-                    <h2>No batches yet</h2>
+                    <h2>No data repositories yet</h2>
                 </header>
                 <p class="batch-meta">
-                    Upload your first image batch to see it here.
+                    Upload your first data repository to see it here.
                 </p>
             </article>
             {% endfor %}
@@ -209,6 +209,6 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/custom.js' %}"></script>
+<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/batches.js' %}"></script>
 {% endblock %}
