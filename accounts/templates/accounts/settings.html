@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -204,6 +204,46 @@
                         <span>Remove current photo</span>
                     </button>
                 </form>
+                {% endif %}
+            </section>
+
+            <!-- Security / Change Password -->
+            <section class="surface-card settings-card settings-card-full" aria-label="Security">
+                <h2>Security</h2>
+                <p class="settings-card-sub">Change your account password.</p>
+
+                {% if profile_user.has_usable_password %}
+                <form method="post" class="settings-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="password">
+
+                    <label class="settings-field">
+                        <span class="settings-label">Current Password</span>
+                        <input class="settings-input" type="password" name="old_password"
+                            autocomplete="current-password" required>
+                    </label>
+
+                    <div class="settings-field-row">
+                        <label class="settings-field">
+                            <span class="settings-label">New Password</span>
+                            <input class="settings-input" type="password" name="new_password1"
+                                autocomplete="new-password" required>
+                        </label>
+                        <label class="settings-field">
+                            <span class="settings-label">Confirm New Password</span>
+                            <input class="settings-input" type="password" name="new_password2"
+                                autocomplete="new-password" required>
+                        </label>
+                    </div>
+
+                    <span class="settings-hint">Use at least 8 characters; avoid common passwords.</span>
+
+                    <div class="settings-actions">
+                        <button type="submit" class="primary-btn">Update Password</button>
+                    </div>
+                </form>
+                {% else %}
+                <p class="settings-hint">You signed in with Google, so your password is managed there.</p>
                 {% endif %}
             </section>
         </div>

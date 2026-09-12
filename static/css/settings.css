@@ -24,6 +24,11 @@
     align-items: start;
 }
 
+/* Cards that should span the full row (e.g. the Security / password card). */
+.settings-card-full {
+    grid-column: 1 / -1;
+}
+
 .settings-card h2 {
     margin: 0 0 4px;
     font-size: 17px;

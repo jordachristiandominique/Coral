@@ -5,7 +5,8 @@ from datetime import date
 from io import BytesIO
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
@@ -852,6 +853,25 @@ def account_settings(request):
                 user.profile_photo = None
                 user.save(update_fields=['profile_photo', 'updated_at'])
                 messages.success(request, 'Profile photo removed.')
+
+        elif action == 'password':
+            # Change the signed-in user's password. Google-only accounts have no
+            # usable password and don't see the form, so guard against it.
+            if not user.has_usable_password():
+                messages.error(request, 'Your password is managed by your Google sign-in.')
+            else:
+                form = PasswordChangeForm(user, request.POST)
+                if form.is_valid():
+                    form.save()
+                    # Keep the current session valid so the user stays logged in.
+                    update_session_auth_hash(request, form.user)
+                    messages.success(request, 'Password updated.')
+                else:
+                    # Surface each validation error (wrong current password,
+                    # mismatch, too short/common) as a toast.
+                    for errors in form.errors.values():
+                        for error in errors:
+                            messages.error(request, error)
 
         return redirect('account_settings')
 
