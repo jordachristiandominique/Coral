@@ -438,9 +438,11 @@ body {
         background: rgba(28, 95, 109, 0.10);
     }
 
-    /* Shrink the grid column to a rail. */
+    /* Shrink the grid column to a rail. !important so it wins over page-specific
+       shell overrides (e.g. accept_researcher.css hard-codes 240px at the same
+       specificity but loads later). */
     .sidebar-collapsed .researcher-shell {
-        grid-template-columns: 68px minmax(0, 1fr);
+        grid-template-columns: 68px minmax(0, 1fr) !important;
     }
 
     .sidebar-collapsed .researcher-sidebar {
