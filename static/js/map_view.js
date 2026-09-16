@@ -280,7 +280,7 @@ class CoralSenseMap {
         const breakdown = batch.classBreakdown || {};
         const donutChartHtml = Object.entries(breakdown).length > 0
             ? `<div class="popup-breakdown" style="margin-top: 8px; border-top: 1px solid #e0e0e0; padding-top: 8px;">
-                <div style="font-weight: 600; font-size: 12px; color: #333; margin-bottom: 4px; text-align: center;">Class Distribution</div>
+                <div style="font-weight: 600; font-size: 12px; color: #333; margin-bottom: 4px; text-align: center;">Benthic Substrate Composition</div>
                 ${this.createDonutChart(breakdown)}
             </div>`
             : '';

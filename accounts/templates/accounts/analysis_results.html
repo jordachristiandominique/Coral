@@ -184,23 +184,16 @@
 
         <section class="analysis-section" aria-labelledby="composition-title">
             <div class="section-header">
-                <h2 id="composition-title">Coral Composition</h2>
-                <p class="section-description">Detailed breakdown of all 7 coral classes and hard/soft coral distribution</p>
+                <h2 id="composition-title">Benthic Substrate Composition</h2>
+                <p class="section-description">Detailed breakdown of all 7 benthic substrate classes</p>
             </div>
-            <div class="analysis-charts" aria-label="Coral composition charts">
-            <article class="surface-card chart-card compact-chart">
+            <div class="analysis-charts" aria-label="Benthic substrate composition chart">
+            <article class="surface-card chart-card compact-chart" style="grid-column: 1 / -1;">
                 <div class="card-header">
-                    <h2>Coral Class Breakdown</h2>
-                    <span class="chart-sub">All 7 classes</span>
+                    <h2>Benthic Substrate Composition</h2>
+                    <span class="chart-sub">All 7 benthic substrate classes</span>
                 </div>
                 <canvas id="analysisCoralClassChart" height="140"></canvas>
-            </article>
-            <article class="surface-card chart-card compact-chart">
-                <div class="card-header">
-                    <h2>Hard vs Soft Coral</h2>
-                    <span class="chart-sub">Average coverage comparison</span>
-                </div>
-                <canvas id="analysisHardSoftChart" height="140"></canvas>
             </article>
             </div>
         </section>
@@ -209,15 +202,6 @@
             <div class="section-header">
                 <h2 id="temporal-title">Temporal Analysis</h2>
                 <p class="section-description">Trends and patterns over time across all surveyed periods</p>
-            </div>
-            <div class="analysis-charts" aria-label="Coral type trend">
-            <article class="surface-card chart-card compact-chart" style="grid-column: 1 / -1;">
-                <div class="card-header">
-                    <h2>Coral Type Trend</h2>
-                    <span class="chart-sub">Hard vs Soft Coral over time</span>
-                </div>
-                <canvas id="analysisCoralTrendChart" height="140"></canvas>
-            </article>
             </div>
 
             <div class="surface-card analysis-monthly-stats" aria-label="Monthly statistics">
@@ -389,5 +373,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/researcher_dashboard.js' %}"></script>
-<script src="{% static 'js/analysis_results.js' %}?v=2"></script>
+<script src="{% static 'js/analysis_results.js' %}?v=3"></script>
 {% endblock %}

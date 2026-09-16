@@ -172,7 +172,7 @@ const initializePublicDashboard = function () {
         }
 
         let html = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px;">';
-        html += '<strong style="display: block; margin-bottom: 8px;">Class Distribution:</strong>';
+        html += '<strong style="display: block; margin-bottom: 8px;">Benthic Substrate Composition:</strong>';
 
         const classOrder = CLASS_ORDER;
         const classColors = CLASS_COLORS;

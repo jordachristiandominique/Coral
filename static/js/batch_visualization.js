@@ -370,7 +370,7 @@ function renderClassLegend(distribution) {
     const legendElement = document.getElementById('classLegend');
     if (!legendElement) return;
 
-    let legendHTML = '<div style="font-weight: bold; margin-bottom: 0.75rem;">Class Distribution</div>';
+    let legendHTML = '<div style="font-weight: bold; margin-bottom: 0.75rem;">Benthic Substrate Composition</div>';
 
     Object.entries(CORAL_CLASSES).forEach(([className, classData]) => {
         const count = distribution[className] || 0;
