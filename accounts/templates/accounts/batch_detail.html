@@ -4,7 +4,7 @@
 {% block title %}Data Repository Details | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
 <link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=5">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -140,34 +140,34 @@
                         <span class="result-value">{{ images|length }}</span>
                     </div>
                     <div class="result-stat">
-                        <span class="result-label">Coral Coverage</span>
+                        <span class="result-label">Hard Coral Cover (HCC)</span>
                         <span class="result-value" id="batchCoverageValue">{{ avg_coverage|default_if_none:"--"|floatformat:0 }}%</span>
                     </div>
                     <div class="result-stat result-stat-class">
-                        <span class="result-label">Reef Health Class</span>
+                        <span class="result-label">HCC Category</span>
                         <span class="batch-class-badge class-{{ coverage_class|default:" pending"|lower }}" id="batchCoverageClassBadge">
-                            Class {{ coverage_class|default:"Pending" }}
+                            Category {{ coverage_class|default:"Pending" }}
                         </span>
                         <span class="class-meaning" id="batchCoverageClassMeaning">
-                            {% if coverage_class == 'A' %}High coral coverage
-                            {% elif coverage_class == 'B' %}Moderate coral coverage
-                            {% elif coverage_class == 'C' %}Low coral coverage
+                            {% if coverage_class == 'A' %}HCC more than 44%
+                            {% elif coverage_class == 'B' %}HCC more than 33% up to 44%
+                            {% elif coverage_class == 'C' %}HCC more than 22% up to 33%
+                            {% elif coverage_class == 'D' %}HCC 0-22%
                             {% else %}Awaiting analysis{% endif %}
                         </span>
                     </div>
                 </div>
 
                 <div class="coverage-computation" aria-label="Coverage computation">
-                    <span class="coverage-computation-label">How coral coverage is computed &mdash; CPCE point-intercept method</span>
+                    <span class="coverage-computation-label">How Hard Coral Cover is computed &mdash; CPCE point-intercept method</span>
                     <div class="coverage-formula">
-                        Coral Coverage = (Hard Coral + Soft Coral points) &divide; Total points &times; 100
+                        Hard Coral Cover (HCC) = Hard Coral points &divide; Total points surveyed &times; 100
                     </div>
                     {% if batch_coverage.total %}
                     <div class="coverage-substitution">
-                        = ({{ batch_coverage.hard }} Hard + {{ batch_coverage.soft }} Soft) &divide; {{ batch_coverage.total }} points &times; 100
-                        = <strong>{{ batch_coverage.coral }} &divide; {{ batch_coverage.total }} &times; 100</strong>
+                        = {{ batch_coverage.hard }} Hard Coral &divide; {{ batch_coverage.total }} points &times; 100
                         = <strong class="coverage-result">{{ batch_coverage.percent }}%</strong>
-                        {% if batch_coverage.coverage_class %}&rarr; Class {{ batch_coverage.coverage_class }}{% endif %}
+                        {% if batch_coverage.coverage_class %}&rarr; Category {{ batch_coverage.coverage_class }}{% endif %}
                     </div>
                     {% else %}
                     <div class="coverage-substitution">No classified points yet.</div>
@@ -208,76 +208,12 @@
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="coralCoveragePercentValue" style="color: #2a8793;">0%</div>
-                            <div class="stat-label">Coral Coverage</div>
+                            <div class="stat-label">Hard Coral Cover</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="coverageClassValue">--</div>
-                            <div class="stat-label">Coverage Class</div>
+                            <div class="stat-label">HCC Category</div>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Coral Breakdown Section -->
-            <section class="visualization-section">
-                <!-- Hard Coral & Soft Coral Stats -->
-                <div class="viz-card">
-                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Coral Type Breakdown</h3>
-                    <div class="stats-grid coral-stats-grid">
-                        <div class="stat-box coral-tile coral-tile-hc">
-                            <div class="stat-value" id="hardCoralPoints">0</div>
-                            <div class="stat-label">Hard Coral Points</div>
-                            <div class="stat-subnote"><strong id="hardCoralPercent">0%</strong> of total</div>
-                        </div>
-                        <div class="stat-box coral-tile coral-tile-sc">
-                            <div class="stat-value" id="softCoralPoints">0</div>
-                            <div class="stat-label">Soft Coral Points</div>
-                            <div class="stat-subnote"><strong id="softCoralPercent">0%</strong> of total</div>
-                        </div>
-                        <div class="stat-box coral-tile coral-tile-total">
-                            <div class="stat-value" id="totalCoralPoints">0</div>
-                            <div class="stat-label">Total Coral Points</div>
-                            <div class="stat-subnote"><strong id="totalCoralPercent">0%</strong> of all</div>
-                        </div>
-                    </div>
-                    <div class="coral-ratio-panel">
-                        <div class="coral-ratio-title">HC vs SC Ratio</div>
-                        <div class="coral-ratio-bar">
-                            <div id="hcBarSegment" class="coral-ratio-seg coral-ratio-seg-hc" style="flex: 0;"></div>
-                            <div id="scBarSegment" class="coral-ratio-seg coral-ratio-seg-sc" style="flex: 0;"></div>
-                        </div>
-                        <div class="coral-ratio-legend">
-                            <div><span class="coral-dot coral-dot-hc"></span>HC: <strong id="hcRatio">0%</strong></div>
-                            <div><span class="coral-dot coral-dot-sc"></span>SC: <strong id="scRatio">0%</strong></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Per-Image Coral Breakdown Table -->
-                <div class="viz-card">
-                    <div class="coral-table-head-row">
-                        <h3 style="margin: 0; color: #1c5f6d;">Per-Image Coral Comparison</h3>
-                        <span class="coral-table-count" id="coralTableCount"></span>
-                    </div>
-                    <!-- Scroll container caps the height so a 50-image batch shows a
-                         compact, scrollable table (sticky header) instead of a very
-                         long page. -->
-                    <div class="coral-table-scroll">
-                        <table id="coralBreakdownTable" class="coral-table">
-                            <thead>
-                                <tr>
-                                    <th class="coral-th coral-th-name">Image</th>
-                                    <th class="coral-th coral-th-hc">HC Pts</th>
-                                    <th class="coral-th coral-th-hc">HC %</th>
-                                    <th class="coral-th coral-th-sc">SC Pts</th>
-                                    <th class="coral-th coral-th-sc">SC %</th>
-                                    <th class="coral-th coral-th-total">Total Coral</th>
-                                </tr>
-                            </thead>
-                            <tbody id="coralTableBody">
-                                <!-- Populated by JavaScript -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </section>
@@ -333,14 +269,15 @@
                         <div class="batch-image-body">
                             <h3>{{ image.image.name|default:"Image" }}</h3>
                             <p class="batch-image-coverage">
-                                Coral Coverage: <strong id="image-coverage-{{ image.id }}">{{ image.coverage_breakdown.percent|default_if_none:"--" }}%</strong>
+                                Hard Coral Cover: <strong id="image-coverage-{{ image.id }}">{{ image.coverage_breakdown.percent|default_if_none:"--" }}%</strong>
                                 <span class="batch-class-badge class-{{ image.coverage_breakdown.coverage_class|default:" pending"|lower }}">
-                                    Class {{ image.coverage_breakdown.coverage_class|default:"Pending" }}
+                                    Category {{ image.coverage_breakdown.coverage_class|default:"Pending" }}
                                 </span>
                                 <span class="class-meaning">
-                                    {% if image.coverage_breakdown.coverage_class == 'A' %}High coral coverage
-                                    {% elif image.coverage_breakdown.coverage_class == 'B' %}Moderate coral coverage
-                                    {% elif image.coverage_breakdown.coverage_class == 'C' %}Low coral coverage
+                                    {% if image.coverage_breakdown.coverage_class == 'A' %}HCC more than 44%
+                                    {% elif image.coverage_breakdown.coverage_class == 'B' %}HCC more than 33% up to 44%
+                                    {% elif image.coverage_breakdown.coverage_class == 'C' %}HCC more than 22% up to 33%
+                                    {% elif image.coverage_breakdown.coverage_class == 'D' %}HCC 0-22%
                                     {% else %}Awaiting analysis{% endif %}
                                 </span>
                             </p>
@@ -349,9 +286,9 @@
                                 <span class="coverage-computation-label">Computation</span>
                                 <div class="coverage-substitution">
                                     {% if image.coverage_breakdown.total %}
-                                    ({{ image.coverage_breakdown.hard }} Hard + {{ image.coverage_breakdown.soft }} Soft) &divide; {{ image.coverage_breakdown.total }} &times; 100
+                                    {{ image.coverage_breakdown.hard }} Hard Coral &divide; {{ image.coverage_breakdown.total }} &times; 100
                                     = <strong class="coverage-result">{{ image.coverage_breakdown.percent }}%</strong>
-                                    {% if image.coverage_breakdown.coverage_class %}&rarr; Class {{ image.coverage_breakdown.coverage_class }}{% endif %}
+                                    {% if image.coverage_breakdown.coverage_class %}&rarr; Category {{ image.coverage_breakdown.coverage_class }}{% endif %}
                                     {% else %}No classified points.{% endif %}
                                 </div>
                             </div>
@@ -420,5 +357,5 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/batch_detail.js' %}?v=3"></script>
-<script src="{% static 'js/batch_visualization.js' %}?v=4"></script>
+<script src="{% static 'js/batch_visualization.js' %}?v=5"></script>
 {% endblock %}

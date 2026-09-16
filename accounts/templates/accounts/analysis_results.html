@@ -4,8 +4,8 @@
 {% block title %}Analysis Results | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
-<link rel="stylesheet" href="{% static 'css/analysis_results.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'css/analysis_results.css' %}?v=2">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
 
@@ -132,12 +132,13 @@
                 <input type="text" name="surveyor" value="{{ filter_state.surveyor }}" placeholder="Name(s)">
             </label>
             <label class="filter-field">
-                <span>Class</span>
+                <span>HCC Category</span>
                 <select name="coverage_class">
-                    <option value="">All classes</option>
-                    <option value="A">Class A - High coral coverage</option>
-                    <option value="B">Class B - Moderate coral coverage</option>
-                    <option value="C">Class C - Low coral coverage</option>
+                    <option value="">All categories</option>
+                    <option value="A">Category A (more than 44%)</option>
+                    <option value="B">Category B (more than 33% up to 44%)</option>
+                    <option value="C">Category C (more than 22% up to 33%)</option>
+                    <option value="D">Category D (0-22%)</option>
                     <option value="pending">Pending
                     </option>
                 </select>
@@ -173,8 +174,8 @@
             </article>
             <article class="surface-card chart-card compact-chart">
                 <div class="card-header">
-                    <h2>Class Distribution</h2>
-                    <span class="chart-sub">A/B/C/Pending</span>
+                    <h2>HCC Category Distribution</h2>
+                    <span class="chart-sub">A/B/C/D/Pending</span>
                 </div>
                 <canvas id="analysisClassChart" height="140"></canvas>
             </article>
@@ -231,12 +232,13 @@
                             <th>Month</th>
                             <th>Data Repositories</th>
                             <th>Images</th>
-                            <th>Avg Coverage</th>
+                            <th>Avg HCC</th>
                             <th>Hard Coral %</th>
                             <th>Soft Coral %</th>
-                            <th>Class A</th>
-                            <th>Class B</th>
-                            <th>Class C</th>
+                            <th>Cat. A</th>
+                            <th>Cat. B</th>
+                            <th>Cat. C</th>
+                            <th>Cat. D</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -263,10 +265,13 @@
                             <td>
                                 <span class="class-count class-c">{{ month_stat.class_c_count }}</span>
                             </td>
+                            <td>
+                                <span class="class-count class-d">{{ month_stat.class_d_count }}</span>
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="table-empty">No monthly data available.</td>
+                            <td colspan="10" class="table-empty">No monthly data available.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -334,7 +339,7 @@
                             </td>
                             <td>
                                 <span class="batch-class-badge class-{{ row.coverage_class|lower }}">
-                                    {% if row.coverage_class in 'ABC' %}Class {{ row.coverage_class }}{% else %}{{
+                                    {% if row.coverage_class in 'ABCD' %}Category {{ row.coverage_class }}{% else %}{{
                                     row.coverage_class }}{% endif %}
                                 </span>
                             </td>
@@ -384,5 +389,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/researcher_dashboard.js' %}"></script>
-<script src="{% static 'js/analysis_results.js' %}"></script>
+<script src="{% static 'js/analysis_results.js' %}?v=2"></script>
 {% endblock %}

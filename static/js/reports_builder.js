@@ -227,12 +227,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const coverage = parseFloat(radio.getAttribute('data-batch-coverage'));
             const date = radio.getAttribute('data-batch-date');
             const images = radio.getAttribute('data-batch-images');
-            let classLabel = 'Class C';
+            // HCC category: A>44, B>33-44, C>22-33, D 0-22
+            let classLabel = 'Category D';
 
-            if (coverage >= 60) {
-                classLabel = 'Class A';
-            } else if (coverage >= 40) {
-                classLabel = 'Class B';
+            if (coverage > 44) {
+                classLabel = 'Category A';
+            } else if (coverage > 33) {
+                classLabel = 'Category B';
+            } else if (coverage > 22) {
+                classLabel = 'Category C';
             }
 
             // Get the parent label and find the batch-meta-content span
@@ -240,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const metaContent = label.querySelector('.batch-meta-content');
             if (metaContent) {
                 const imageText = images == 1 ? 'image' : 'images';
-                metaContent.textContent = `${date} • ${images} ${imageText} • ${coverage}% coverage • ${classLabel}`;
+                metaContent.textContent = `${date} • ${images} ${imageText} • ${coverage}% HCC • ${classLabel}`;
             }
         });
     }

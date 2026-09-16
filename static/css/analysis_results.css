@@ -226,17 +226,22 @@
 
 .batch-class-badge.class-a {
     color: #1d7b4d;
-    background: rgba(43, 170, 98, 0.14);
+    background: rgba(30, 126, 90, 0.16);
 }
 
 .batch-class-badge.class-b {
-    color: #8e6a0f;
-    background: rgba(242, 193, 47, 0.18);
+    color: #2e7d32;
+    background: rgba(76, 175, 80, 0.16);
 }
 
 .batch-class-badge.class-c {
-    color: #b33a36;
-    background: rgba(214, 69, 65, 0.18);
+    color: #b5651d;
+    background: rgba(232, 130, 12, 0.18);
+}
+
+.batch-class-badge.class-d {
+    color: #b53030;
+    background: rgba(214, 69, 69, 0.16);
 }
 
 .batch-class-badge.class-pending {

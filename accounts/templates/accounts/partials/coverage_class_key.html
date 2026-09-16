@@ -1,24 +1,29 @@
 {% comment %}
-Shared reef-health class key. Include on any page that shows Class A/B/C
-badges so the letters are always explained in plain language:
+Shared Hard Coral Cover (HCC) category key. Include on any page that shows
+Category A/B/C/D badges so the neutral letter grades are always explained
+(Licuanan 2020 scale, benchmarked to the national HCC average of 22.8%):
 
     {% include 'accounts/partials/coverage_class_key.html' %}
 {% endcomment %}
-<div class="coverage-class-key" aria-label="Reef health class guide">
-    <span class="coverage-class-key-title">Reef health classes:</span>
+<div class="coverage-class-key" aria-label="Hard Coral Cover category guide">
+    <span class="coverage-class-key-title">HCC categories:</span>
     <span class="coverage-class-key-item">
         <span class="coverage-class-key-dot key-a" aria-hidden="true"></span>
-        <strong>Class A</strong> High coral coverage <em>(60% and above)</em>
+        <strong>Category A</strong> <em>(more than 44%)</em>
     </span>
     <span class="coverage-class-key-item">
         <span class="coverage-class-key-dot key-b" aria-hidden="true"></span>
-        <strong>Class B</strong> Moderate coral coverage <em>(40-59%)</em>
+        <strong>Category B</strong> <em>(more than 33% up to 44%)</em>
     </span>
     <span class="coverage-class-key-item">
         <span class="coverage-class-key-dot key-c" aria-hidden="true"></span>
-        <strong>Class C</strong> Low coral coverage <em>(below 40%)</em>
+        <strong>Category C</strong> <em>(more than 22% up to 33%)</em>
+    </span>
+    <span class="coverage-class-key-item">
+        <span class="coverage-class-key-dot key-d" aria-hidden="true"></span>
+        <strong>Category D</strong> <em>(0-22%)</em>
     </span>
     <span class="coverage-class-key-formula">
-        Coral Coverage = (Hard Coral + Soft Coral points) &divide; Total points &times; 100
+        Hard Coral Cover (HCC) = Hard Coral points &divide; Total points surveyed &times; 100
     </span>
 </div>

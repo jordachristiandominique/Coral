@@ -1046,18 +1046,23 @@ body {
 }
 
 .coverage-a {
-    background: rgba(43, 170, 98, 0.14);
+    background: rgba(30, 126, 90, 0.16);
     color: #1d7b4d;
 }
 
 .coverage-b {
-    background: rgba(242, 193, 47, 0.18);
-    color: #8e6a0f;
+    background: rgba(76, 175, 80, 0.16);
+    color: #2e7d32;
 }
 
 .coverage-c {
-    background: rgba(219, 123, 52, 0.18);
-    color: #9a513e;
+    background: rgba(232, 130, 12, 0.18);
+    color: #b5651d;
+}
+
+.coverage-d {
+    background: rgba(214, 69, 69, 0.16);
+    color: #b53030;
 }
 
 .coverage-pending {
@@ -1334,9 +1339,10 @@ body {
     flex: 0 0 auto;
 }
 
-.coverage-class-key-dot.key-a { background: #2e8b57; }
-.coverage-class-key-dot.key-b { background: #d9a441; }
-.coverage-class-key-dot.key-c { background: #c95a5a; }
+.coverage-class-key-dot.key-a { background: #1e8e5a; }
+.coverage-class-key-dot.key-b { background: #4caf50; }
+.coverage-class-key-dot.key-c { background: #e8820c; }
+.coverage-class-key-dot.key-d { background: #d64545; }
 
 .coverage-class-key-formula {
     flex-basis: 100%;

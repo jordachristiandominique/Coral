@@ -649,18 +649,23 @@
 }
 
 .class-badge.class-a {
-    background: rgba(43, 170, 98, 0.747);
+    background: rgba(30, 126, 90, 0.16);
     color: #1d7b4d;
 }
 
 .class-badge.class-b {
-    background: rgba(242, 193, 47, 0.651);
-    color: #8e6a0f;
+    background: rgba(76, 175, 80, 0.16);
+    color: #2e7d32;
 }
 
 .class-badge.class-c {
-    background: rgba(219, 124, 52, 0.884);
-    color: #773c2d;
+    background: rgba(232, 130, 12, 0.18);
+    color: #b5651d;
+}
+
+.class-badge.class-d {
+    background: rgba(214, 69, 69, 0.16);
+    color: #b53030;
 }
 
 .view-all-link {

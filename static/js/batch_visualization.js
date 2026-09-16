@@ -1,18 +1,27 @@
-// Plain-language meaning for each reef health class. Keep in sync with
-// COVERAGE_CLASS_LABELS in accounts/models.py.
+// Hard Coral Cover (HCC) categories (Licuanan 2020). Neutral letter grades;
+// keep in sync with COVERAGE_CLASS_LABELS/RANGES in accounts/models.py.
 const COVERAGE_CLASS_LABELS = {
-    A: 'High coral coverage',
-    B: 'Moderate coral coverage',
-    C: 'Low coral coverage'
+    A: 'HCC more than 44%',
+    B: 'HCC more than 33% up to 44%',
+    C: 'HCC more than 22% up to 33%',
+    D: 'HCC 0-22%'
 };
 function describeCoverageClass(code) {
     return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
+}
+// HCC category from a percentage: A>44, B>33-44, C>22-33, D 0-22.
+function getCoverageClass(pct) {
+    if (pct === null || pct === undefined) return null;
+    if (pct > 44) return 'A';
+    if (pct > 33) return 'B';
+    if (pct > 22) return 'C';
+    return 'D';
 }
 // Badge text and its adjacent description must always move together,
 // otherwise a recalculated class leaves a stale meaning on screen.
 function setClassBadge(badge, coverageClass) {
     badge.className = `batch-class-badge class-${coverageClass.toLowerCase()}`;
-    badge.textContent = `Class ${coverageClass}`;
+    badge.textContent = `Category ${coverageClass}`;
     const meaning = badge.parentElement
         ? badge.parentElement.querySelector('.class-meaning')
         : null;
@@ -70,11 +79,10 @@ function initializeVisualization() {
     initializeMap(latitude, longitude, batchName);
     updateStatistics(classDistribution, latitude, longitude);
     renderClassLegend(classDistribution);
-    
-    // NEW: Calculate and display coral-specific metrics
-    const coralMetrics = calculateCoralMetrics(classDistribution);
-    updateCoralBreakdown(coralMetrics);
-    renderCoralBreakdownTable(coralMetrics);
+
+    // Per-image Hard Coral Cover badges (Hard Coral only)
+    const perImageMetrics = calculatePerImageCoralMetrics();
+    updatePerImageCoverage({ perImageMetrics });
 }
 
 /**
@@ -321,25 +329,22 @@ function initializeMap(latitude, longitude, batchName) {
 }
 
 /**
- * Update statistics display with Coral Coverage (HC + SC only)
+ * Update statistics display with Hard Coral Cover (HCC, Hard Coral only)
  */
 function updateStatistics(distribution, latitude, longitude) {
     const totalPoints = Object.values(distribution).reduce((a, b) => a + b, 0);
-    
-    // Coral Coverage: Only Hard Coral + Soft Coral
-    const coralClasses = ['Hard Coral', 'Soft Coral'];
-    const coralCount = coralClasses.reduce((sum, className) => sum + (distribution[className] || 0), 0);
+
+    // Hard Coral Cover (HCC): Hard Coral points only
+    const coralCount = distribution['Hard Coral'] || 0;
     const coralCoveragePercent = totalPoints > 0 ? Math.round((coralCount / totalPoints) * 100) : 0;
-    
-    // Determine coverage class based on coral coverage (for tier A/B/C)
-    let coverageClass = 'C';
-    if (coralCoveragePercent >= 60) coverageClass = 'A';
-    else if (coralCoveragePercent >= 40) coverageClass = 'B';
+
+    // Determine HCC category (A>44, B>33-44, C>22-33, D 0-22)
+    const coverageClass = getCoverageClass(coralCoveragePercent);
 
     // Update main statistics display
     document.getElementById('totalPointsValue').textContent = totalPoints;
     document.getElementById('coralCoveragePercentValue').textContent = `${coralCoveragePercent}%`;
-    document.getElementById('coverageClassValue').textContent = `Tier ${coverageClass}`;
+    document.getElementById('coverageClassValue').textContent = `Category ${coverageClass}`;
     
     // Update batch header coverage class badge
     const batchCoverageValue = document.getElementById('batchCoverageValue');
@@ -554,28 +559,23 @@ function renderCoralBreakdownTable(metrics) {
 }
 
 /**
- * Update per-image coral coverage display (HC + SC only)
+ * Update per-image Hard Coral Cover (HCC) display (Hard Coral only)
  */
 function updatePerImageCoverage(metrics) {
     Object.entries(metrics.perImageMetrics).forEach(([imageKey, data]) => {
         const imageId = imageKey.replace('image-', '');
         const coverageEl = document.getElementById(`image-coverage-${imageId}`);
-        
+
         if (coverageEl) {
-            // Calculate coverage as (HC + SC) / total points in that image
-            const coralCoveragePercent = data.totalCoralPts > 0 
-                ? Math.round(((data.hardCoralPts + data.softCoralPts) / data.totalPts) * 100)
+            // Hard Coral Cover = Hard Coral points / total points in that image
+            const coralCoveragePercent = data.totalPts > 0
+                ? Math.round((data.hardCoralPts / data.totalPts) * 100)
                 : 0;
             coverageEl.textContent = `${coralCoveragePercent}%`;
-            
-            // Determine coverage class based on HC+SC percentage
-            let coverageClass = 'C'; // < 40%
-            if (coralCoveragePercent >= 60) {
-                coverageClass = 'A';
-            } else if (coralCoveragePercent >= 40) {
-                coverageClass = 'B';
-            }
-            
+
+            // Determine HCC category (A>44, B>33-44, C>22-33, D 0-22)
+            const coverageClass = getCoverageClass(coralCoveragePercent);
+
             // Update the class badge for this image
             const imageBadges = document.querySelectorAll(`#image-coverage-${imageId}`);
             if (imageBadges.length > 0) {

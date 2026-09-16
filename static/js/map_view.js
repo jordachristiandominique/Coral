@@ -2,7 +2,7 @@
  * Map View - Spatial visualization of coral survey sites
  * Uses Leaflet.js. Survey sites are drawn as proportional-symbol bubbles:
  *   - circle SIZE  = coral coverage %
- *   - circle COLOR = reef health class (A / B / C / Pending)
+ *   - circle COLOR = HCC category (A / B / C / D / Pending)
  * on a satellite basemap focused on the Davao Gulf.
  */
 
@@ -10,11 +10,12 @@
 const DAVAO_GULF_CENTER = [6.85, 125.65];
 const DAVAO_GULF_ZOOM = 10;
 
-// Reef-health class colors (match coverage badges in map_view.css)
+// HCC category colors (match coverage badges in map_view.css)
 const CLASS_COLORS = {
-    A: '#2e8b57',       // High coral coverage      (>= 60%)
-    B: '#d9a441',       // Moderate coral coverage  (40-59%)
-    C: '#c95a5a',       // Low coral coverage       (< 40%)
+    A: '#1e8e5a',       // HCC more than 44%
+    B: '#4caf50',       // HCC more than 33% up to 44%
+    C: '#e8820c',       // HCC more than 22% up to 33%
+    D: '#d64545',       // HCC 0-22%
     Pending: '#2a8793', // not analyzed
 };
 
@@ -112,12 +113,13 @@ class CoralSenseMap {
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'map-legend');
             div.innerHTML = `
-                <div class="map-legend-title">Reef Health Class</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.A}"></span> Class A &mdash; High coral coverage (&ge;60%)</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.B}"></span> Class B &mdash; Moderate coral coverage (40&ndash;59%)</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.C}"></span> Class C &mdash; Low coral coverage (&lt;40%)</div>
+                <div class="map-legend-title">HCC Category</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.A}"></span> Category A &mdash; HCC &gt;44%</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.B}"></span> Category B &mdash; HCC &gt;33&ndash;44%</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.C}"></span> Category C &mdash; HCC &gt;22&ndash;33%</div>
+                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.D}"></span> Category D &mdash; HCC 0&ndash;22%</div>
                 <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.Pending}"></span> Pending analysis</div>
-                <div class="map-legend-title" style="margin-top:8px;">Circle size = coverage %</div>
+                <div class="map-legend-title" style="margin-top:8px;">Circle size = HCC %</div>
                 <div class="map-legend-sizes">
                     <span class="map-legend-size"><span class="map-legend-bubble" style="width:14px;height:14px;"></span>low</span>
                     <span class="map-legend-size"><span class="map-legend-bubble" style="width:26px;height:26px;"></span>high</span>
@@ -263,15 +265,15 @@ class CoralSenseMap {
     createPopupContent(batch) {
         const coverageHtml = batch.coverage !== null
             ? `<div class="popup-item">
-                <span class="popup-label">Coverage:</span>
+                <span class="popup-label">HCC:</span>
                 <span class="popup-value">${batch.coverage.toFixed(1)}%
                     <span class="coverage-badge class-${batch.coverageClass.toLowerCase()}">
-                        Class ${batch.coverageClass}
+                        Category ${batch.coverageClass}
                     </span>
                 </span>
             </div>`
             : `<div class="popup-item">
-                <span class="popup-label">Coverage:</span>
+                <span class="popup-label">HCC:</span>
                 <span class="coverage-badge pending">Pending Analysis</span>
             </div>`;
 
@@ -392,11 +394,11 @@ class CoralSenseMap {
         };
 
         const total = batches.length;
-        const counts = { A: 0, B: 0, C: 0, Pending: 0 };
+        const counts = { A: 0, B: 0, C: 0, D: 0, Pending: 0 };
         let coverageSum = 0, coverageN = 0;
 
         batches.forEach(b => {
-            const cls = ['A', 'B', 'C'].includes(b.coverageClass) ? b.coverageClass : 'Pending';
+            const cls = ['A', 'B', 'C', 'D'].includes(b.coverageClass) ? b.coverageClass : 'Pending';
             counts[cls]++;
             if (b.coverage !== null && b.coverage !== undefined) {
                 coverageSum += b.coverage;
@@ -414,11 +416,11 @@ class CoralSenseMap {
             if (total === 0) {
                 bar.innerHTML = '<div class="summary-bar-empty">No sites match the current filters.</div>';
             } else {
-                bar.innerHTML = ['A', 'B', 'C', 'Pending'].map(cls => {
+                bar.innerHTML = ['A', 'B', 'C', 'D', 'Pending'].map(cls => {
                     if (counts[cls] === 0) return '';
                     const pct = (counts[cls] / total) * 100;
                     return `<div class="summary-bar-seg" style="width:${pct}%;background:${CLASS_COLORS[cls]}"
-                                title="Class ${cls}: ${counts[cls]} site(s)"></div>`;
+                                title="Category ${cls}: ${counts[cls]} site(s)"></div>`;
                 }).join('');
             }
         }
@@ -426,8 +428,8 @@ class CoralSenseMap {
         // Per-class counts legend
         const legend = document.getElementById('summary-legend');
         if (legend) {
-            const labels = { A: 'Class A · High', B: 'Class B · Moderate', C: 'Class C · Low', Pending: 'Pending' };
-            legend.innerHTML = ['A', 'B', 'C', 'Pending'].map(cls => `
+            const labels = { A: 'Category A (>44%)', B: 'Category B (>33-44%)', C: 'Category C (>22-33%)', D: 'Category D (0-22%)', Pending: 'Pending' };
+            legend.innerHTML = ['A', 'B', 'C', 'D', 'Pending'].map(cls => `
                 <div class="summary-legend-row">
                     <span class="summary-legend-dot" style="background:${CLASS_COLORS[cls]}"></span>
                     <span class="summary-legend-label">${labels[cls]}</span>

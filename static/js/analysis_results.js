@@ -1,8 +1,9 @@
 // Keep in sync with COVERAGE_CLASS_LABELS in accounts/models.py.
 const COVERAGE_CLASS_LABELS = {
-    A: 'High coral coverage',
-    B: 'Moderate coral coverage',
-    C: 'Low coral coverage'
+    A: 'HCC more than 44%',
+    B: 'HCC more than 33% up to 44%',
+    C: 'HCC more than 22% up to 33%',
+    D: 'HCC 0-22%'
 };
 function describeCoverageClass(code) {
     return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
@@ -12,7 +13,7 @@ const initializeAnalysisResults = function () {
     const chartScript = document.getElementById('analysis-chart-data');
     let labels = [];
     let values = [];
-    let classValues = [0, 0, 0, 0];
+    let classValues = [0, 0, 0, 0, 0];
 
     if (chartScript) {
         try {
@@ -33,7 +34,7 @@ const initializeAnalysisResults = function () {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Coverage',
+                        label: 'Avg HCC',
                         data: values,
                         borderColor: '#1c5f6d',
                         backgroundColor: 'rgba(42, 135, 147, 0.15)',
@@ -134,11 +135,11 @@ const initializeAnalysisResults = function () {
         new Chart(classEl, {
             type: 'doughnut',
             data: {
-                labels: ['Class A', 'Class B', 'Class C', 'Pending'],
+                labels: ['Category A', 'Category B', 'Category C', 'Category D', 'Pending'],
                 datasets: [
                     {
                         data: classValues,
-                        backgroundColor: ['#2bab62', '#f2c12f', '#d64541', '#9bb1b8'],
+                        backgroundColor: ['#1e8e5a', '#4caf50', '#e8820c', '#d64545', '#9bb1b8'],
                         borderRadius: 999,
                         spacing: 12,
                         borderWidth: 10,
@@ -385,14 +386,15 @@ const initializeAnalysisResults = function () {
                         L.circleMarker([batch.latitude, batch.longitude], {
                             radius: 8,
                             fillColor:
-                                batch.coverage_class === 'A' ? '#1d7b4d' :
-                                    batch.coverage_class === 'B' ? '#f5a623' :
-                                        batch.coverage_class === 'C' ? '#d64541' : '#6a8893',
+                                batch.coverage_class === 'A' ? '#1e8e5a' :
+                                    batch.coverage_class === 'B' ? '#4caf50' :
+                                        batch.coverage_class === 'C' ? '#e8820c' :
+                                            batch.coverage_class === 'D' ? '#d64545' : '#6a8893',
                             color: '#fff',
                             weight: 2,
                             opacity: 1,
                             fillOpacity: 0.8
-                        }).bindPopup(`<strong>${batch.name}</strong><br>Area: ${batch.area_name}<br>Class: ${batch.coverage_class} - ${describeCoverageClass(batch.coverage_class)}`).addTo(map);
+                        }).bindPopup(`<strong>${batch.name}</strong><br>Area: ${batch.area_name}<br>Category: ${batch.coverage_class} &mdash; ${describeCoverageClass(batch.coverage_class)}`).addTo(map);
                     }
                 });
             } catch (error) {

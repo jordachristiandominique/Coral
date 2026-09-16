@@ -17,11 +17,12 @@ const CLASS_COLORS = {
 };
 // Reef health is a status scale, not a series — these are reserved colours
 // and always ship alongside the "Class A/B/C" label, never colour alone.
-const STATUS_COLORS = { A: '#0ca30c', B: '#fab219', C: '#d03b3b' };
+const STATUS_COLORS = { A: '#1e8e5a', B: '#4caf50', C: '#e8820c', D: '#d64545' };
 const COVERAGE_CLASS_LABELS = {
-    A: 'High coral coverage',
-    B: 'Moderate coral coverage',
-    C: 'Low coral coverage'
+    A: 'HCC more than 44%',
+    B: 'HCC more than 33% up to 44%',
+    C: 'HCC more than 22% up to 33%',
+    D: 'HCC 0-22%'
 };
 function describeCoverageClass(code) {
     return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
@@ -54,19 +55,21 @@ const initializePublicDashboard = function () {
             };
         };
 
+        // Sample HCC values (Hard Coral only) spread across the Licuanan (2020)
+        // categories: A>44, B>33-44, C>22-33, D 0-22.
         surveys = [
-            { area: 'Samal Offshore North', surveyors: 'R. Team', lat: 6.900, lng: 125.650, date: '2026-04-14', coverage: 64, classCode: 'A', classDistribution: generateClassDistribution(50, 15) },
-            { area: 'Central Gulf Transect', surveyors: 'Davao Marine Unit', lat: 6.850, lng: 125.770, date: '2026-04-10', coverage: 58, classCode: 'B', classDistribution: generateClassDistribution(40, 18) },
-            { area: 'Talikud Offshore East', surveyors: 'Blue Sentinel', lat: 6.880, lng: 125.810, date: '2026-03-28', coverage: 42, classCode: 'B', classDistribution: generateClassDistribution(30, 12) },
-            { area: 'Pujada Deep Water 1', surveyors: 'Davao Marine Unit', lat: 6.840, lng: 125.850, date: '2026-03-08', coverage: 37, classCode: 'C', classDistribution: generateClassDistribution(25, 12) },
-            { area: 'Pujada Deep Water 2', surveyors: 'R. Team', lat: 6.800, lng: 125.790, date: '2026-02-19', coverage: 61, classCode: 'A', classDistribution: generateClassDistribution(48, 13) },
-            { area: 'Southern Gulf Offshore', surveyors: 'Blue Sentinel', lat: 6.760, lng: 125.750, date: '2026-02-09', coverage: 46, classCode: 'B', classDistribution: generateClassDistribution(35, 11) },
-            { area: 'Governor Generoso Offshore', surveyors: 'R. Team', lat: 6.720, lng: 125.830, date: '2026-01-26', coverage: 32, classCode: 'C', classDistribution: generateClassDistribution(22, 10) },
-            { area: 'Cape San Agustin Channel', surveyors: 'R. Team', lat: 6.680, lng: 125.790, date: '2026-01-11', coverage: 67, classCode: 'A', classDistribution: generateClassDistribution(52, 15) },
-            { area: 'Samal West Open Water', surveyors: 'Blue Sentinel', lat: 6.800, lng: 125.600, date: '2025-12-20', coverage: 54, classCode: 'B', classDistribution: generateClassDistribution(42, 12) },
-            { area: 'Davao Gulf Midline', surveyors: 'Davao Marine Unit', lat: 6.860, lng: 125.710, date: '2025-11-29', coverage: 39, classCode: 'C', classDistribution: generateClassDistribution(28, 11) },
-            { area: 'Mati Offshore Belt', surveyors: 'R. Team', lat: 6.780, lng: 125.870, date: '2025-11-08', coverage: 62, classCode: 'A', classDistribution: generateClassDistribution(49, 13) },
-            { area: 'Sarangani Current Edge', surveyors: 'Blue Sentinel', lat: 6.700, lng: 125.910, date: '2025-10-17', coverage: 44, classCode: 'B', classDistribution: generateClassDistribution(33, 11) }
+            { area: 'Samal Offshore North', surveyors: 'R. Team', lat: 6.900, lng: 125.650, date: '2026-04-14', coverage: 46, classCode: 'A', classDistribution: generateClassDistribution(50, 15) },
+            { area: 'Central Gulf Transect', surveyors: 'Davao Marine Unit', lat: 6.850, lng: 125.770, date: '2026-04-10', coverage: 38, classCode: 'B', classDistribution: generateClassDistribution(40, 18) },
+            { area: 'Talikud Offshore East', surveyors: 'Blue Sentinel', lat: 6.880, lng: 125.810, date: '2026-03-28', coverage: 30, classCode: 'C', classDistribution: generateClassDistribution(30, 12) },
+            { area: 'Pujada Deep Water 1', surveyors: 'Davao Marine Unit', lat: 6.840, lng: 125.850, date: '2026-03-08', coverage: 18, classCode: 'D', classDistribution: generateClassDistribution(25, 12) },
+            { area: 'Pujada Deep Water 2', surveyors: 'R. Team', lat: 6.800, lng: 125.790, date: '2026-02-19', coverage: 41, classCode: 'B', classDistribution: generateClassDistribution(48, 13) },
+            { area: 'Southern Gulf Offshore', surveyors: 'Blue Sentinel', lat: 6.760, lng: 125.750, date: '2026-02-09', coverage: 25, classCode: 'C', classDistribution: generateClassDistribution(35, 11) },
+            { area: 'Governor Generoso Offshore', surveyors: 'R. Team', lat: 6.720, lng: 125.830, date: '2026-01-26', coverage: 12, classCode: 'D', classDistribution: generateClassDistribution(22, 10) },
+            { area: 'Cape San Agustin Channel', surveyors: 'R. Team', lat: 6.680, lng: 125.790, date: '2026-01-11', coverage: 48, classCode: 'A', classDistribution: generateClassDistribution(52, 15) },
+            { area: 'Samal West Open Water', surveyors: 'Blue Sentinel', lat: 6.800, lng: 125.600, date: '2025-12-20', coverage: 34, classCode: 'B', classDistribution: generateClassDistribution(42, 12) },
+            { area: 'Davao Gulf Midline', surveyors: 'Davao Marine Unit', lat: 6.860, lng: 125.710, date: '2025-11-29', coverage: 21, classCode: 'D', classDistribution: generateClassDistribution(28, 11) },
+            { area: 'Mati Offshore Belt', surveyors: 'R. Team', lat: 6.780, lng: 125.870, date: '2025-11-08', coverage: 45, classCode: 'A', classDistribution: generateClassDistribution(49, 13) },
+            { area: 'Sarangani Current Edge', surveyors: 'Blue Sentinel', lat: 6.700, lng: 125.910, date: '2025-10-17', coverage: 28, classCode: 'C', classDistribution: generateClassDistribution(33, 11) }
         ];
     }
 
@@ -81,6 +84,7 @@ const initializePublicDashboard = function () {
     const legendA = document.getElementById('legend-a');
     const legendB = document.getElementById('legend-b');
     const legendC = document.getElementById('legend-c');
+    const legendD = document.getElementById('legend-d');
     const donut = document.getElementById('distribution-donut');
     const ecosystemDonut = document.getElementById('ecosystem-donut');
     const ecosystemLegend = document.getElementById('ecosystem-legend');
@@ -107,7 +111,8 @@ const initializePublicDashboard = function () {
     function colorForClass(classCode) {
         if (classCode === 'A') return STATUS_COLORS.A;
         if (classCode === 'B') return STATUS_COLORS.B;
-        return STATUS_COLORS.C;
+        if (classCode === 'C') return STATUS_COLORS.C;
+        return STATUS_COLORS.D;
     }
 
     function parseDate(value) {
@@ -233,8 +238,8 @@ const initializePublicDashboard = function () {
                 '<strong>' + escapeHtml(row.area) + '</strong><br>' +
                 'Survey by: ' + formatSurveyorText(row.surveyors) + '<br>' +
                 'Date: ' + row.date + '<br>' +
-                'Coverage: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '<br>' +
-                'Class: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode) +
+                'HCC: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '<br>' +
+                'Category: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode) +
                 buildClassDistributionHtml(row.classDistribution);
 
             marker.bindPopup(popupHtml);
@@ -280,20 +285,24 @@ const initializePublicDashboard = function () {
         const aCount = valid.filter(function (row) { return row.classCode === 'A'; }).length;
         const bCount = valid.filter(function (row) { return row.classCode === 'B'; }).length;
         const cCount = valid.filter(function (row) { return row.classCode === 'C'; }).length;
-        const total = aCount + bCount + cCount;
+        const dCount = valid.filter(function (row) { return row.classCode === 'D'; }).length;
+        const total = aCount + bCount + cCount + dCount;
 
         const aDeg = total ? (aCount / total) * 360 : 0;
         const bDeg = total ? (bCount / total) * 360 : 0;
-        const cDeg = 360 - aDeg - bDeg;
+        const cDeg = total ? (cCount / total) * 360 : 0;
+        const dDeg = 360 - aDeg - bDeg - cDeg;
 
         donut.style.background = 'conic-gradient(' +
             STATUS_COLORS.A + ' 0deg ' + aDeg.toFixed(1) + 'deg, ' +
             STATUS_COLORS.B + ' ' + aDeg.toFixed(1) + 'deg ' + (aDeg + bDeg).toFixed(1) + 'deg, ' +
-            STATUS_COLORS.C + ' ' + (aDeg + bDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg)';
+            STATUS_COLORS.C + ' ' + (aDeg + bDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg, ' +
+            STATUS_COLORS.D + ' ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg + dDeg).toFixed(1) + 'deg)';
 
         legendA.textContent = aCount + ' surveys';
         legendB.textContent = bCount + ' surveys';
         legendC.textContent = cCount + ' surveys';
+        if (legendD) legendD.textContent = dCount + ' surveys';
     }
 
     function renderEcosystemDonut(filtered) {
@@ -708,7 +717,7 @@ const initializePublicDashboard = function () {
                 '<td class="surveyors-cell">' + formatSurveyorChips(row.surveyors) + '</td>' +
                 '<td>' + row.date + '</td>' +
                 '<td>' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '</td>' +
-                '<td><span class="class-badge class-' + row.classCode.toLowerCase() + '">Class ' + row.classCode + '</span></td>' +
+                '<td><span class="class-badge class-' + row.classCode.toLowerCase() + '">Category ' + row.classCode + '</span></td>' +
                 '<td>' + miniBarsHtml + '</td>' +
                 '<td><button class="btn btn-outline" type="button">View Details</button></td>';
 
@@ -717,8 +726,8 @@ const initializePublicDashboard = function () {
                     'Area: ' + row.area + '\n' +
                     'Survey by: ' + formatSurveyorText(row.surveyors) + '\n' +
                     'Date: ' + row.date + '\n' +
-                    'Coverage: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '\n' +
-                    'Class: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode)
+                    'HCC: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '\n' +
+                    'Category: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode)
                 );
             });
 

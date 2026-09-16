@@ -6,10 +6,11 @@
     --public-muted: #5d7d8b;
     --public-accent: #1c6d7d;
 
-    /* Reef health = status scale (reserved; always paired with a label) */
-    --class-a: #0ca30c;
-    --class-b: #fab219;
-    --class-c: #d03b3b;
+    /* HCC categories = status scale (reserved; always paired with a label) */
+    --class-a: #1e8e5a;
+    --class-b: #4caf50;
+    --class-c: #e8820c;
+    --class-d: #d64545;
 
     /* Benthic classes = categorical series, fixed slot order.
        Validated as a set: worst adjacent CVD dE 9.1, normal dE 19.6. */
@@ -409,7 +410,7 @@
     width: 170px;
     height: 170px;
     border-radius: 50%;
-    background: conic-gradient(var(--class-a) 0deg 120deg, var(--class-b) 120deg 270deg, var(--class-c) 270deg 360deg);
+    background: conic-gradient(var(--class-a) 0deg 90deg, var(--class-b) 90deg 180deg, var(--class-c) 180deg 270deg, var(--class-d) 270deg 360deg);
     position: relative;
     flex: 0 0 auto;
 }
@@ -629,18 +630,23 @@
 }
 
 .class-badge.class-a {
-    color: #0a7d0a;
-    background: rgba(12, 163, 12, 0.13);
+    color: #1d7b4d;
+    background: rgba(30, 126, 90, 0.16);
 }
 
 .class-badge.class-b {
-    color: #8a6003;
-    background: rgba(250, 178, 25, 0.18);
+    color: #2e7d32;
+    background: rgba(76, 175, 80, 0.16);
 }
 
 .class-badge.class-c {
-    color: #b02f2f;
-    background: rgba(208, 59, 59, 0.13);
+    color: #b5651d;
+    background: rgba(232, 130, 12, 0.18);
+}
+
+.class-badge.class-d {
+    color: #b53030;
+    background: rgba(214, 69, 69, 0.16);
 }
 
 .mini-bars-container {

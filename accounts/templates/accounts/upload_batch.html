@@ -6,8 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=12">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=13">
 {% endblock %}
 
 {% block content %}
@@ -237,18 +237,18 @@
                     <section class="coverage-summary" aria-label="Coverage result">
                         <div class="coverage-summary-metrics">
                             <div class="coverage-metric">
-                                <span class="coverage-metric-label">Coral Coverage</span>
+                                <span class="coverage-metric-label">Hard Coral Cover (HCC)</span>
                                 <span class="coverage-metric-value" id="coral-coverage-percent">--%</span>
                             </div>
                             <div class="coverage-metric">
-                                <span class="coverage-metric-label">Reef Health Class</span>
+                                <span class="coverage-metric-label">HCC Category</span>
                                 <span class="coverage-metric-badge class-pending" id="coverage-class">Pending</span>
                             </div>
                         </div>
                         <div class="coverage-computation" id="coverage-computation" aria-live="polite">
-                            <span class="coverage-computation-label">How this is computed &mdash; point-intercept method</span>
+                            <span class="coverage-computation-label">How this is computed &mdash; CPCE point-intercept method</span>
                             <div class="coverage-formula">
-                                Coral Coverage = (Hard Coral + Soft Coral points) &divide; Total points &times; 100
+                                Hard Coral Cover (HCC) = Hard Coral points &divide; Total points surveyed &times; 100
                             </div>
                             <div class="coverage-substitution" id="coverage-substitution">
                                 Awaiting analysis&hellip;
@@ -346,11 +346,11 @@
                     <p><strong>Survey by:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
-                    <p><strong>Data Repository Coral Coverage:</strong> <span id="summary-coverage">--</span></p>
-                    <p><strong>Data Repository Reef Health Class:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
+                    <p><strong>Data Repository Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
+                    <p><strong>Data Repository HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
                     <p><strong>AI Confidence:</strong> <span id="summary-confidence">N/A</span></p>
                 </div>
-                <p class="summary-box-note">Data repository coverage pools every classified point across all analyzed images: (Hard&nbsp;Coral&nbsp;+&nbsp;Soft&nbsp;Coral&nbsp;points)&nbsp;&divide;&nbsp;total&nbsp;points&nbsp;&times;&nbsp;100.</p>
+                <p class="summary-box-note">Hard Coral Cover pools every classified point across all analyzed images: Hard&nbsp;Coral&nbsp;points&nbsp;&divide;&nbsp;total&nbsp;points&nbsp;surveyed&nbsp;&times;&nbsp;100.</p>
 
                 <p class="submit-hint" id="submit-hint">Upload at least one image. AI will auto-analyze. Review and approve results.
                 </p>
@@ -390,9 +390,9 @@
         </div>
 
         <ul class="process-list">
-            <li><span>img1.jpg - 58.3% (Class B)</span><em class="dot dot-b"></em></li>
-            <li><span>img2.jpg - 42.1% (Class B)</span><em class="dot dot-b"></em></li>
-            <li><span>img3.jpg - 65.7% (Class A)</span><em class="dot dot-a"></em></li>
+            <li><span>img1.jpg - 38.3% (Category B)</span><em class="dot dot-b"></em></li>
+            <li><span>img2.jpg - 27.1% (Category C)</span><em class="dot dot-c"></em></li>
+            <li><span>img3.jpg - 48.7% (Category A)</span><em class="dot dot-a"></em></li>
             <li><span>Processing img4.jpg...</span><em class="dot dot-pending"></em></li>
         </ul>
 
@@ -446,7 +446,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=13"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=14"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

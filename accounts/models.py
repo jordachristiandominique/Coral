@@ -15,43 +15,73 @@ CPCE_CODES = {
     'Other Biota': 'OB',
 }
 
-# Reef health classes. Coverage = (Hard Coral + Soft Coral) / total points.
-# Keep these descriptions identical everywhere they are shown to users.
+# Hard Coral Cover (HCC) assessment scale for Philippine reefs, following
+# Licuanan et al. (2019/2020). HCC counts scleractinian (stony) Hard Coral
+# points ONLY, over the total number of points surveyed. The four categories
+# are neutral letter grades (A-D) benchmarked against the national HCC average
+# (22.8% +/- 1.2 SE) and the Tubbataha Reefs benchmark. Keep these strings
+# identical everywhere they are shown to users.
+NATIONAL_HCC_AVERAGE = 22.8  # Philippine national average hard coral cover (%)
+
 COVERAGE_CLASS_LABELS = {
-    'A': 'High coral coverage',
-    'B': 'Moderate coral coverage',
-    'C': 'Low coral coverage',
+    'A': 'Category A',
+    'B': 'Category B',
+    'C': 'Category C',
+    'D': 'Category D',
 }
 COVERAGE_CLASS_RANGES = {
-    'A': '60% and above',
-    'B': '40-59%',
-    'C': 'below 40%',
+    'A': 'more than 44%',
+    'B': 'more than 33% up to 44%',
+    'C': 'more than 22% up to 33%',
+    'D': '0-22%',
 }
+# Comparative, non-judgmental descriptions (no poor/fair/good wording).
+COVERAGE_CLASS_DESCRIPTIONS = {
+    'A': ("Reef coral cover is more than double the Philippine national average "
+          "— comparable to or exceeding Tubbataha Reefs, one of the "
+          "country's healthiest reef systems."),
+    'B': ("Reef coral cover exceeds both the national average and the Tubbataha "
+          "benchmark."),
+    'C': ("Reef coral cover is above the national average, though below the "
+          "Tubbataha benchmark."),
+    'D': ("Reef coral cover is at or below the national average. This reef may "
+          "still provide meaningful ecosystem services and habitat."),
+}
+
+
+def classify_hcc(percent):
+    """Map a Hard Coral Cover percentage to its Licuanan (2020) category.
+
+    A: >44%   B: >33-44%   C: >22-33%   D: 0-22%
+    """
+    if percent is None:
+        return None
+    if percent > 44:
+        return 'A'
+    if percent > 33:
+        return 'B'
+    if percent > 22:
+        return 'C'
+    return 'D'
 
 
 def compute_coverage(point_classes):
-    """Coral coverage via the CPCE point-intercept method.
+    """Hard Coral Cover (HCC) via the CPCE point-intercept method.
 
-    Coverage % = (Hard Coral + Soft Coral points) / total points x 100
+    HCC % = Hard Coral points / total points surveyed x 100
 
-    Returns a breakdown dict so the UI can *show its work* to reviewers:
+    Soft coral and every other benthic class are excluded from the numerator
+    (they remain available in the breakdown for full benthic composition
+    reporting). Returns a breakdown dict so the UI can *show its work*:
     {total, hard, soft, coral, percent, coverage_class}.
     """
     pcs = point_classes or []
     total = len(pcs)
     hard = sum(1 for p in pcs if p == 'Hard Coral')
     soft = sum(1 for p in pcs if p == 'Soft Coral')
-    coral = hard + soft
-    percent = round((coral / total) * 100) if total else None
-
-    if percent is None:
-        coverage_class = None
-    elif percent >= 60:
-        coverage_class = 'A'
-    elif percent >= 40:
-        coverage_class = 'B'
-    else:
-        coverage_class = 'C'
+    coral = hard  # HCC numerator is hard coral only
+    percent = round((hard / total) * 100) if total else None
+    coverage_class = classify_hcc(percent)
 
     return {
         'total': total,
@@ -123,8 +153,8 @@ class ImageBatch(models.Model):
         return f"{self.name} ({self.survey_date})"
 
     def get_class_distribution(self):
-        """Return count of images in each coverage class (A, B, C)"""
-        classes = {'A': 0, 'B': 0, 'C': 0}
+        """Return count of images in each coverage class (A, B, C, D)"""
+        classes = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
         for img in self.images.all():
             if img.coverage_class in classes:
                 classes[img.coverage_class] += 1

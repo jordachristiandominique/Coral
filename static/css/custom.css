@@ -1574,15 +1574,36 @@ footer {
 }
 
 .biodiversity-card-a::before {
-    background: #2e8b57;
+    background: #1e8e5a;
 }
 
 .biodiversity-card-b::before {
-    background: #d9a441;
+    background: #4caf50;
 }
 
 .biodiversity-card-c::before {
-    background: #c95a5a;
+    background: #e8820c;
+}
+
+.biodiversity-card-d::before {
+    background: #d64545;
+}
+
+.biodiversity-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+    .biodiversity-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.biodiversity-subtitle {
+    margin: 0.6rem auto 0;
+    max-width: 640px;
+    color: #567;
+    font-size: 0.92rem;
 }
 
 .biodiversity-label {

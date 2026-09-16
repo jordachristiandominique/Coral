@@ -315,18 +315,23 @@
 }
 
 .coverage-badge.class-a {
-    background: rgba(46, 139, 87, 0.2);
-    color: #2e8b57;
+    background: rgba(30, 126, 90, 0.2);
+    color: #1e8e5a;
 }
 
 .coverage-badge.class-b {
-    background: rgba(217, 164, 65, 0.2);
-    color: #d9a441;
+    background: rgba(76, 175, 80, 0.2);
+    color: #2e7d32;
 }
 
 .coverage-badge.class-c {
-    background: rgba(201, 90, 90, 0.2);
-    color: #c95a5a;
+    background: rgba(232, 130, 12, 0.2);
+    color: #b5651d;
+}
+
+.coverage-badge.class-d {
+    background: rgba(214, 69, 69, 0.2);
+    color: #b53030;
 }
 
 .coverage-badge.pending {
@@ -449,18 +454,23 @@
 }
 
 .survey-badge.class-a {
-    background: rgba(46, 139, 87, 0.15);
-    color: #2e8b57;
+    background: rgba(30, 126, 90, 0.15);
+    color: #1e8e5a;
 }
 
 .survey-badge.class-b {
-    background: rgba(217, 164, 65, 0.15);
-    color: #d9a441;
+    background: rgba(76, 175, 80, 0.15);
+    color: #2e7d32;
 }
 
 .survey-badge.class-c {
-    background: rgba(201, 90, 90, 0.15);
-    color: #c95a5a;
+    background: rgba(232, 130, 12, 0.15);
+    color: #b5651d;
+}
+
+.survey-badge.class-d {
+    background: rgba(214, 69, 69, 0.15);
+    color: #b53030;
 }
 
 .survey-badge.pending {

@@ -69,7 +69,7 @@
                 <p class="feature-index">01</p>
                 <h3>Upload & Analyze</h3>
                 <p>
-                    Upload geotagged images and automatically assess coral cover and assign a reef health class.
+                    Upload geotagged images and automatically assess Hard Coral Cover and assign an HCC category.
                 </p>
             </article>
 
@@ -131,7 +131,7 @@
             <article class="workflow-item left">
                 <div class="workflow-panel">
                     <h3>Automatic Analysis</h3>
-                    <p>AI detection classifies the coral and benthic classes at sample points and computes coral coverage using the point-intercept (CPCE) method.</p>
+                    <p>AI detection classifies the coral and benthic classes at sample points and computes Hard Coral Cover (HCC) using the point-intercept (CPCE) method.</p>
                     <span class="workflow-pill">Step 03</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -141,7 +141,7 @@
             <article class="workflow-item right">
                 <div class="workflow-panel">
                     <h3>Instant Classification</h3>
-                    <p>A reef health class (A, B, or C) is assigned from the coral coverage as soon as the analysis
+                    <p>An HCC category (A, B, C, or D) is assigned from the Hard Coral Cover as soon as the analysis
                         finishes.</p>
                     <span class="workflow-pill">Step 04</span>
                 </div>
@@ -227,27 +227,37 @@
 
     <section class="biodiversity-section" aria-label="Biodiversity classification">
         <div class="biodiversity-header text-center">
-            <p class="features-kicker">Reef Status Guide</p>
-            <h2>Reef Health Classification</h2>
+            <p class="features-kicker">Hard Coral Cover Guide</p>
+            <h2>HCC Assessment Scale</h2>
+            <p class="biodiversity-subtitle">Licuanan (2020) scale, benchmarked to the Philippine national average
+                (22.8%) and the Tubbataha Reefs benchmark.</p>
         </div>
 
-        <div class="biodiversity-grid">
+        <div class="biodiversity-grid biodiversity-grid-4">
             <article class="biodiversity-card biodiversity-card-a">
-                <p class="biodiversity-label">Class A - High coral coverage</p>
-                <h3>Coral Coverage: ≥ 60%</h3>
-                <p>Reef with abundant live coral cover and high biodiversity.</p>
+                <p class="biodiversity-label">Category A</p>
+                <h3>HCC: more than 44%</h3>
+                <p>Reef coral cover is more than double the national average &mdash; comparable to or exceeding
+                    Tubbataha Reefs.</p>
             </article>
 
             <article class="biodiversity-card biodiversity-card-b">
-                <p class="biodiversity-label">Class B - Moderate coral coverage</p>
-                <h3>Coral Coverage: 40-59%</h3>
-                <p>Reef with moderate live coral cover and stable recovery potential.</p>
+                <p class="biodiversity-label">Category B</p>
+                <h3>HCC: more than 33% up to 44%</h3>
+                <p>Reef coral cover exceeds both the national average and the Tubbataha benchmark.</p>
             </article>
 
             <article class="biodiversity-card biodiversity-card-c">
-                <p class="biodiversity-label">Class C - Low coral coverage</p>
-                <h3>Coral Coverage: &lt; 40%</h3>
-                <p>Reef with low live coral cover, requiring monitoring and conservation efforts.</p>
+                <p class="biodiversity-label">Category C</p>
+                <h3>HCC: more than 22% up to 33%</h3>
+                <p>Reef coral cover is above the national average, though below the Tubbataha benchmark.</p>
+            </article>
+
+            <article class="biodiversity-card biodiversity-card-d">
+                <p class="biodiversity-label">Category D</p>
+                <h3>HCC: 0-22%</h3>
+                <p>Reef coral cover is at or below the national average. This reef may still provide meaningful
+                    ecosystem services and habitat.</p>
             </article>
         </div>
     </section>

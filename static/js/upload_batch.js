@@ -202,12 +202,13 @@ const initializeUploadBatch = function () {
     ];
     // CPCE code shown to the surveyor/expert for each class. The stored value
     // stays the full class name so backend coverage logic is unaffected.
-    // Plain-language meaning for each reef health class. Keep in sync with
+    // Plain-language meaning for each HCC category. Keep in sync with
 // COVERAGE_CLASS_LABELS in accounts/models.py.
 const COVERAGE_CLASS_LABELS = {
-    A: 'High coral coverage',
-    B: 'Moderate coral coverage',
-    C: 'Low coral coverage'
+    A: 'HCC more than 44%',
+    B: 'HCC more than 33% up to 44%',
+    C: 'HCC more than 22% up to 33%',
+    D: 'HCC 0-22%'
 };
 const describeCoverageClass = function (code) {
     return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
@@ -298,15 +299,12 @@ const describeCoverageClass = function (code) {
                 summaryClass.className = 'summary-class-badge class-pending';
             } else {
                 const coral = classes.filter(function (c) {
-                    return c === 'Hard Coral' || c === 'Soft Coral';
+                    return c === 'Hard Coral';
                 }).length;
                 const pct = Math.round((coral / total) * 100);
-                let code, meaning;
-                if (pct >= 60) { code = 'A'; meaning = 'High'; }
-                else if (pct >= 40) { code = 'B'; meaning = 'Moderate'; }
-                else { code = 'C'; meaning = 'Low'; }
-                summaryCoverage.textContent = `${pct}% (${coral} of ${total} coral points)`;
-                summaryClass.textContent = `Class ${code} - ${meaning}`;
+                const code = getCoverageClass(pct);
+                summaryCoverage.textContent = `${pct}% (${coral} of ${total} hard coral points)`;
+                summaryClass.textContent = `Category ${code}`;
                 summaryClass.className = `summary-class-badge class-${code.toLowerCase()}`;
             }
         }
@@ -1031,7 +1029,7 @@ const describeCoverageClass = function (code) {
                         });
                     }
 
-                    // Coral coverage = Hard Coral + Soft Coral only (must match
+                    // Hard Coral Cover (HCC) = Hard Coral points only (must match
                     // getCoralCoveragePercent() and the backend calculation).
                     const coveragePercent = getCoralCoveragePercent(points);
 
@@ -1307,21 +1305,22 @@ const describeCoverageClass = function (code) {
     };
 
     const getCoralCoveragePercent = function (points) {
-        // Coral Coverage: Only Hard Coral + Soft Coral
+        // Hard Coral Cover (HCC): Hard Coral points only / total points
         if (!points || !points.length) {
             return 0;
         }
-        const coralClasses = ['Hard Coral', 'Soft Coral'];
         const coralCount = points.filter(function (p) {
-            return coralClasses.indexOf(p.class) !== -1;
+            return p.class === 'Hard Coral';
         }).length;
         return Math.round((coralCount / points.length) * 100);
     };
 
     const getCoverageClass = function (coveragePercent) {
-        if (coveragePercent >= 60) return 'A';
-        if (coveragePercent >= 40) return 'B';
-        return 'C';
+        // HCC category: A>44, B>33-44, C>22-33, D 0-22
+        if (coveragePercent > 44) return 'A';
+        if (coveragePercent > 33) return 'B';
+        if (coveragePercent > 22) return 'C';
+        return 'D';
     };
 
     const renderPointList = function () {
@@ -1382,8 +1381,6 @@ const describeCoverageClass = function (code) {
             const pts = results.points || [];
             const total = pts.length;
             const hc = pts.filter(function (p) { return p.class === 'Hard Coral'; }).length;
-            const sc = pts.filter(function (p) { return p.class === 'Soft Coral'; }).length;
-            const coral = hc + sc;
             const pct = getCoralCoveragePercent(pts);
             const code = getCoverageClass(pct);
 
@@ -1391,17 +1388,15 @@ const describeCoverageClass = function (code) {
                 coveragePercentEl.textContent = `${pct}%`;
             }
             if (coverageClassEl) {
-                const shortDesc = describeCoverageClass(code).replace(' coral coverage', '');
-                coverageClassEl.textContent = `Class ${code} - ${shortDesc}`;
+                coverageClassEl.textContent = `Category ${code}`;
                 coverageClassEl.className = `coverage-metric-badge class-${code.toLowerCase()}`;
             }
             // Show the computation with the actual numbers plugged in
             if (substitutionEl) {
                 substitutionEl.innerHTML =
-                    `= (${hc} Hard + ${sc} Soft) &divide; ${total} points &times; 100 ` +
-                    `= <strong>${coral} &divide; ${total} &times; 100</strong> ` +
+                    `= ${hc} Hard Coral &divide; ${total} points &times; 100 ` +
                     `= <strong class="coverage-result">${pct}%</strong> ` +
-                    `&rarr; Class ${code}`;
+                    `&rarr; Category ${code}`;
             }
         };
 

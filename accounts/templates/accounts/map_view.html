@@ -4,8 +4,8 @@
 {% block title %}Surveyed Sites | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
-<link rel="stylesheet" href="{% static 'css/map_view.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=2">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
@@ -115,12 +115,13 @@
                 </div>
 
                 <div class="filter-group">
-                    <label class="filter-label" for="filter-coverage">Coverage Class</label>
+                    <label class="filter-label" for="filter-coverage">HCC Category</label>
                     <select id="filter-coverage" class="filter-input">
-                        <option value="">All Classes</option>
-                        <option value="A">Class A - High coral coverage (≥60%)</option>
-                        <option value="B">Class B - Moderate coral coverage (40-59%)</option>
-                        <option value="C">Class C - Low coral coverage (<40%)</option>
+                        <option value="">All Categories</option>
+                        <option value="A">Category A - HCC more than 44%</option>
+                        <option value="B">Category B - HCC more than 33% up to 44%</option>
+                        <option value="C">Category C - HCC more than 22% up to 33%</option>
+                        <option value="D">Category D - HCC 0-22%</option>
                         <option value="Pending">Pending</option>
                     </select>
                 </div>
@@ -177,12 +178,12 @@
                         </div>
                         <div class="summary-stat">
                             <span class="summary-stat-value" id="summary-avg">—</span>
-                            <span class="summary-stat-label">Avg. Coral Coverage</span>
+                            <span class="summary-stat-label">Avg. Hard Coral Cover</span>
                         </div>
                     </div>
 
                     <div class="summary-block">
-                        <h3 class="summary-block-title">Reef Health Distribution</h3>
+                        <h3 class="summary-block-title">HCC Category Distribution</h3>
                         <div class="summary-bar" id="summary-bar"></div>
                         <div class="summary-legend" id="summary-legend"></div>
                     </div>
@@ -224,5 +225,5 @@
 <script>
     window.mapData = JSON.parse('{{ geojson_data|default:"{\"type\":\"FeatureCollection\",\"features\":[]}"|escapejs }}');
 </script>
-<script src="{% static 'js/map_view.js' %}?v=2"></script>
+<script src="{% static 'js/map_view.js' %}?v=3"></script>
 {% endblock %}

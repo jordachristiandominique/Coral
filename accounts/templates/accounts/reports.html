@@ -4,8 +4,8 @@
 {% block title %}Reports | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
-<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -156,7 +156,7 @@
                                 <input type="radio" name="report_type" value="biodiversity" data-report-type>
                                 <div class="option-content">
                                     <p class="option-title">Biodiversity Distribution Report</p>
-                                    <p class="option-desc">Class A/B/C breakdown with spatial analysis</p>
+                                    <p class="option-desc">Category A/B/C/D breakdown with spatial analysis</p>
                                     <p class="option-use">Best for: Research papers, grant proposals</p>
                                 </div>
                             </label>
@@ -259,10 +259,11 @@
                                                 {{ batch.avg_coverage|floatformat:1 }}% coverage</p>
                                             <p class="batch-classes">
                                                 {% with classes=batch.get_class_distribution %}
-                                                <span class="class-label">Classes:</span>
+                                                <span class="class-label">Categories:</span>
                                                 <span class="class-badge class-a">A</span> {{ classes.A }} |
                                                 <span class="class-badge class-b">B</span> {{ classes.B }} |
-                                                <span class="class-badge class-c">C</span> {{ classes.C }}
+                                                <span class="class-badge class-c">C</span> {{ classes.C }} |
+                                                <span class="class-badge class-d">D</span> {{ classes.D }}
                                                 {% endwith %}
                                             </p>
                                         </div>

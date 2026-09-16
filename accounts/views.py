@@ -22,7 +22,7 @@ from django.db.models.functions import TruncMonth
 from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
-from .models import User, ImageBatch, BatchImage, Report, CPCE_CODES, compute_coverage
+from .models import User, ImageBatch, BatchImage, Report, CPCE_CODES, compute_coverage, classify_hcc
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 
@@ -207,9 +207,8 @@ def researcher_dashboard(request):
             if pc in benthic_counts:
                 benthic_counts[pc] += 1
 
-        # Calculate coral coverage (Hard Coral + Soft Coral only)
-        coral_classes = ['Hard Coral', 'Soft Coral']
-        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        # Hard Coral Cover (HCC) = Hard Coral points / total points only
+        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
         batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
         batches_with_coverage.append(batch)
 
@@ -220,19 +219,17 @@ def researcher_dashboard(request):
     all_coverages = [b.avg_coverage for b in batches_with_coverage if b.avg_coverage is not None]
     avg_coverage = round(sum(all_coverages) / len(all_coverages), 1) if all_coverages else None
 
-    # Calculate class distribution
+    # Calculate HCC category distribution (Licuanan 2020: A>44, B>33-44,
+    # C>22-33, D 0-22). "Category A sites" = the top HCC tier.
     healthy_reefs = 0
-    class_counts = {'A': 0, 'B': 0, 'C': 0}
+    class_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
     for batch in batches_with_coverage:
         if batch.avg_coverage is None:
             continue
-        if batch.avg_coverage >= 60:
-            class_counts['A'] += 1
+        cls = classify_hcc(batch.avg_coverage)
+        class_counts[cls] += 1
+        if cls == 'A':
             healthy_reefs += 1
-        elif batch.avg_coverage >= 40:
-            class_counts['B'] += 1
-        else:
-            class_counts['C'] += 1
 
     locations = batches.values('area_name').distinct().count()
 
@@ -257,14 +254,7 @@ def researcher_dashboard(request):
     recent_submissions = []
     for batch in batches_with_coverage[:5]:
         coverage_value = batch.avg_coverage
-        if coverage_value is None:
-            coverage_class = None
-        elif coverage_value >= 60:
-            coverage_class = 'A'
-        elif coverage_value >= 40:
-            coverage_class = 'B'
-        else:
-            coverage_class = 'C'
+        coverage_class = classify_hcc(coverage_value)
 
         recent_submissions.append({
             'id': batch.id,
@@ -295,11 +285,12 @@ def researcher_dashboard(request):
         for c in BENTHIC_CLASSES
     ]
 
-    insight_total = class_counts['A'] + class_counts['B'] + class_counts['C']
+    insight_total = class_counts['A'] + class_counts['B'] + class_counts['C'] + class_counts['D']
     insight_items = [
-        {'label': 'Class A - High', 'value': round((class_counts['A'] / insight_total) * 100, 0) if insight_total else 0},
-        {'label': 'Class B - Moderate', 'value': round((class_counts['B'] / insight_total) * 100, 0) if insight_total else 0},
-        {'label': 'Class C - Low', 'value': round((class_counts['C'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Category A (>44%)', 'value': round((class_counts['A'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Category B (>33-44%)', 'value': round((class_counts['B'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Category C (>22-33%)', 'value': round((class_counts['C'] / insight_total) * 100, 0) if insight_total else 0},
+        {'label': 'Category D (0-22%)', 'value': round((class_counts['D'] / insight_total) * 100, 0) if insight_total else 0},
     ]
 
     context = {
@@ -352,11 +343,7 @@ def _get_analysis_queryset(user):
 def _coverage_class(coverage_value):
     if coverage_value is None:
         return 'Pending'
-    if coverage_value >= 60:
-        return 'A'
-    if coverage_value >= 40:
-        return 'B'
-    return 'C'
+    return classify_hcc(coverage_value)
 
 
 def _apply_analysis_filters(request, queryset):
@@ -408,11 +395,10 @@ def _build_analysis_rows(queryset):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
         
-        # Calculate coral coverage (Hard Coral + Soft Coral only)
-        coral_classes = ['Hard Coral', 'Soft Coral']
-        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        # Hard Coral Cover (HCC) = Hard Coral points / total points only
+        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
         coverage_value = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else 0
-        
+
         coverage_class = _coverage_class(coverage_value)
         surveyor_display = (batch.surveyor_names or '').replace(',', '\n')
         rows.append({
@@ -459,17 +445,13 @@ def analysis_results(request):
     if max_coverage is not None:
         rows = [r for r in rows if r['avg_coverage'] <= max_coverage]
     
-    if class_filter == 'A':
-        rows = [r for r in rows if r['avg_coverage'] >= 60]
-    elif class_filter == 'B':
-        rows = [r for r in rows if 40 <= r['avg_coverage'] < 60]
-    elif class_filter == 'C':
-        rows = [r for r in rows if r['avg_coverage'] < 40]
+    if class_filter in ('A', 'B', 'C', 'D'):
+        rows = [r for r in rows if r['coverage_class'] == class_filter]
 
     total_batches = len(rows)
     total_images = sum(row['image_count'] or 0 for row in rows)
 
-    distribution = {'A': 0, 'B': 0, 'C': 0, 'Pending': 0}
+    distribution = {'A': 0, 'B': 0, 'C': 0, 'D': 0, 'Pending': 0}
     for row in rows:
         distribution[row['coverage_class']] += 1
 
@@ -587,7 +569,7 @@ def analysis_results(request):
     # Calculate monthly statistics table
     monthly_stats = []
     monthly_coverage_data = defaultdict(list)
-    monthly_classes = defaultdict(lambda: {'A': 0, 'B': 0, 'C': 0})
+    monthly_classes = defaultdict(lambda: {'A': 0, 'B': 0, 'C': 0, 'D': 0})
     monthly_batches = defaultdict(int)
     monthly_images = defaultdict(int)
     
@@ -602,19 +584,14 @@ def analysis_results(request):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
         
-        # Calculate coverage for this batch
+        # Calculate HCC for this batch (Hard Coral points only)
         if all_point_classes:
-            coral_count = sum(1 for pc in all_point_classes if pc in ['Hard Coral', 'Soft Coral'])
+            coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
             batch_coverage = round((coral_count / len(all_point_classes)) * 100, 1)
             monthly_coverage_data[month_key].append(batch_coverage)
-            
-            # Assign to class
-            if batch_coverage >= 60:
-                monthly_classes[month_key]['A'] += 1
-            elif batch_coverage >= 40:
-                monthly_classes[month_key]['B'] += 1
-            else:
-                monthly_classes[month_key]['C'] += 1
+
+            # Assign to HCC category
+            monthly_classes[month_key][classify_hcc(batch_coverage)] += 1
     
     # Build monthly stats list
     for month_date, month_str in month_dates:
@@ -644,6 +621,7 @@ def analysis_results(request):
                 'class_a_count': monthly_classes[month_str]['A'],
                 'class_b_count': monthly_classes[month_str]['B'],
                 'class_c_count': monthly_classes[month_str]['C'],
+                'class_d_count': monthly_classes[month_str]['D'],
             })
 
     context = {
@@ -657,7 +635,7 @@ def analysis_results(request):
         'chart_data': {
             'labels': chart_labels,
             'values': chart_values,
-            'classes': [distribution['A'], distribution['B'], distribution['C'], distribution['Pending']],
+            'classes': [distribution['A'], distribution['B'], distribution['C'], distribution['D'], distribution['Pending']],
             'class_percentages': class_percentages,
             'hard_coral_pct': hard_coral_pct,
             'soft_coral_pct': soft_coral_pct,
@@ -1099,18 +1077,11 @@ def upload_batch(request):
                 payload = quadrat_payloads[index - 1]
                 point_classes = payload.get('point_classes') or []
                 
-                # Count coral coverage: Only Hard Coral + Soft Coral
-                coral_classes = ['Hard Coral', 'Soft Coral']
-                coral_count = sum(1 for value in point_classes if value in coral_classes)
+                # Hard Coral Cover (HCC): Hard Coral points only / total points
+                coral_count = sum(1 for value in point_classes if value == 'Hard Coral')
                 total_points = len(point_classes) or 1
                 coverage_percent = (Decimal(coral_count) * Decimal('100') / Decimal(total_points)).quantize(Decimal('0.01'))
-                
-                if coverage_percent >= Decimal('60'):
-                    coverage_class = 'A'
-                elif coverage_percent >= Decimal('40'):
-                    coverage_class = 'B'
-                else:
-                    coverage_class = 'C'
+                coverage_class = classify_hcc(coverage_percent)
 
                 BatchImage.objects.create(
                     batch=batch,
@@ -1169,21 +1140,12 @@ def batches(request):
                 all_point_classes.extend(image.point_classes)
         
         if all_point_classes:
-            coral_classes = ['Hard Coral', 'Soft Coral']
-            coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+            coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
             batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100)
         else:
             batch.avg_coverage = None
-        
-        if batch.avg_coverage is None:
-            batch.coverage_class = None
-            continue
-        if batch.avg_coverage >= 60:
-            batch.coverage_class = 'A'
-        elif batch.avg_coverage >= 40:
-            batch.coverage_class = 'B'
-        else:
-            batch.coverage_class = 'C'
+
+        batch.coverage_class = classify_hcc(batch.avg_coverage)
 
     context = {
         'user': request.user,
@@ -1220,21 +1182,12 @@ def all_batches(request):
                 all_point_classes.extend(image.point_classes)
         
         if all_point_classes:
-            coral_classes = ['Hard Coral', 'Soft Coral']
-            coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+            coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
             batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100)
         else:
             batch.avg_coverage = None
-        
-        if batch.avg_coverage is None:
-            batch.coverage_class = None
-            continue
-        if batch.avg_coverage >= 60:
-            batch.coverage_class = 'A'
-        elif batch.avg_coverage >= 40:
-            batch.coverage_class = 'B'
-        else:
-            batch.coverage_class = 'C'
+
+        batch.coverage_class = classify_hcc(batch.avg_coverage)
 
     context = {
         'user': request.user,
@@ -1288,11 +1241,10 @@ def map_view(request):
         
         batch.class_breakdown = class_breakdown_pct
         
-        # Calculate coral coverage (Hard Coral + Soft Coral only)
-        coral_classes = ['Hard Coral', 'Soft Coral']
-        coral_count = sum(1 for pc in all_point_classes if pc in coral_classes)
+        # Hard Coral Cover (HCC) = Hard Coral points / total points only
+        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
         batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
-        
+
         # Determine dominant coral type
         hard_coral_pct = class_breakdown_pct.get('Hard Coral', 0)
         soft_coral_pct = class_breakdown_pct.get('Soft Coral', 0)
@@ -1301,16 +1253,9 @@ def map_view(request):
             batch.dominant_coral_type = 'hard'
         elif soft_coral_pct > hard_coral_pct:
             batch.dominant_coral_type = 'soft'
-        
-        # Determine coverage class
-        if batch.avg_coverage is None:
-            batch.coverage_class = None
-        elif batch.avg_coverage >= 60:
-            batch.coverage_class = 'A'
-        elif batch.avg_coverage >= 40:
-            batch.coverage_class = 'B'
-        else:
-            batch.coverage_class = 'C'
+
+        # Determine HCC category
+        batch.coverage_class = classify_hcc(batch.avg_coverage)
 
     # Convert batches to GeoJSON format for map
     features = []
@@ -1399,14 +1344,7 @@ def batch_detail(request, batch_id):
         batch = get_object_or_404(ImageBatch, id=batch_id, user=request.user)
     images = batch.images.all()
     avg_coverage = images.aggregate(avg=Avg('coverage_percent')).get('avg')
-    if avg_coverage is None:
-        coverage_class = None
-    elif avg_coverage >= 60:
-        coverage_class = 'A'
-    elif avg_coverage >= 40:
-        coverage_class = 'B'
-    else:
-        coverage_class = 'C'
+    coverage_class = classify_hcc(avg_coverage)
 
     if request.method == 'POST':
         batch_name = request.POST.get('name', '').strip()
@@ -1466,7 +1404,7 @@ def batch_detail(request, batch_id):
             messages.success(request, 'Data repository updated successfully.')
             return redirect('batch_detail', batch_id=batch.id)
 
-    # Calculate Coral Coverage (Hard Coral + Soft Coral only)
+    # Calculate Hard Coral Cover (HCC, Hard Coral only)
     all_point_classes = []
     for image in images:
         if image.point_classes:
@@ -1531,11 +1469,12 @@ def reports(request):
     )
     avg_coverage = coverage_stats['avg'] or 0
     
-    # Coverage class breakdown
-    class_a = batches_qs.filter(images__coverage_percent__gte=60).distinct().count()
-    class_b = batches_qs.filter(images__coverage_percent__gte=40, images__coverage_percent__lt=60).distinct().count()
-    class_c = batches_qs.filter(images__coverage_percent__lt=40).distinct().count()
-    pending = total_surveys - (class_a + class_b + class_c)
+    # HCC category breakdown (A>44, B>33-44, C>22-33, D 0-22)
+    class_a = batches_qs.filter(images__coverage_percent__gt=44).distinct().count()
+    class_b = batches_qs.filter(images__coverage_percent__gt=33, images__coverage_percent__lte=44).distinct().count()
+    class_c = batches_qs.filter(images__coverage_percent__gt=22, images__coverage_percent__lte=33).distinct().count()
+    class_d = batches_qs.filter(images__coverage_percent__lte=22).distinct().count()
+    pending = total_surveys - (class_a + class_b + class_c + class_d)
 
     # Extract unique locations from batches
     locations = []
@@ -1559,6 +1498,7 @@ def reports(request):
         'class_a': class_a,
         'class_b': class_b,
         'class_c': class_c,
+        'class_d': class_d,
         'pending': pending,
         'recent_batches': batches_qs[:10],
         'locations': locations,

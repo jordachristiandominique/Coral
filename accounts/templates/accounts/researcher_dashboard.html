@@ -4,7 +4,7 @@
 {% block title %}Researcher Dashboard | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
 {% endblock %}
 
 {% block content %}
@@ -120,15 +120,15 @@
             </article>
             <article class="stat-card surface-card">
                 <div class="stat-icon" aria-hidden="true"><i data-lucide="line-chart"></i></div>
-                <p class="stat-label">Avg Coverage</p>
+                <p class="stat-label">Avg HCC</p>
                 <p class="stat-value">{{ avg_coverage|default_if_none:"--"|floatformat:0 }}%</p>
-                <p class="stat-sub">Across monitored reefs</p>
+                <p class="stat-sub">Hard Coral Cover across reefs</p>
             </article>
             <article class="stat-card surface-card">
                 <div class="stat-icon" aria-hidden="true"><i data-lucide="leaf"></i></div>
-                <p class="stat-label">High Coverage Sites</p>
+                <p class="stat-label">Category A Sites</p>
                 <p class="stat-value">{{ healthy_reefs|default:0 }}</p>
-                <p class="stat-sub">Class A - High coral coverage</p>
+                <p class="stat-sub">Highest HCC tier (more than 44%)</p>
             </article>
             <article class="stat-card surface-card">
                 <div class="stat-icon" aria-hidden="true"><i data-lucide="map-pin"></i></div>
@@ -160,11 +160,11 @@
 
             <article class="surface-card insight-card">
                 <div class="card-header">
-                    <h2>Total Reef Health</h2>
+                    <h2>HCC Overview</h2>
                 </div>
 
                 <p class="insight-value">{{ insight_total|default_if_none:"--"|floatformat:0 }}%</p>
-                <p class="insight-sub">Average coverage across data repositories</p>
+                <p class="insight-sub">Average Hard Coral Cover across data repositories</p>
 
                 <div class="insight-list">
                     {% for item in insight_items %}
@@ -201,7 +201,7 @@
                             {% if row.avg_coverage is not None %}
                             {% with coverage_class=row.coverage_class|default:"pending"|lower %}
                             <span class="coverage-badge coverage-class coverage-{{ coverage_class }}">
-                                Class {{ row.coverage_class|default:"Pending" }} • {{ row.avg_coverage|floatformat:0 }}%
+                                {% if row.coverage_class %}Category {{ row.coverage_class }}{% else %}Pending{% endif %} • {{ row.avg_coverage|floatformat:0 }}%
                             </span>
                             {% endwith %}
                             {% else %}

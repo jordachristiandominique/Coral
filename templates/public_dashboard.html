@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -32,7 +32,7 @@
                 <h3 id="stat-sites">12</h3>
             </article>
             <article class="summary-card">
-                <p>Class A Share</p>
+                <p>Category A Share</p>
                 <h3 id="stat-class-a">33%</h3>
             </article>
         </section>
@@ -40,12 +40,13 @@
         <section class="map-panel" aria-label="Interactive map and filters">
             <div class="map-toolbar">
                 <span class="toolbar-title">Interactive Map</span>
-                <label for="class-filter">Class
+                <label for="class-filter">HCC Category
                     <select id="class-filter" name="class-filter">
-                        <option value="ALL">All Classes</option>
-                        <option value="A">Class A - High coral coverage</option>
-                        <option value="B">Class B - Moderate coral coverage</option>
-                        <option value="C">Class C - Low coral coverage</option>
+                        <option value="ALL">All Categories</option>
+                        <option value="A">Category A - more than 44%</option>
+                        <option value="B">Category B - more than 33% up to 44%</option>
+                        <option value="C">Category C - more than 22% up to 33%</option>
+                        <option value="D">Category D - 0-22%</option>
                     </select>
                 </label>
                 <label for="start-date">From
@@ -59,9 +60,10 @@
             <div id="public-survey-map" class="public-map" aria-label="Survey locations map"></div>
 
             <div class="legend-row" aria-label="Map legend">
-                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-a);"></span>Class A - High coral coverage</span>
-                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-b);"></span>Class B - Moderate coral coverage</span>
-                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-c);"></span>Class C - Low coral coverage</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-a);"></span>Category A - HCC &gt;44%</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-b);"></span>Category B - HCC &gt;33-44%</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-c);"></span>Category C - HCC &gt;22-33%</span>
+                <span class="legend-chip"><span class="legend-dot" style="background: var(--class-d);"></span>Category D - HCC 0-22%</span>
             </div>
         </section>
 
@@ -96,14 +98,15 @@
 
         <section class="charts-grid" aria-label="Biodiversity charts">
             <article class="chart-card">
-                <h2>Biodiversity Distribution</h2>
-                <p class="chart-sub">Class A/B/C breakdown</p>
+                <h2>HCC Category Distribution</h2>
+                <p class="chart-sub">Category A/B/C/D breakdown</p>
                 <div class="donut-wrap">
                     <div id="distribution-donut" class="donut" aria-hidden="true"></div>
                     <div class="donut-legend" aria-live="polite">
-                        <div><strong>Class A <em class="class-desc">High coral coverage</em></strong><span id="legend-a">0 sites</span></div>
-                        <div><strong>Class B <em class="class-desc">Moderate coral coverage</em></strong><span id="legend-b">0 sites</span></div>
-                        <div><strong>Class C <em class="class-desc">Low coral coverage</em></strong><span id="legend-c">0 sites</span></div>
+                        <div><strong>Category A <em class="class-desc">HCC &gt;44%</em></strong><span id="legend-a">0 sites</span></div>
+                        <div><strong>Category B <em class="class-desc">HCC &gt;33-44%</em></strong><span id="legend-b">0 sites</span></div>
+                        <div><strong>Category C <em class="class-desc">HCC &gt;22-33%</em></strong><span id="legend-c">0 sites</span></div>
+                        <div><strong>Category D <em class="class-desc">HCC 0-22%</em></strong><span id="legend-d">0 sites</span></div>
                     </div>
                 </div>
             </article>
@@ -127,8 +130,8 @@
                             <th>Area</th>
                             <th>Survey By</th>
                             <th>Date</th>
-                            <th>Coverage</th>
-                            <th>Class</th>
+                            <th>HCC</th>
+                            <th>Category</th>
                             <th>Class Distribution</th>
                             <th>Action</th>
                         </tr>
@@ -141,16 +144,19 @@
         <section class="edu-panel" aria-label="Educational panel">
             <h2>What do these numbers mean?</h2>
             <p class="edu-formula">
-                <strong>Coral coverage</strong> is measured with the CPCE point-intercept method: sample points are
-                placed on each survey image and classified, then
-                <em>Coral&nbsp;Coverage&nbsp;=&nbsp;(Hard&nbsp;Coral&nbsp;+&nbsp;Soft&nbsp;Coral&nbsp;points)&nbsp;&divide;&nbsp;Total&nbsp;points&nbsp;&times;&nbsp;100</em>.
+                <strong>Hard Coral Cover (HCC)</strong> is measured with the CPCE point-intercept method: sample points
+                are placed on each survey image and classified, then
+                <em>Hard&nbsp;Coral&nbsp;Cover&nbsp;=&nbsp;Hard&nbsp;Coral&nbsp;points&nbsp;&divide;&nbsp;Total&nbsp;points&nbsp;surveyed&nbsp;&times;&nbsp;100</em>.
+                Only scleractinian (stony) hard coral counts toward HCC. Categories are benchmarked against the
+                Philippine national average of 22.8% and the Tubbataha Reefs benchmark.
             </p>
             <p>
-                <strong>Class A - High coral coverage</strong> means live coral covers at least 60% of the survey
-                points, and generally indicates strong reef condition. <strong>Class B - Moderate coral coverage</strong>
-                (40-59%) reflects moderate health with stable recovery potential. <strong>Class C - Low coral
-                coverage</strong> (below 40%) signals a reef area that needs closer monitoring and targeted restoration
-                support.
+                <strong>Category A (more than 44%)</strong> &mdash; reef coral cover is more than double the national
+                average, comparable to or exceeding Tubbataha Reefs. <strong>Category B (more than 33% up to 44%)</strong>
+                &mdash; coral cover exceeds both the national average and the Tubbataha benchmark.
+                <strong>Category C (more than 22% up to 33%)</strong> &mdash; coral cover is above the national average,
+                though below the Tubbataha benchmark. <strong>Category D (0-22%)</strong> &mdash; coral cover is at or
+                below the national average; this reef may still provide meaningful ecosystem services and habitat.
             </p>
         </section>
 
@@ -164,5 +170,5 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="{% static 'js/public_dashboard.js' %}?v=20260907a"></script>
+<script src="{% static 'js/public_dashboard.js' %}?v=20260916a"></script>
 {% endblock %}

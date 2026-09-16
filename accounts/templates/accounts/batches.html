@@ -4,8 +4,8 @@
 {% block title %}My Data Repositories | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=10">
-<link rel="stylesheet" href="{% static 'css/batches.css' %}">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -126,12 +126,13 @@
             </label>
 
             <label class="batch-filter-select" for="batch-class-filter">
-                <span class="sr-only">Filter by class</span>
+                <span class="sr-only">Filter by HCC category</span>
                 <select id="batch-class-filter" name="batch-class-filter">
-                    <option value="">Class</option>
-                    <option value="A">Class A - High coral coverage</option>
-                    <option value="B">Class B - Moderate coral coverage</option>
-                    <option value="C">Class C - Low coral coverage</option>
+                    <option value="">Category</option>
+                    <option value="A">Category A - more than 44%</option>
+                    <option value="B">Category B - more than 33% up to 44%</option>
+                    <option value="C">Category C - more than 22% up to 33%</option>
+                    <option value="D">Category D - 0-22%</option>
                 </select>
             </label>
 
@@ -166,10 +167,10 @@
                 </p>
                 <p class="batch-coverage">
                     {% with coverage=batch.avg_coverage|default_if_none:"--"|floatformat:0 %}
-                    <span class="coverage-text">Coral Coverage: <strong>{{ coverage }}%</strong></span>
+                    <span class="coverage-text">Hard Coral Cover: <strong>{{ coverage }}%</strong></span>
                     {% endwith %}
                     <span class="batch-class-badge class-{{ batch.coverage_class|default:" pending"|lower }}">
-                        Class {{ batch.coverage_class|default:"Pending" }}
+                        {% if batch.coverage_class %}Category {{ batch.coverage_class }}{% else %}Pending{% endif %}
                     </span>
                 </p>
 
