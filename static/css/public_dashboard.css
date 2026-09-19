@@ -8,7 +8,7 @@
 
     /* HCC categories = status scale (reserved; always paired with a label) */
     --class-a: #1e8e5a;
-    --class-b: #4caf50;
+    --class-b: #f2c11f;
     --class-c: #e8820c;
     --class-d: #d64545;
 
@@ -635,8 +635,8 @@
 }
 
 .class-badge.class-b {
-    color: #2e7d32;
-    background: rgba(76, 175, 80, 0.16);
+    color: #8a6a0f;
+    background: rgba(242, 193, 47, 0.22);
 }
 
 .class-badge.class-c {

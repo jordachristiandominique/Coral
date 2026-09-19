@@ -139,7 +139,7 @@ const initializeAnalysisResults = function () {
                 datasets: [
                     {
                         data: classValues,
-                        backgroundColor: ['#1e8e5a', '#4caf50', '#e8820c', '#d64545', '#9bb1b8'],
+                        backgroundColor: ['#1e8e5a', '#f2c11f', '#e8820c', '#d64545', '#9bb1b8'],
                         borderRadius: 999,
                         spacing: 12,
                         borderWidth: 10,
@@ -245,7 +245,7 @@ const initializeAnalysisResults = function () {
                             radius: 8,
                             fillColor:
                                 batch.coverage_class === 'A' ? '#1e8e5a' :
-                                    batch.coverage_class === 'B' ? '#4caf50' :
+                                    batch.coverage_class === 'B' ? '#f2c11f' :
                                         batch.coverage_class === 'C' ? '#e8820c' :
                                             batch.coverage_class === 'D' ? '#d64545' : '#6a8893',
                             color: '#fff',

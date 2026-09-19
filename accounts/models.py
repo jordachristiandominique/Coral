@@ -125,6 +125,8 @@ def compute_site_hcc(batch):
             'percent': t_mean,
             'coverage_class': classify_hcc(t_mean),
             'image_count': len(image_percents),
+            'latitude': transect.latitude,
+            'longitude': transect.longitude,
         })
         if t_mean is not None:
             transect_means.append(t_mean)
@@ -227,6 +229,9 @@ class Transect(models.Model):
     batch = models.ForeignKey(ImageBatch, on_delete=models.CASCADE, related_name='transects')
     number = models.PositiveSmallIntegerField(default=1)
     label = models.CharField(max_length=120, blank=True, default='')
+    # Each transect can sit at its own GPS location (falls back to the site's).
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     # Cached transect-level HCC (mean of its images) for quick list displays.
     coverage_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     coverage_class = models.CharField(max_length=1, blank=True, default='')

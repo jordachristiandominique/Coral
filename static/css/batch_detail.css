@@ -1051,3 +1051,16 @@ textarea.field-input {
     width: 14px;
     height: 14px;
 }
+
+/* HCC category badge colors (A green, B yellow, C orange, D red). */
+.batch-class-badge.class-a { color: #1d7b4d; background: rgba(30, 126, 90, 0.16); }
+.batch-class-badge.class-b { color: #8a6a0f; background: rgba(242, 193, 47, 0.22); }
+.batch-class-badge.class-c { color: #b5651d; background: rgba(232, 130, 12, 0.18); }
+.batch-class-badge.class-d { color: #b53030; background: rgba(214, 69, 69, 0.16); }
+.batch-class-badge.class-pending { color: #6a8893; background: rgba(106, 136, 147, 0.16); }
+
+/* Small note appended to the transect coverage computation line. */
+.coverage-note { color: #6b8893; font-weight: 600; }
+
+/* Coordinate line in the transect summary. */
+.transect-card-meta i { width: 12px; height: 12px; vertical-align: -1px; }

@@ -17,7 +17,7 @@ const CLASS_COLORS = {
 };
 // Reef health is a status scale, not a series — these are reserved colours
 // and always ship alongside the "Class A/B/C" label, never colour alone.
-const STATUS_COLORS = { A: '#1e8e5a', B: '#4caf50', C: '#e8820c', D: '#d64545' };
+const STATUS_COLORS = { A: '#1e8e5a', B: '#f2c11f', C: '#e8820c', D: '#d64545' };
 const COVERAGE_CLASS_LABELS = {
     A: 'HCC more than 44%',
     B: 'HCC more than 33% up to 44%',

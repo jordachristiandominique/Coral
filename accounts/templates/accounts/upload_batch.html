@@ -6,8 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=16">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=17">
 {% endblock %}
 
 {% block content %}
@@ -151,24 +151,26 @@
 
                 <div class="coordinates-row">
                     <label class="field-floating">
-                        <input type="text" id="latitude" name="latitude" placeholder=" " value="{% if active_site %}{{ active_site.latitude }}{% else %}7.0731{% endif %}"{% if active_site %} readonly{% endif %}>
+                        <input type="text" id="latitude" name="latitude" placeholder=" " value="{% if active_site %}{{ active_site.latitude }}{% else %}7.0731{% endif %}">
                         <span>Latitude</span>
                     </label>
 
                     <label class="field-floating">
-                        <input type="text" id="longitude" name="longitude" placeholder=" " value="{% if active_site %}{{ active_site.longitude }}{% else %}125.6128{% endif %}"{% if active_site %} readonly{% endif %}>
+                        <input type="text" id="longitude" name="longitude" placeholder=" " value="{% if active_site %}{{ active_site.longitude }}{% else %}125.6128{% endif %}">
                         <span>Longitude</span>
                     </label>
 
-                    {% if not active_site %}
                     <button type="button" class="action-outline map-select-btn" id="map-select-btn">
                         <i data-lucide="map-pin"></i>
                         Select on Map
                     </button>
-                    {% endif %}
                 </div>
 
-                {% if not active_site %}
+                {% if active_site %}
+                <p class="field-help">Coordinates default to the previous transect — edit them (or click the map) if
+                    this transect is at a different spot.</p>
+                {% endif %}
+
                 <div class="map-card">
                     <div class="map-card-head">
                         <h3>Capture Location</h3>
@@ -177,7 +179,6 @@
                     <div id="upload-batch-map" class="upload-batch-map" aria-label="Interactive location map"></div>
                     {{ survey_points|json_script:"survey-points-data" }}
                 </div>
-                {% endif %}
             </section>
 
             <section class="surface-card upload-step-card" aria-label="Step 2 image upload">
@@ -187,31 +188,25 @@
                 </div>
 
                 <p class="upload-step-note">Add <strong>one transect at a time</strong> — this transect is about
-                    <strong>50 images</strong>. Click <strong>Add transect folder</strong> to pick this transect's
-                    folder, or drag the folder onto the box. The system then detects coral areas and classifies each
-                    image. After you save, you can add the next transect to the same site.
+                    <strong>50 images</strong>. <strong>Drag the transect folder</strong> onto the box, or
+                    <strong>click the box</strong> to choose a folder. The system then detects coral areas and
+                    classifies each image. After you save, you can add the next transect to the same site.
                 </p>
 
-                <label class="dropzone" id="dropzone" for="upload-input">
-                    <input id="upload-input" name="images" type="file" accept=".jpg,.jpeg,.png" multiple>
+                <div class="dropzone" id="dropzone" role="button" tabindex="0"
+                    aria-label="Drop a transect folder here or click to choose a folder">
                     <div class="dropzone-inner">
                         <i data-lucide="folder-open"></i>
-                        <p>Drop this transect's folder here, or click to add images</p>
+                        <p>Drop this transect's folder here, or click to choose a folder</p>
                         <span>Accepted: JPG, PNG | Max 10MB per file | ~50 images per transect</span>
                     </div>
-                </label>
-
-                <div class="folder-pick-row">
-                    <!-- Directory picker: the reliable, cross-browser way to add a folder
-                         (a plain file dialog can't select folders). -->
-                    <input id="folder-input" type="file" webkitdirectory directory multiple hidden>
-                    <input type="hidden" name="transect_label" id="transect-label-input">
-                    <button type="button" class="action-outline" id="folder-pick-btn">
-                        <i data-lucide="folder-plus"></i>
-                        Add transect folder
-                    </button>
-                    <span class="folder-pick-hint">Pick this transect's folder (about 50 images).</span>
                 </div>
+
+                <!-- Hidden carriers: upload-input holds the files for form submit;
+                     folder-input is the directory picker opened by clicking the box. -->
+                <input id="upload-input" name="images" type="file" accept=".jpg,.jpeg,.png" multiple hidden>
+                <input id="folder-input" type="file" webkitdirectory directory multiple hidden>
+                <input type="hidden" name="transect_label" id="transect-label-input">
 
                 <div id="quadrat-inputs" aria-hidden="true"></div>
 
@@ -479,7 +474,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=19"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=21"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

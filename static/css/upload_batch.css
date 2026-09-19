@@ -904,7 +904,7 @@ body.modal-open {
 }
 
 .coverage-metric-badge.class-a { background: rgba(30, 126, 90, 0.16); color: #1e8e5a; }
-.coverage-metric-badge.class-b { background: rgba(76, 175, 80, 0.16); color: #2e7d32; }
+.coverage-metric-badge.class-b { background: rgba(242, 193, 47, 0.22); color: #8a6a0f; }
 .coverage-metric-badge.class-c { background: rgba(232, 130, 12, 0.18); color: #b5651d; }
 .coverage-metric-badge.class-d { background: rgba(214, 69, 69, 0.16); color: #b53030; }
 .coverage-metric-badge.class-pending { background: rgba(42, 135, 147, 0.12); color: #2a8793; }
@@ -1214,7 +1214,7 @@ body.modal-open {
 }
 
 .summary-class-badge.class-a { background: rgba(30, 126, 90, 0.16); color: #1e8e5a; }
-.summary-class-badge.class-b { background: rgba(76, 175, 80, 0.16); color: #2e7d32; }
+.summary-class-badge.class-b { background: rgba(242, 193, 47, 0.22); color: #8a6a0f; }
 .summary-class-badge.class-c { background: rgba(232, 130, 12, 0.18); color: #b5651d; }
 .summary-class-badge.class-d { background: rgba(214, 69, 69, 0.16); color: #b53030; }
 .summary-class-badge.class-pending { background: rgba(42, 135, 147, 0.12); color: #2a8793; }
@@ -1363,7 +1363,7 @@ body.modal-open {
 }
 
 .dot-b {
-    background: #4caf50;
+    background: #f2c11f;
 }
 
 .dot-c {

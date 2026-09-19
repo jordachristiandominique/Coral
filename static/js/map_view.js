@@ -13,7 +13,7 @@ const DAVAO_GULF_ZOOM = 10;
 // HCC category colors (match coverage badges in map_view.css)
 const CLASS_COLORS = {
     A: '#1e8e5a',       // HCC more than 44%
-    B: '#4caf50',       // HCC more than 33% up to 44%
+    B: '#f2c11f',       // HCC more than 33% up to 44%
     C: '#e8820c',       // HCC more than 22% up to 33%
     D: '#d64545',       // HCC 0-22%
     Pending: '#2a8793', // not analyzed

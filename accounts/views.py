@@ -1019,15 +1019,27 @@ def upload_batch(request):
         if not images:
             errors.append('Please upload at least one image.')
 
-        # Site metadata is only entered/validated when creating a NEW site; when
-        # appending, it comes from the existing batch and is never overwritten.
+        # Coordinates are per-transect, so they are entered/validated in BOTH
+        # modes (each transect can sit at a different spot).
+        latitude_raw = request.POST.get('latitude', '').strip()
+        longitude_raw = request.POST.get('longitude', '').strip()
+        if not latitude_raw or not longitude_raw:
+            errors.append('Latitude and longitude are required.')
+        try:
+            latitude = Decimal(latitude_raw)
+            longitude = Decimal(longitude_raw)
+        except (InvalidOperation, TypeError):
+            latitude = None
+            longitude = None
+            errors.append('Latitude or longitude is invalid.')
+
+        # Site metadata (name/date/surveyors/area) is only entered/validated when
+        # creating a NEW site; when appending it comes from the existing batch.
         if existing_batch is None:
             batch_name = request.POST.get('batch_name', '').strip()
             survey_date = request.POST.get('survey_date', '').strip()
             surveyor_names = request.POST.get('surveyor_names', '').strip()
             area_name = request.POST.get('area_name', '').strip()
-            latitude_raw = request.POST.get('latitude', '').strip()
-            longitude_raw = request.POST.get('longitude', '').strip()
             if not batch_name:
                 errors.append('Data repository name is required.')
             if not survey_date:
@@ -1036,15 +1048,6 @@ def upload_batch(request):
                 errors.append('Survey by is required.')
             if not area_name:
                 errors.append('Area name is required.')
-            if not latitude_raw or not longitude_raw:
-                errors.append('Latitude and longitude are required.')
-            try:
-                latitude = Decimal(latitude_raw)
-                longitude = Decimal(longitude_raw)
-            except (InvalidOperation, TypeError):
-                latitude = None
-                longitude = None
-                errors.append('Latitude or longitude is invalid.')
 
         # Where to return on validation failure (keep the active site if appending).
         redirect_target = (
@@ -1099,9 +1102,13 @@ def upload_batch(request):
                 )
 
             # One transect per submit, appended after any existing transects.
+            # Each transect keeps its own coordinates.
             number = (batch.transects.aggregate(m=Max('number'))['m'] or 0) + 1
             label = request.POST.get('transect_label', '').strip() or f'Transect {number}'
-            transect = Transect.objects.create(batch=batch, number=number, label=label)
+            transect = Transect.objects.create(
+                batch=batch, number=number, label=label,
+                latitude=latitude, longitude=longitude,
+            )
 
             for index, image in enumerate(images, start=1):
                 description = request.POST.get(f'image_description_{index}', '').strip()
@@ -1150,14 +1157,21 @@ def upload_batch(request):
         site = ImageBatch.objects.filter(**active_filter).first()
         if site:
             next_number = (site.transects.aggregate(m=Max('number'))['m'] or 0) + 1
+            # Default the coordinates to the most recent transect's location
+            # (fall back to the site's), editable for the transect being added.
+            last_transect = site.transects.order_by('-number').first()
+            default_lat = (last_transect.latitude if last_transect and last_transect.latitude is not None
+                           else site.latitude)
+            default_lng = (last_transect.longitude if last_transect and last_transect.longitude is not None
+                           else site.longitude)
             active_site = {
                 'id': site.id,
                 'name': site.name,
                 'area_name': site.area_name,
                 'survey_date': site.survey_date.isoformat() if site.survey_date else '',
                 'surveyor_names': site.surveyor_names,
-                'latitude': site.latitude,
-                'longitude': site.longitude,
+                'latitude': default_lat,
+                'longitude': default_lng,
                 'transect_count': site.transects.count(),
                 'next_number': next_number,
             }

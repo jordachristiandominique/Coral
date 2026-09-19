@@ -4,8 +4,8 @@
 {% block title %}Surveyed Sites | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
-<link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
+<link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=3">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
@@ -225,5 +225,5 @@
 <script>
     window.mapData = JSON.parse('{{ geojson_data|default:"{\"type\":\"FeatureCollection\",\"features\":[]}"|escapejs }}');
 </script>
-<script src="{% static 'js/map_view.js' %}?v=5"></script>
+<script src="{% static 'js/map_view.js' %}?v=6"></script>
 {% endblock %}

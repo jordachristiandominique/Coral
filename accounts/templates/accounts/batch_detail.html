@@ -4,8 +4,8 @@
 {% block title %}Data Repository Details | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
-<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=6">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
+<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=8">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
@@ -179,6 +179,9 @@
                                 {% if t.coverage_class %}Category {{ t.coverage_class }}{% else %}Pending{% endif %}
                             </span>
                             <span class="transect-card-meta">{{ t.image_count }} image{{ t.image_count|pluralize }}</span>
+                            {% if t.latitude is not None and t.longitude is not None %}
+                            <span class="transect-card-meta"><i data-lucide="map-pin"></i> {{ t.latitude|floatformat:5 }}, {{ t.longitude|floatformat:5 }}</span>
+                            {% endif %}
                         </div>
                         {% endfor %}
                         <div class="transect-card transect-card-site">

@@ -1051,8 +1051,8 @@ body {
 }
 
 .coverage-b {
-    background: rgba(76, 175, 80, 0.16);
-    color: #2e7d32;
+    background: rgba(242, 193, 47, 0.22);
+    color: #8a6a0f;
 }
 
 .coverage-c {
@@ -1340,7 +1340,7 @@ body {
 }
 
 .coverage-class-key-dot.key-a { background: #1e8e5a; }
-.coverage-class-key-dot.key-b { background: #4caf50; }
+.coverage-class-key-dot.key-b { background: #f2c11f; }
 .coverage-class-key-dot.key-c { background: #e8820c; }
 .coverage-class-key-dot.key-d { background: #d64545; }
 

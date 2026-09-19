@@ -129,7 +129,17 @@ const initializeUploadBatch = function () {
             });
         }
 
-        setPin({ lat: 7.0731, lng: 125.6128 });
+        // Start the pin on the prefilled coordinates (e.g. the previous
+        // transect when adding another), falling back to the Davao Gulf default.
+        const initialLat = latInput ? parseCoord(latInput.value) : null;
+        const initialLng = lngInput ? parseCoord(lngInput.value) : null;
+        if (initialLat !== null && initialLng !== null) {
+            const start = L.latLng(initialLat, initialLng);
+            setPin(start, false);
+            map.setView(start, 12);
+        } else {
+            setPin({ lat: 7.0731, lng: 125.6128 });
+        }
     }
 
     const dropzone = document.getElementById('dropzone');
@@ -1334,6 +1344,56 @@ const describeCoverageClass = function (code) {
         return 'D';
     };
 
+    // HCC for the WHOLE transect: pool every analyzed image's points together
+    // (Hard Coral points / total points across all images in this transect).
+    const computeTransectCoverage = function () {
+        let hc = 0;
+        let total = 0;
+        let imgCount = 0;
+        selectedFiles.forEach(function (file) {
+            const r = aiResultsByFileKey[getFileKey(file)];
+            if (r && Array.isArray(r.points) && r.points.length) {
+                r.points.forEach(function (p) {
+                    total += 1;
+                    if (p.class === 'Hard Coral') { hc += 1; }
+                });
+                imgCount += 1;
+            }
+        });
+        const pct = total > 0 ? Math.round((hc / total) * 100) : 0;
+        return { hc: hc, total: total, imgCount: imgCount, pct: pct, code: getCoverageClass(pct) };
+    };
+
+    // The Step 2 result panel shows the transect total (same for every image),
+    // not the active image alone.
+    const renderTransectCoverageSummary = function () {
+        const coverageClassEl = document.getElementById('coverage-class');
+        const coveragePercentEl = document.getElementById('coral-coverage-percent');
+        const substitutionEl = document.getElementById('coverage-substitution');
+        const t = computeTransectCoverage();
+        if (!t.total) {
+            if (coveragePercentEl) { coveragePercentEl.textContent = '--%'; }
+            if (coverageClassEl) {
+                coverageClassEl.textContent = 'Pending';
+                coverageClassEl.className = 'coverage-metric-badge class-pending';
+            }
+            if (substitutionEl) { substitutionEl.innerHTML = 'Awaiting analysis&hellip;'; }
+            return;
+        }
+        if (coveragePercentEl) { coveragePercentEl.textContent = `${t.pct}%`; }
+        if (coverageClassEl) {
+            coverageClassEl.textContent = `Category ${t.code}`;
+            coverageClassEl.className = `coverage-metric-badge class-${t.code.toLowerCase()}`;
+        }
+        if (substitutionEl) {
+            substitutionEl.innerHTML =
+                `= ${t.hc} Hard Coral &divide; ${t.total} points &times; 100 ` +
+                `= <strong class="coverage-result">${t.pct}%</strong> ` +
+                `&rarr; Category ${t.code} ` +
+                `<span class="coverage-note">(whole transect · ${t.imgCount} image${t.imgCount === 1 ? '' : 's'})</span>`;
+        }
+    };
+
     const renderPointList = function () {
         const pointList = document.getElementById('point-list');
         const coverageClassEl = document.getElementById('coverage-class');
@@ -1345,18 +1405,9 @@ const describeCoverageClass = function (code) {
             return;
         }
 
-        const setCoveragePending = function () {
-            if (coveragePercentEl) {
-                coveragePercentEl.textContent = '--%';
-            }
-            if (coverageClassEl) {
-                coverageClassEl.textContent = 'Pending';
-                coverageClassEl.className = 'coverage-metric-badge class-pending';
-            }
-            if (substitutionEl) {
-                substitutionEl.innerHTML = 'Awaiting analysis&hellip;';
-            }
-        };
+        // The coverage summary always reflects the whole transect, even while a
+        // not-yet-analyzed image is selected.
+        const setCoveragePending = renderTransectCoverageSummary;
 
         const activeFile = getActiveFile();
 
@@ -1388,28 +1439,8 @@ const describeCoverageClass = function (code) {
             return;
         }
 
-        const updateCoverageLabels = function () {
-            const pts = results.points || [];
-            const total = pts.length;
-            const hc = pts.filter(function (p) { return p.class === 'Hard Coral'; }).length;
-            const pct = getCoralCoveragePercent(pts);
-            const code = getCoverageClass(pct);
-
-            if (coveragePercentEl) {
-                coveragePercentEl.textContent = `${pct}%`;
-            }
-            if (coverageClassEl) {
-                coverageClassEl.textContent = `Category ${code}`;
-                coverageClassEl.className = `coverage-metric-badge class-${code.toLowerCase()}`;
-            }
-            // Show the computation with the actual numbers plugged in
-            if (substitutionEl) {
-                substitutionEl.innerHTML =
-                    `= ${hc} Hard Coral &divide; ${total} points &times; 100 ` +
-                    `= <strong class="coverage-result">${pct}%</strong> ` +
-                    `&rarr; Category ${code}`;
-            }
-        };
+        // Coverage shown for the whole transect (recomputed after any edit).
+        const updateCoverageLabels = renderTransectCoverageSummary;
 
         const rows = points.map(function (point, index) {
             const current = point.class || '';
@@ -2170,15 +2201,20 @@ const describeCoverageClass = function (code) {
         });
     }
 
-    // ---- Directory picker ("Add transect folder") ----
-    // A plain file dialog can't select folders, so this uses a webkitdirectory
-    // input. All picked files are this transect's images; the chosen folder's
-    // name (webkitRelativePath segment 0) becomes the transect label.
+    // ---- Folder picker (click the dropzone) ----
+    // A plain file dialog can't select folders, so clicking the box opens a
+    // webkitdirectory picker. All picked files are this transect's images; the
+    // chosen folder's name (webkitRelativePath segment 0) becomes the label.
     const folderInput = document.getElementById('folder-input');
-    const folderPickBtn = document.getElementById('folder-pick-btn');
-    if (folderPickBtn && folderInput) {
-        folderPickBtn.addEventListener('click', function () {
+    if (dropzone && folderInput) {
+        dropzone.addEventListener('click', function () {
             folderInput.click();
+        });
+        dropzone.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                folderInput.click();
+            }
         });
         folderInput.addEventListener('change', function () {
             const picked = folderInput.files ? Array.from(folderInput.files).filter(isAcceptedImage) : [];
