@@ -13,16 +13,19 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmView
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Max, Q
 from django.db.models.functions import TruncMonth
 from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
-from .models import User, ImageBatch, BatchImage, Report, CPCE_CODES, compute_coverage, classify_hcc
+from .models import (
+    User, ImageBatch, BatchImage, Transect, Report, CPCE_CODES,
+    compute_coverage, classify_hcc, compute_site_hcc,
+)
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 
@@ -207,9 +210,8 @@ def researcher_dashboard(request):
             if pc in benthic_counts:
                 benthic_counts[pc] += 1
 
-        # Hard Coral Cover (HCC) = Hard Coral points / total points only
-        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-        batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
+        # Site HCC = mean of the transect means (transect = replicate).
+        batch.avg_coverage = compute_site_hcc(batch)['site_percent']
         batches_with_coverage.append(batch)
 
     # Get total images count (all data)
@@ -395,11 +397,10 @@ def _build_analysis_rows(queryset):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
         
-        # Hard Coral Cover (HCC) = Hard Coral points / total points only
-        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-        coverage_value = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else 0
-
-        coverage_class = _coverage_class(coverage_value)
+        # Site HCC = mean of the transect means (transect = replicate).
+        site = compute_site_hcc(batch)
+        coverage_value = site['site_percent'] if site['site_percent'] is not None else 0
+        coverage_class = _coverage_class(coverage_value) if site['site_percent'] is not None else 'Pending'
         surveyor_display = (batch.surveyor_names or '').replace(',', '\n')
         rows.append({
             'id': batch.id,
@@ -999,84 +1000,114 @@ def upload_batch(request):
         return redirect('pending_approval')
 
     if request.method == 'POST':
-        batch_name = request.POST.get('batch_name', '').strip()
-        survey_date = request.POST.get('survey_date', '').strip()
-        surveyor_names = request.POST.get('surveyor_names', '').strip()
-        area_name = request.POST.get('area_name', '').strip()
-        latitude_raw = request.POST.get('latitude', '').strip()
-        longitude_raw = request.POST.get('longitude', '').strip()
         images = request.FILES.getlist('images')
 
+        # Append mode: add one transect to an existing site. Admins may append to
+        # any site (parity with batch_detail); researchers only to their own.
+        existing_batch_id = request.POST.get('existing_batch_id', '').strip()
+        existing_batch = None
+        if existing_batch_id:
+            append_filter = {'id': existing_batch_id}
+            if not request.user.is_admin():
+                append_filter['user'] = request.user
+            existing_batch = ImageBatch.objects.filter(**append_filter).first()
+            if existing_batch is None:
+                messages.error(request, 'That site was not found. Please start a new site.')
+                return redirect('upload_batch')
+
         errors = []
-        if not batch_name:
-            errors.append('Data repository name is required.')
-        if not survey_date:
-            errors.append('Survey date is required.')
-        if not surveyor_names:
-            errors.append('Survey by is required.')
-        if not area_name:
-            errors.append('Area name is required.')
-        if not latitude_raw or not longitude_raw:
-            errors.append('Latitude and longitude are required.')
         if not images:
             errors.append('Please upload at least one image.')
 
-        try:
-            latitude = Decimal(latitude_raw)
-            longitude = Decimal(longitude_raw)
-        except (InvalidOperation, TypeError):
-            latitude = None
-            longitude = None
-            errors.append('Latitude or longitude is invalid.')
+        # Site metadata is only entered/validated when creating a NEW site; when
+        # appending, it comes from the existing batch and is never overwritten.
+        if existing_batch is None:
+            batch_name = request.POST.get('batch_name', '').strip()
+            survey_date = request.POST.get('survey_date', '').strip()
+            surveyor_names = request.POST.get('surveyor_names', '').strip()
+            area_name = request.POST.get('area_name', '').strip()
+            latitude_raw = request.POST.get('latitude', '').strip()
+            longitude_raw = request.POST.get('longitude', '').strip()
+            if not batch_name:
+                errors.append('Data repository name is required.')
+            if not survey_date:
+                errors.append('Survey date is required.')
+            if not surveyor_names:
+                errors.append('Survey by is required.')
+            if not area_name:
+                errors.append('Area name is required.')
+            if not latitude_raw or not longitude_raw:
+                errors.append('Latitude and longitude are required.')
+            try:
+                latitude = Decimal(latitude_raw)
+                longitude = Decimal(longitude_raw)
+            except (InvalidOperation, TypeError):
+                latitude = None
+                longitude = None
+                errors.append('Latitude or longitude is invalid.')
+
+        # Where to return on validation failure (keep the active site if appending).
+        redirect_target = (
+            f"{reverse('upload_batch')}?site={existing_batch.id}"
+            if existing_batch is not None else 'upload_batch'
+        )
 
         if errors:
             for error in errors:
                 messages.error(request, error)
-            return redirect('upload_batch')
+            return redirect(redirect_target)
 
         quadrat_payloads = []
         for index in range(1, len(images) + 1):
             raw_payload = request.POST.get(f'image_quadrat_{index}', '')
             if not raw_payload:
                 messages.error(request, f'Quadrat data missing for image {index}.')
-                return redirect('upload_batch')
+                return redirect(redirect_target)
             try:
                 parsed = json.loads(raw_payload)
             except json.JSONDecodeError:
                 messages.error(request, f'Quadrat data is invalid for image {index}.')
-                return redirect('upload_batch')
+                return redirect(redirect_target)
 
             rect = parsed.get('rect')
             points = parsed.get('points')
             point_classes = parsed.get('point_classes')
             if not rect or not points:
                 messages.error(request, f'Quadrat data is incomplete for image {index}.')
-                return redirect('upload_batch')
+                return redirect(redirect_target)
             if not isinstance(point_classes, list) or len(point_classes) != len(points):
                 messages.error(request, f'Point classes are incomplete for image {index}.')
-                return redirect('upload_batch')
+                return redirect(redirect_target)
             if any(not value for value in point_classes):
                 messages.error(request, f'Please classify all points for image {index}.')
-                return redirect('upload_batch')
+                return redirect(redirect_target)
 
             quadrat_payloads.append(parsed)
 
         with transaction.atomic():
-            batch = ImageBatch.objects.create(
-                user=request.user,
-                name=batch_name,
-                survey_date=survey_date,
-                surveyor_names=surveyor_names,
-                area_name=area_name,
-                latitude=latitude,
-                longitude=longitude,
-            )
+            if existing_batch is not None:
+                batch = existing_batch
+            else:
+                batch = ImageBatch.objects.create(
+                    user=request.user,
+                    name=batch_name,
+                    survey_date=survey_date,
+                    surveyor_names=surveyor_names,
+                    area_name=area_name,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+
+            # One transect per submit, appended after any existing transects.
+            number = (batch.transects.aggregate(m=Max('number'))['m'] or 0) + 1
+            label = request.POST.get('transect_label', '').strip() or f'Transect {number}'
+            transect = Transect.objects.create(batch=batch, number=number, label=label)
 
             for index, image in enumerate(images, start=1):
                 description = request.POST.get(f'image_description_{index}', '').strip()
                 payload = quadrat_payloads[index - 1]
                 point_classes = payload.get('point_classes') or []
-                
+
                 # Hard Coral Cover (HCC): Hard Coral points only / total points
                 coral_count = sum(1 for value in point_classes if value == 'Hard Coral')
                 total_points = len(point_classes) or 1
@@ -1085,6 +1116,7 @@ def upload_batch(request):
 
                 BatchImage.objects.create(
                     batch=batch,
+                    transect=transect,
                     image=image,
                     description=description,
                     quadrat_rect=payload.get('rect'),
@@ -1094,10 +1126,44 @@ def upload_batch(request):
                     coverage_class=coverage_class,
                 )
 
-        messages.success(request, 'Data repository uploaded successfully.')
-        return redirect('batches')
+            # Cache this transect's mean HCC (mean of its images) + category.
+            site = compute_site_hcc(batch)
+            data = next((t for t in site['transects'] if t['number'] == number), None)
+            if data and data['percent'] is not None:
+                transect.coverage_percent = Decimal(str(data['percent']))
+                transect.coverage_class = data['coverage_class'] or ''
+                transect.save(update_fields=['coverage_percent', 'coverage_class'])
+
+        messages.success(
+            request,
+            f'Transect {number} saved. Add the next transect for this site, or click "Start new site".'
+        )
+        return redirect(f"{reverse('upload_batch')}?site={batch.id}")
+
+    # GET: if returning to add another transect, load the active site to pre-fill.
+    active_site = None
+    site_id = request.GET.get('site')
+    if site_id:
+        active_filter = {'id': site_id}
+        if not request.user.is_admin():
+            active_filter['user'] = request.user
+        site = ImageBatch.objects.filter(**active_filter).first()
+        if site:
+            next_number = (site.transects.aggregate(m=Max('number'))['m'] or 0) + 1
+            active_site = {
+                'id': site.id,
+                'name': site.name,
+                'area_name': site.area_name,
+                'survey_date': site.survey_date.isoformat() if site.survey_date else '',
+                'surveyor_names': site.surveyor_names,
+                'latitude': site.latitude,
+                'longitude': site.longitude,
+                'transect_count': site.transects.count(),
+                'next_number': next_number,
+            }
 
     context = {
+        'active_site': active_site,
         'user': request.user,
         'generated_at': timezone.now(),
         'today': timezone.localdate(),
@@ -1133,19 +1199,11 @@ def batches(request):
     )
 
     for batch in batches_qs:
-        # Recalculate coral coverage (HC + SC only) from point_classes data
-        all_point_classes = []
-        for image in batch.images.all():
-            if image.point_classes:
-                all_point_classes.extend(image.point_classes)
-        
-        if all_point_classes:
-            coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-            batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100)
-        else:
-            batch.avg_coverage = None
-
-        batch.coverage_class = classify_hcc(batch.avg_coverage)
+        # Site HCC = mean of the transect means (transect = replicate).
+        site = compute_site_hcc(batch)
+        batch.avg_coverage = site['site_percent']
+        batch.coverage_class = site['coverage_class']
+        batch.transect_count = batch.transects.count()
 
     context = {
         'user': request.user,
@@ -1175,19 +1233,11 @@ def all_batches(request):
     )
 
     for batch in batches_qs:
-        # Recalculate coral coverage (HC + SC only) from point_classes data
-        all_point_classes = []
-        for image in batch.images.all():
-            if image.point_classes:
-                all_point_classes.extend(image.point_classes)
-        
-        if all_point_classes:
-            coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-            batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100)
-        else:
-            batch.avg_coverage = None
-
-        batch.coverage_class = classify_hcc(batch.avg_coverage)
+        # Site HCC = mean of the transect means (transect = replicate).
+        site = compute_site_hcc(batch)
+        batch.avg_coverage = site['site_percent']
+        batch.coverage_class = site['coverage_class']
+        batch.transect_count = batch.transects.count()
 
     context = {
         'user': request.user,
@@ -1241,9 +1291,9 @@ def map_view(request):
         
         batch.class_breakdown = class_breakdown_pct
         
-        # Hard Coral Cover (HCC) = Hard Coral points / total points only
-        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-        batch.avg_coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
+        # Site HCC = mean of the transect means (transect = replicate).
+        site = compute_site_hcc(batch)
+        batch.avg_coverage = site['site_percent']
 
         # Determine dominant coral type
         hard_coral_pct = class_breakdown_pct.get('Hard Coral', 0)
@@ -1255,7 +1305,7 @@ def map_view(request):
             batch.dominant_coral_type = 'soft'
 
         # Determine HCC category
-        batch.coverage_class = classify_hcc(batch.avg_coverage)
+        batch.coverage_class = site['coverage_class']
 
     # Convert batches to GeoJSON format for map
     features = []
@@ -1343,8 +1393,6 @@ def batch_detail(request, batch_id):
     else:
         batch = get_object_or_404(ImageBatch, id=batch_id, user=request.user)
     images = batch.images.all()
-    avg_coverage = images.aggregate(avg=Avg('coverage_percent')).get('avg')
-    coverage_class = classify_hcc(avg_coverage)
 
     if request.method == 'POST':
         batch_name = request.POST.get('name', '').strip()
@@ -1404,18 +1452,21 @@ def batch_detail(request, batch_id):
             messages.success(request, 'Data repository updated successfully.')
             return redirect('batch_detail', batch_id=batch.id)
 
-    # Calculate Hard Coral Cover (HCC, Hard Coral only)
+    # Site-level HCC: mean of the transect means, with SE across transects.
+    # This is the headline number and the source of the A-D category.
+    site = compute_site_hcc(batch)
+    transect_labels = {t.id: (t.label or f'Transect {t.number}') for t in batch.transects.all()}
+
+    # Batch-level pooled breakdown kept for the "show the CPCE math" formula.
     all_point_classes = []
     for image in images:
         if image.point_classes:
             all_point_classes.extend(image.point_classes)
-    
-    # Batch-level coverage breakdown (shows the CPCE computation, not just the %)
     batch_coverage = compute_coverage(all_point_classes)
     coral_coverage = batch_coverage['percent'] or 0
 
-    # Attach a display-ready per-point legend (number + CPCE code + class name)
-    # plus a per-image coverage breakdown so the template can show its work.
+    # Attach a display-ready per-point legend (number + CPCE code + class name),
+    # a per-image coverage breakdown, and the image's transect label.
     images = list(images)
     for image in images:
         image.point_rows = [
@@ -1427,14 +1478,16 @@ def batch_detail(request, batch_id):
             for index, class_name in enumerate(image.point_classes or [], start=1)
         ]
         image.coverage_breakdown = compute_coverage(image.point_classes)
+        image.transect_label = transect_labels.get(image.transect_id, '')
 
     context = {
         'user': request.user,
         'generated_at': timezone.now(),
         'batch': batch,
         'images': images,
-        'avg_coverage': avg_coverage,
-        'coverage_class': coverage_class,
+        'avg_coverage': site['site_percent'],
+        'coverage_class': site['coverage_class'],
+        'site_hcc': site,
         'point_classes_json': json.dumps({f'image-{img.id}': img.point_classes for img in images}),
         'coral_coverage': coral_coverage,
         'batch_coverage': batch_coverage,
@@ -1454,38 +1507,49 @@ def reports(request):
     else:
         batches_qs = ImageBatch.objects.filter(user=request.user)
     
-    batches_qs = batches_qs.annotate(
-        image_count=Count('images'),
-        avg_coverage=Avg('images__coverage_percent')
-    ).order_by('-survey_date')
+    batches_list = list(batches_qs.annotate(
+        image_count=Count('images')
+    ).order_by('-survey_date'))
 
     # Calculate statistics
-    total_surveys = batches_qs.count()
-    total_images = batches_qs.aggregate(total=Count('images'))['total'] or 0
-    
-    # Coverage statistics
-    coverage_stats = batches_qs.aggregate(
-        avg=Avg('images__coverage_percent'),
-    )
-    avg_coverage = coverage_stats['avg'] or 0
-    
-    # HCC category breakdown (A>44, B>33-44, C>22-33, D 0-22)
-    class_a = batches_qs.filter(images__coverage_percent__gt=44).distinct().count()
-    class_b = batches_qs.filter(images__coverage_percent__gt=33, images__coverage_percent__lte=44).distinct().count()
-    class_c = batches_qs.filter(images__coverage_percent__gt=22, images__coverage_percent__lte=33).distinct().count()
-    class_d = batches_qs.filter(images__coverage_percent__lte=22).distinct().count()
-    pending = total_surveys - (class_a + class_b + class_c + class_d)
+    total_surveys = len(batches_list)
+    total_images = sum(b.image_count or 0 for b in batches_list)
+
+    # Per-batch site HCC (mean of transect means) -> category tallies + average.
+    class_a = class_b = class_c = class_d = pending = 0
+    site_percents = []
+    for batch in batches_list:
+        site = compute_site_hcc(batch)
+        batch.avg_coverage = site['site_percent']
+        cls = site['coverage_class']
+        if cls == 'A':
+            class_a += 1
+        elif cls == 'B':
+            class_b += 1
+        elif cls == 'C':
+            class_c += 1
+        elif cls == 'D':
+            class_d += 1
+        else:
+            pending += 1
+        if site['site_percent'] is not None:
+            site_percents.append(site['site_percent'])
+    avg_coverage = round(sum(site_percents) / len(site_percents), 1) if site_percents else 0
 
     # Extract unique locations from batches
+    area_counts = {}
+    for batch in batches_list:
+        if batch.area_name:
+            area_counts[batch.area_name] = area_counts.get(batch.area_name, 0) + 1
     locations = []
     seen_locations = set()
-    for batch in batches_qs:
+    for batch in batches_list:
         if batch.area_name and batch.area_name not in seen_locations:
             locations.append({
                 'name': batch.area_name,
                 'latitude': float(batch.latitude),
                 'longitude': float(batch.longitude),
-                'batch_count': batches_qs.filter(area_name=batch.area_name).count()
+                'batch_count': area_counts.get(batch.area_name, 0),
             })
             seen_locations.add(batch.area_name)
 
@@ -1500,7 +1564,7 @@ def reports(request):
         'class_c': class_c,
         'class_d': class_d,
         'pending': pending,
-        'recent_batches': batches_qs[:10],
+        'recent_batches': batches_list[:10],
         'locations': locations,
         'recent_reports': Report.objects.filter(user=request.user, status='completed')[:10],
     }

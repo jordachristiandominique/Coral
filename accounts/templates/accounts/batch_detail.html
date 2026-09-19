@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
-<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=5">
+<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=6">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
@@ -140,8 +140,12 @@
                         <span class="result-value">{{ images|length }}</span>
                     </div>
                     <div class="result-stat">
+                        <span class="result-label">Transects</span>
+                        <span class="result-value">{{ site_hcc.n_transects|default:0 }}</span>
+                    </div>
+                    <div class="result-stat">
                         <span class="result-label">Hard Coral Cover (HCC)</span>
-                        <span class="result-value" id="batchCoverageValue">{{ avg_coverage|default_if_none:"--"|floatformat:0 }}%</span>
+                        <span class="result-value" id="batchCoverageValue">{{ avg_coverage|default_if_none:"--"|floatformat:1 }}%{% if site_hcc.se is not None and site_hcc.n_transects > 1 %} <small class="result-se">&plusmn; {{ site_hcc.se|floatformat:1 }} SE</small>{% endif %}</span>
                     </div>
                     <div class="result-stat result-stat-class">
                         <span class="result-label">HCC Category</span>
@@ -157,6 +161,37 @@
                         </span>
                     </div>
                 </div>
+
+                {% if site_hcc.transects %}
+                <div class="transect-summary" aria-label="Transect summary">
+                    <div class="transect-summary-head">
+                        <span class="transect-summary-title">Transect Summary</span>
+                        <span class="transect-summary-note">Site HCC is the mean of the transect means
+                            {% if site_hcc.n_transects > 1 %}(&plusmn; standard error across {{ site_hcc.n_transects }} transects){% endif %}.
+                            The transect is the sampling replicate.</span>
+                    </div>
+                    <div class="transect-cards">
+                        {% for t in site_hcc.transects %}
+                        <div class="transect-card">
+                            <span class="transect-card-label">{{ t.label }}</span>
+                            <span class="transect-card-value">{{ t.percent|default_if_none:"--" }}%</span>
+                            <span class="batch-class-badge class-{{ t.coverage_class|default:" pending"|lower }}">
+                                {% if t.coverage_class %}Category {{ t.coverage_class }}{% else %}Pending{% endif %}
+                            </span>
+                            <span class="transect-card-meta">{{ t.image_count }} image{{ t.image_count|pluralize }}</span>
+                        </div>
+                        {% endfor %}
+                        <div class="transect-card transect-card-site">
+                            <span class="transect-card-label">Site mean</span>
+                            <span class="transect-card-value">{{ site_hcc.site_percent|default_if_none:"--" }}%{% if site_hcc.se is not None and site_hcc.n_transects > 1 %} <small>&plusmn;{{ site_hcc.se }}</small>{% endif %}</span>
+                            <span class="batch-class-badge class-{{ site_hcc.coverage_class|default:" pending"|lower }}">
+                                {% if site_hcc.coverage_class %}Category {{ site_hcc.coverage_class }}{% else %}Pending{% endif %}
+                            </span>
+                            <span class="transect-card-meta">across transects</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
                 <div class="coverage-computation" aria-label="Coverage computation">
                     <span class="coverage-computation-label">How Hard Coral Cover is computed &mdash; CPCE point-intercept method</span>
@@ -180,6 +215,7 @@
                         <span>Show quadrat overlay</span>
                     </label>
                     <div class="batch-overview-actions">
+                        <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline">Add transect</a>
                         <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline batch-download-btn">Download Excel</a>
                         <button type="submit" class="primary-btn batch-save-btn">Save Changes</button>
                     </div>
@@ -268,6 +304,9 @@
                         </div>
                         <div class="batch-image-body">
                             <h3>{{ image.image.name|default:"Image" }}</h3>
+                            {% if image.transect_label %}
+                            <p class="batch-image-transect"><i data-lucide="git-branch"></i> {{ image.transect_label }}</p>
+                            {% endif %}
                             <p class="batch-image-coverage">
                                 Hard Coral Cover: <strong id="image-coverage-{{ image.id }}">{{ image.coverage_breakdown.percent|default_if_none:"--" }}%</strong>
                                 <span class="batch-class-badge class-{{ image.coverage_breakdown.coverage_class|default:" pending"|lower }}">
@@ -357,5 +396,5 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/batch_detail.js' %}?v=3"></script>
-<script src="{% static 'js/batch_visualization.js' %}?v=6"></script>
+<script src="{% static 'js/batch_visualization.js' %}?v=7"></script>
 {% endblock %}

@@ -1,3 +1,5 @@
+import statistics
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -93,6 +95,61 @@ def compute_coverage(point_classes):
     }
 
 
+def compute_site_hcc(batch):
+    """Site-level Hard Coral Cover with the transect as the sampling replicate.
+
+    Following the Licuanan / PhilReefs photo-transect method:
+      * per image  -> HCC = compute_coverage(point_classes)['percent']
+      * per transect -> mean of its images' HCC (each image weighted equally)
+      * per site   -> mean of the transect means, with Standard Error across
+                      the transects (SE = SD / sqrt(n)); the A-D category is
+                      assigned from the site mean.
+
+    Returns a dict the views/templates can render directly:
+        {transects: [{number, label, percent, coverage_class, image_count}],
+         site_percent, se, coverage_class, n_transects}
+    """
+    transects_data = []
+    transect_means = []
+
+    for transect in batch.transects.all():
+        image_percents = []
+        for image in transect.images.all():
+            percent = compute_coverage(image.point_classes)['percent']
+            if percent is not None:
+                image_percents.append(percent)
+        t_mean = round(sum(image_percents) / len(image_percents), 2) if image_percents else None
+        transects_data.append({
+            'number': transect.number,
+            'label': transect.label or f'Transect {transect.number}',
+            'percent': t_mean,
+            'coverage_class': classify_hcc(t_mean),
+            'image_count': len(image_percents),
+        })
+        if t_mean is not None:
+            transect_means.append(t_mean)
+
+    if transect_means:
+        site_percent = round(sum(transect_means) / len(transect_means), 2)
+        if len(transect_means) >= 2:
+            se = round(statistics.stdev(transect_means) / (len(transect_means) ** 0.5), 2)
+        else:
+            se = 0.0
+        coverage_class = classify_hcc(site_percent)
+    else:
+        site_percent = None
+        se = None
+        coverage_class = None
+
+    return {
+        'transects': transects_data,
+        'site_percent': site_percent,
+        'se': se,
+        'coverage_class': coverage_class,
+        'n_transects': len(transect_means),
+    }
+
+
 class User(AbstractUser):
     ROLE_CHOICES = [
         ('superadmin', 'Super Admin'),
@@ -161,8 +218,32 @@ class ImageBatch(models.Model):
         return classes
 
 
+class Transect(models.Model):
+    """One transect (sampling replicate) within a site/survey (ImageBatch).
+
+    A site is surveyed with (typically 3) transects, each analyzed from ~50
+    images. HCC statistics treat the transect as the replicate unit.
+    """
+    batch = models.ForeignKey(ImageBatch, on_delete=models.CASCADE, related_name='transects')
+    number = models.PositiveSmallIntegerField(default=1)
+    label = models.CharField(max_length=120, blank=True, default='')
+    # Cached transect-level HCC (mean of its images) for quick list displays.
+    coverage_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    coverage_class = models.CharField(max_length=1, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['number']
+
+    def __str__(self):
+        return f"{self.batch.name} - {self.label or f'Transect {self.number}'}"
+
+
 class BatchImage(models.Model):
     batch = models.ForeignKey(ImageBatch, on_delete=models.CASCADE, related_name='images')
+    transect = models.ForeignKey(
+        Transect, on_delete=models.CASCADE, related_name='images', null=True, blank=True
+    )
     image = models.FileField(upload_to='batch_images/')
     description = models.TextField(blank=True)
     quadrat_rect = models.JSONField()

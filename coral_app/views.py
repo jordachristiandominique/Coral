@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.db.models import Avg
 
-from accounts.models import ImageBatch, classify_hcc
+from accounts.models import ImageBatch, classify_hcc, compute_site_hcc
 
 def landing_page(request):
     """Render the landing page"""
@@ -20,16 +20,15 @@ def public_dashboard(request):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
         
-        # Hard Coral Cover (HCC) = Hard Coral points / total points only
-        coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-        coverage = round((coral_count / len(all_point_classes)) * 100) if all_point_classes else None
-
+        # Site HCC = mean of the transect means (transect = replicate).
+        site = compute_site_hcc(batch)
+        coverage = site['site_percent']
         if coverage is None:
             coverage_value = None
             coverage_class = None
         else:
             coverage_value = float(coverage)
-            coverage_class = classify_hcc(coverage)
+            coverage_class = site['coverage_class']
 
         # Calculate 7-class distribution
         all_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota']

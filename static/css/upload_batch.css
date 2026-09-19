@@ -1630,3 +1630,115 @@ body.modal-open {
         text-align: center;
     }
 }
+/* ---- Transect grouping (upload Step 2) ---- */
+.transect-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.transect-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(42, 135, 147, 0.10);
+    border: 1px solid rgba(42, 135, 147, 0.25);
+    color: #1c5f6d;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.transect-chip strong {
+    font-weight: 800;
+}
+
+.transect-chip em {
+    font-style: normal;
+    color: #6b8893;
+}
+
+.transect-chip.is-warn {
+    background: rgba(232, 130, 12, 0.12);
+    border-color: rgba(232, 130, 12, 0.4);
+    color: #b5651d;
+}
+
+.transect-chip.is-warn em {
+    color: #b5651d;
+}
+
+/* ---- Active site banner (adding another transect) ---- */
+.active-site-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: linear-gradient(130deg, rgba(42, 135, 147, 0.12), rgba(23, 63, 76, 0.08));
+    border: 1px solid rgba(42, 135, 147, 0.3);
+}
+
+.active-site-info { display: grid; gap: 2px; }
+
+.active-site-kicker {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #2a8793;
+}
+
+.active-site-info h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #173f4c;
+}
+
+.active-site-info p {
+    margin: 0;
+    color: #587987;
+    font-size: 13.5px;
+}
+
+.step-readonly-note {
+    margin-left: auto;
+    font-size: 12px;
+    color: #8199a3;
+}
+
+/* Locked (read-only) site fields when adding another transect. */
+.field-floating input[readonly],
+.field-floating textarea[readonly] {
+    background: #eef4f6;
+    color: #566e78;
+    cursor: not-allowed;
+}
+
+/* ---- Directory picker row (Add transect folders) ---- */
+.folder-pick-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: -4px;
+}
+
+.folder-pick-row .action-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.folder-pick-row .action-outline i {
+    width: 16px;
+    height: 16px;
+}
+
+.folder-pick-hint {
+    color: #6b8893;
+    font-size: 12.5px;
+}

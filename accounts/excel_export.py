@@ -1,9 +1,10 @@
 """Excel (.xlsx) export for a single survey batch.
 
 Reproduces the CPCE COREMAP "Data summary" layout: benthic categories run down
-the rows, each analyzed image is a column ("transect"), and every cell is that
-category's percentage of the transect. MEAN, STD. DEV. (sample, n-1) and STD.
-ERROR columns summarize across the images.
+the rows, each transect (the sampling replicate, typically 3 per site) is a
+column, and every cell is that category's mean percentage across the transect's
+images. MEAN, STD. DEV. (sample, n-1) and STD. ERROR columns summarize across
+the transects.
 
 Uses the project's seven benthic classes as the Major Categories. The
 "Total points (minus tape+wand+shadow)" row and the Subcategories section from
@@ -70,6 +71,46 @@ def _pct_series(images):
     return series, totals
 
 
+def _transect_series(batch):
+    """Per-transect category percentages with the transect as the replicate.
+
+    A category's value for a transect is the mean of that category's per-image
+    percentage across the transect's images. Returns (series, infos) where
+    series[name] = [pct per transect] and infos = [{label, frames, points}].
+    Falls back to a single 'Transect 1' if the batch has no transect rows.
+    """
+    transects = list(batch.transects.all())
+    if not transects:
+        images = list(batch.images.all())
+        series, totals = _pct_series(images)
+        # Collapse the per-image series into one column (mean across images).
+        collapsed = {name: [(_mean(vals) if vals else 0.0)] for name, vals in series.items()}
+        return collapsed, [{'label': 'Transect 1', 'frames': len(images), 'points': sum(totals)}]
+
+    series = {name: [] for name in CLASS_ORDER}
+    infos = []
+    for transect in transects:
+        images = list(transect.images.all())
+        per_image = {name: [] for name in CLASS_ORDER}
+        total_points = 0
+        for image in images:
+            pcs = image.point_classes or []
+            total = len(pcs)
+            total_points += total
+            for name in CLASS_ORDER:
+                count = sum(1 for p in pcs if p == name)
+                per_image[name].append((count / total * 100) if total else 0.0)
+        for name in CLASS_ORDER:
+            vals = per_image[name]
+            series[name].append((_mean(vals) if vals else 0.0))
+        infos.append({
+            'label': transect.label or f'Transect {transect.number}',
+            'frames': len(images),
+            'points': total_points,
+        })
+    return series, infos
+
+
 def _stats(values):
     """MEAN, sample STD. DEV. (n-1), and STD. ERROR for a category's per-image %."""
     n = len(values)
@@ -83,8 +124,8 @@ def _stats(values):
 
 def build_batch_coverage_workbook(batch):
     """Build the CPCE-style coverage workbook for one batch. Returns a BytesIO."""
-    images = list(batch.images.all())
-    n = len(images)
+    series, transect_infos = _transect_series(batch)
+    n = len(transect_infos)
 
     wb = Workbook()
     ws = wb.active
@@ -130,21 +171,18 @@ def build_batch_coverage_workbook(batch):
     box_top = r
 
     cell(r, 1, 'TRANSECT NAME', font=_HEADER, border=True)
-    for i, image in enumerate(images):
-        name = image.image.name.split('/')[-1] if image.image else f'Frame {i + 1}'
-        cell(r, first_frame + i, name, font=_HEADER, align=_CENTER, border=True)
+    for i, info in enumerate(transect_infos):
+        cell(r, first_frame + i, info['label'], font=_HEADER, align=_CENTER, border=True)
     r += 1
 
     cell(r, 1, 'Number of frames', font=_LABEL, border=True)
-    for i in range(n):
-        cell(r, first_frame + i, 1, align=_CENTER, fmt='0', border=True)
+    for i, info in enumerate(transect_infos):
+        cell(r, first_frame + i, info['frames'], align=_CENTER, fmt='0', border=True)
     r += 1
 
-    series, totals = _pct_series(images)
-
     cell(r, 1, 'Total points', font=_LABEL, border=True)
-    for i in range(n):
-        cell(r, first_frame + i, totals[i], align=_CENTER, fmt='0', border=True)
+    for i, info in enumerate(transect_infos):
+        cell(r, first_frame + i, info['points'], align=_CENTER, fmt='0', border=True)
     box_bottom = r
     r += 2
 

@@ -952,3 +952,102 @@ textarea.field-input {
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
 }
+
+/* ---- Transect summary (site = mean of transect means) ---- */
+.result-se {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b8893;
+    white-space: nowrap;
+}
+
+.transect-summary {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid rgba(28, 95, 109, 0.14);
+    border-radius: 14px;
+    background: #f7fafb;
+}
+
+.transect-summary-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+}
+
+.transect-summary-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #1c5f6d;
+}
+
+.transect-summary-note {
+    font-size: 12px;
+    color: #6b8893;
+}
+
+.transect-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.transect-card {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid rgba(28, 95, 109, 0.12);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.transect-card-site {
+    background: linear-gradient(160deg, #eef6f7, #ffffff);
+    border-color: rgba(42, 135, 147, 0.35);
+}
+
+.transect-card-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b8893;
+}
+
+.transect-card-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1c5f6d;
+    font-variant-numeric: tabular-nums;
+}
+
+.transect-card-value small {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b8893;
+}
+
+.transect-card .batch-class-badge {
+    justify-self: start;
+}
+
+.transect-card-meta {
+    font-size: 11px;
+    color: #8199a3;
+}
+
+.batch-image-transect {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #2a8793;
+}
+
+.batch-image-transect i {
+    width: 14px;
+    height: 14px;
+}

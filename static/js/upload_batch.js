@@ -19,9 +19,10 @@ const initializeUploadBatch = function () {
             scrollWheelZoom: false
         }).setView([7.01, 125.78], 9);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-            attribution: '&copy; OpenStreetMap contributors'
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            subdomains: 'abcd',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }).addTo(map);
 
         // updateInputs=false when the change came from the user typing, so we
@@ -189,6 +190,16 @@ const initializeUploadBatch = function () {
     const selectedFiles = [];
     const quadratStateByKey = {};
     const thumbUrlByKey = {};
+    // True once the form is actually being saved, so the beforeunload guard
+    // doesn't prompt on the normal post-save redirect.
+    let isSubmitting = false;
+    // This page builds ONE transect per submit; every selected image belongs to
+    // it. The transect label (folder name) is sent via the hidden #transect-label-input.
+    const IMAGES_PER_TRANSECT = 50;
+    const transectLabelInput = document.getElementById('transect-label-input');
+    const setTransectLabel = function (label) {
+        if (transectLabelInput && label) { transectLabelInput.value = label; }
+    };
     const MIN_POINTS = 10;
     const DEFAULT_RECT_SCALE = 0.5;
     const POINT_CLASSES = [
@@ -1918,6 +1929,8 @@ const describeCoverageClass = function (code) {
 
         if (!selectedFiles.length) {
             thumbGrid.innerHTML = initialThumbMarkup || '<p class="thumb-empty-state" id="thumb-empty-state">No images selected yet.</p>';
+            if (transectLabelInput) { transectLabelInput.value = ''; }
+            renderImageCount();
             updateQuadratPreview();
             updateSubmitState();
             updateSummary();
@@ -1959,27 +1972,29 @@ const describeCoverageClass = function (code) {
             thumbGrid.appendChild(card);
         });
 
+        renderImageCount();
         updateQuadratPreview();
         updateSubmitState();
         updateSummary();
         updateThumbPointsStatus();
     };
 
-    const syncFiles = function (fileList) {
-        selectedFiles.length = 0;
-        Array.from(fileList).forEach(function (file) {
-            selectedFiles.push(file);
-        });
-
-        if (activeFileIndex >= selectedFiles.length) {
-            activeFileIndex = 0;
+    // Single count line for this transect; warns when it isn't ~50 images.
+    function renderImageCount() {
+        const el = document.getElementById('transect-legend');
+        if (!el) { return; }
+        const count = selectedFiles.length;
+        if (!count) {
+            el.hidden = true;
+            el.innerHTML = '';
+            return;
         }
-
-        pruneThumbUrls();
-
-        renderSelectedFiles();
-        updateSummary();
-    };
+        const off = count !== IMAGES_PER_TRANSECT;
+        el.hidden = false;
+        el.innerHTML = `<span class="transect-chip${off ? ' is-warn' : ''}">`
+            + `<strong>${count} image${count === 1 ? '' : 's'}</strong> in this transect`
+            + `${off ? ` <em>(expected ~${IMAGES_PER_TRANSECT})</em>` : ''}</span>`;
+    }
 
     // ---- Drag-and-drop folder support ----
     // Accepted image types (matches the file input's `accept`).
@@ -2042,12 +2057,11 @@ const describeCoverageClass = function (code) {
         });
     };
 
-    // Gather image files from a drop, expanding any dropped folders.
-    const collectDroppedImageFiles = function (dataTransfer) {
+    // Gather dropped images, flattening any dropped folder into its image files,
+    // and report the dropped folder's name (used as the transect label).
+    const collectDroppedImages = function (dataTransfer) {
         return new Promise(function (resolve) {
             const items = dataTransfer && dataTransfer.items;
-            // Capture entries synchronously — the items list is only valid during
-            // the drop event, though the entry objects stay readable afterwards.
             const entries = [];
             if (items && items.length && typeof items[0].webkitGetAsEntry === 'function') {
                 for (let i = 0; i < items.length; i++) {
@@ -2055,23 +2069,60 @@ const describeCoverageClass = function (code) {
                     if (entry) { entries.push(entry); }
                 }
             }
-            if (entries.length) {
-                const out = [];
-                let i = 0;
-                const next = function () {
-                    if (i >= entries.length) {
-                        resolve(out);
-                        return;
-                    }
-                    collectFilesFromEntry(entries[i++], out).then(next);
-                };
-                next();
-            } else {
-                // Fallback: plain file list, filtered to accepted images.
+            if (!entries.length) {
                 const files = dataTransfer && dataTransfer.files ? Array.from(dataTransfer.files) : [];
-                resolve(files.filter(isAcceptedImage));
+                resolve({ files: files.filter(isAcceptedImage), folderName: '' });
+                return;
             }
+            const out = [];
+            let folderName = '';
+            let i = 0;
+            const next = function () {
+                if (i >= entries.length) {
+                    resolve({ files: out, folderName: folderName });
+                    return;
+                }
+                const entry = entries[i++];
+                if (entry.isDirectory && !folderName) { folderName = entry.name; }
+                collectFilesFromEntry(entry, out).then(next);
+            };
+            next();
         });
+    };
+
+    // Rebuild the hidden <input type=file> from the current selectedFiles so a
+    // normal form submit still carries every image.
+    const syncUploadInputFromSelected = function () {
+        if (!uploadInput) { return; }
+        try {
+            const transfer = new DataTransfer();
+            selectedFiles.forEach(function (file) { transfer.items.add(file); });
+            uploadInput.files = transfer.files;
+        } catch (error) {
+            // Some environments block assigning FileList directly; ignore.
+        }
+    };
+
+    // Append image files to the current transect (dedup by file key).
+    const appendImages = function (files) {
+        files.slice().sort(function (a, b) {
+            return (a.name || '').localeCompare(b.name || '');
+        }).forEach(function (file) {
+            const key = getFileKey(file);
+            if (selectedFiles.some(function (f) { return getFileKey(f) === key; })) {
+                return;
+            }
+            selectedFiles.push(file);
+        });
+    };
+
+    // Shared post-add refresh for every entry point (drag, folder pick, browse).
+    const afterFilesAdded = function () {
+        syncUploadInputFromSelected();
+        if (activeFileIndex >= selectedFiles.length) { activeFileIndex = 0; }
+        pruneThumbUrls();
+        renderSelectedFiles();
+        updateSummary();
     };
 
     if (dropzone) {
@@ -2095,43 +2146,51 @@ const describeCoverageClass = function (code) {
             if (!event.dataTransfer) {
                 return;
             }
-            // Expand dropped folders into their image files before loading.
-            collectDroppedImageFiles(event.dataTransfer).then(function (imageFiles) {
-                if (!imageFiles.length) {
+            // Everything dropped belongs to this one transect; a dropped folder's
+            // name becomes the transect label.
+            collectDroppedImages(event.dataTransfer).then(function (result) {
+                if (!result.files.length) {
                     return;
                 }
-                // Stable, name-sorted order (folder traversal order is arbitrary).
-                imageFiles.sort(function (a, b) {
-                    return (a.name || '').localeCompare(b.name || '');
-                });
-
-                let finalList = imageFiles;
-                if (uploadInput) {
-                    try {
-                        const transfer = new DataTransfer();
-                        imageFiles.forEach(function (file) {
-                            transfer.items.add(file);
-                        });
-                        uploadInput.files = transfer.files;
-                        finalList = uploadInput.files;
-                    } catch (error) {
-                        // Fallback for environments that prevent assigning FileList directly.
-                    }
-                }
-                syncFiles(finalList);
+                appendImages(result.files);
+                setTransectLabel(result.folderName);
+                afterFilesAdded();
             });
         });
     }
 
     if (uploadInput) {
         uploadInput.addEventListener('change', function () {
-            if (uploadInput.files && uploadInput.files.length) {
-                syncFiles(uploadInput.files);
+            const picked = uploadInput.files ? Array.from(uploadInput.files).filter(isAcceptedImage) : [];
+            if (!picked.length) {
+                return; // Cancelled dialog — keep the current selection.
+            }
+            appendImages(picked);
+            afterFilesAdded();
+        });
+    }
+
+    // ---- Directory picker ("Add transect folder") ----
+    // A plain file dialog can't select folders, so this uses a webkitdirectory
+    // input. All picked files are this transect's images; the chosen folder's
+    // name (webkitRelativePath segment 0) becomes the transect label.
+    const folderInput = document.getElementById('folder-input');
+    const folderPickBtn = document.getElementById('folder-pick-btn');
+    if (folderPickBtn && folderInput) {
+        folderPickBtn.addEventListener('click', function () {
+            folderInput.click();
+        });
+        folderInput.addEventListener('change', function () {
+            const picked = folderInput.files ? Array.from(folderInput.files).filter(isAcceptedImage) : [];
+            if (!picked.length) {
+                folderInput.value = '';
                 return;
             }
-            selectedFiles.length = 0;
-            renderSelectedFiles();
-            updateSummary();
+            const rel = (picked[0].webkitRelativePath || '').split('/');
+            setTransectLabel(rel.length > 1 ? rel[0] : '');
+            appendImages(picked);
+            afterFilesAdded();
+            folderInput.value = ''; // allow re-picking the same folder
         });
     }
 
@@ -2156,17 +2215,7 @@ const describeCoverageClass = function (code) {
 
             selectedFiles.splice(removeIndex, 1);
 
-            if (uploadInput) {
-                try {
-                    const transfer = new DataTransfer();
-                    selectedFiles.forEach(function (file) {
-                        transfer.items.add(file);
-                    });
-                    uploadInput.files = transfer.files;
-                } catch (error) {
-                    // Fallback for environments that prevent assigning FileList directly.
-                }
-            }
+            syncUploadInputFromSelected();
 
             renderSelectedFiles();
         });
@@ -2459,9 +2508,18 @@ const describeCoverageClass = function (code) {
                 return;
             }
 
-            // Form can now submit
+            // Saving now — allow the post-save navigation without the leave prompt.
+            isSubmitting = true;
         });
     }
+
+    // Warn before losing an in-progress transect (images staged but not saved).
+    window.addEventListener('beforeunload', function (event) {
+        if (selectedFiles.length && !isSubmitting) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
 
     updateSubmitState();
     updateSummary();

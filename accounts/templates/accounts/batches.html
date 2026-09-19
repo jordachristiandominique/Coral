@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=11">
-<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -172,10 +172,12 @@
                     <span class="batch-class-badge class-{{ batch.coverage_class|default:" pending"|lower }}">
                         {% if batch.coverage_class %}Category {{ batch.coverage_class }}{% else %}Pending{% endif %}
                     </span>
+                    <span class="batch-transect-count">· {{ batch.transect_count|default:0 }} transect{{ batch.transect_count|pluralize }}</span>
                 </p>
 
                 <div class="batch-actions">
                     <a href="{% url 'batch_detail' batch.id %}" class="action-outline">View Details</a>
+                    <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline">Add transect</a>
                     <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline">Download Excel</a>
                     <a href="#" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
                 </div>
