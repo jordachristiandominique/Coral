@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
-<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=8">
+<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=9">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
@@ -279,99 +279,117 @@
                 {% endfor %}
 
                 <div class="batch-images-viewer" aria-label="Batch images">
-                    <div class="batch-images-stage">
-                    {% for image in images %}
-                    <article class="batch-image-card" data-image-index="{{ forloop.counter0 }}"
-                        {% if not forloop.first %}hidden{% endif %}>
-                        <div class="batch-image-thumb">
-                            <div class="batch-image-canvas" data-rect-id="rect-data-{{ image.id }}"
-                                data-points-id="points-data-{{ image.id }}" data-class-key="image-{{ image.id }}">
-                                <img src="{% url 'batch_image_annotated' image.id %}"
-                                    data-plain-src="{% url 'batch_image_annotated' image.id %}?plain=1"
-                                    data-annotated-src="{% url 'batch_image_annotated' image.id %}"
-                                    alt="{{ image.image.name }}">
-                            </div>
-                            {% if images|length > 1 %}
-                            <button type="button" class="image-nav image-nav-prev" aria-label="Previous image"
-                                title="Previous image"{% if forloop.first %} disabled{% endif %}>
-                                <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
-                                    class="image-nav-icon image-nav-icon-prev">
-                            </button>
-                            <button type="button" class="image-nav image-nav-next" aria-label="Next image"
-                                title="Next image"{% if forloop.last %} disabled{% endif %}>
-                                <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
-                                    class="image-nav-icon">
-                            </button>
-                            <span class="image-nav-counter">{{ forloop.counter }} / {{ images|length }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="batch-image-body">
-                            <h3>{{ image.image.name|default:"Image" }}</h3>
-                            {% if image.transect_label %}
-                            <p class="batch-image-transect"><i data-lucide="git-branch"></i> {{ image.transect_label }}</p>
-                            {% endif %}
-                            <p class="batch-image-coverage">
-                                Hard Coral Cover: <strong id="image-coverage-{{ image.id }}">{{ image.coverage_breakdown.percent|default_if_none:"--" }}%</strong>
-                                <span class="batch-class-badge class-{{ image.coverage_breakdown.coverage_class|default:" pending"|lower }}">
-                                    Category {{ image.coverage_breakdown.coverage_class|default:"Pending" }}
-                                </span>
-                                <span class="class-meaning">
-                                    {% if image.coverage_breakdown.coverage_class == 'A' %}HCC more than 44%
-                                    {% elif image.coverage_breakdown.coverage_class == 'B' %}HCC more than 33% up to 44%
-                                    {% elif image.coverage_breakdown.coverage_class == 'C' %}HCC more than 22% up to 33%
-                                    {% elif image.coverage_breakdown.coverage_class == 'D' %}HCC 0-22%
-                                    {% else %}Awaiting analysis{% endif %}
-                                </span>
-                            </p>
-
-                            <div class="coverage-computation coverage-computation-sm" aria-label="Coverage computation">
-                                <span class="coverage-computation-label">Computation</span>
-                                <div class="coverage-substitution">
-                                    {% if image.coverage_breakdown.total %}
-                                    {{ image.coverage_breakdown.hard }} Hard Coral &divide; {{ image.coverage_breakdown.total }} &times; 100
-                                    = <strong class="coverage-result">{{ image.coverage_breakdown.percent }}%</strong>
-                                    {% if image.coverage_breakdown.coverage_class %}&rarr; Category {{ image.coverage_breakdown.coverage_class }}{% endif %}
-                                    {% else %}No classified points.{% endif %}
-                                </div>
-                            </div>
-
-                            <div class="point-legend" aria-label="Point classifications">
-                                <p class="point-legend-title">
-                                    Point Classifications
-                                    <span class="point-legend-count">{{ image.quadrat_points|length }} points</span>
-                                </p>
-                                <ul class="point-legend-list">
-                                    {% for row in image.point_rows %}
-                                    <li class="point-legend-item" data-code="{{ row.code }}">
-                                        <span class="point-legend-num">{{ row.number }}</span>
-                                        <span class="point-legend-code">{{ row.code }}</span>
-                                        <span class="point-legend-name">{{ row.name }}</span>
-                                    </li>
-                                    {% empty %}
-                                    <li class="point-legend-empty">No point classifications recorded.</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                    </article>
-                    {% empty %}
-                    <p class="batch-empty">No images uploaded yet.</p>
-                    {% endfor %}
-                    </div>
-
-                    {% if images|length > 1 %}
-                    <div class="batch-thumb-strip" role="tablist" aria-label="Select image">
-                        {% for image in images %}
-                        <button type="button" class="batch-thumb{% if forloop.first %} is-active{% endif %}"
-                            data-image-index="{{ forloop.counter0 }}" role="tab"
-                            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-                            title="{{ image.image.name }}">
-                            <img src="{% url 'batch_image_annotated' image.id %}?w=200" alt="" loading="lazy">
-                            <span class="batch-thumb-num">{{ forloop.counter }}</span>
+                    {% if transect_groups|length > 1 %}
+                    <div class="transect-tabs" role="tablist" aria-label="Select transect">
+                        {% for group in transect_groups %}
+                        <button type="button" class="transect-tab{% if forloop.first %} is-active{% endif %}"
+                            data-transect-index="{{ forloop.counter0 }}" role="tab"
+                            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                            {{ group.label }}
+                            <span class="transect-tab-count">{{ group.images|length }}</span>
                         </button>
                         {% endfor %}
                     </div>
                     {% endif %}
+
+                    {% for group in transect_groups %}
+                    <div class="transect-panel" data-transect-index="{{ forloop.counter0 }}"
+                        {% if not forloop.first %}hidden{% endif %}>
+                        <div class="batch-images-stage">
+                        {% for image in group.images %}
+                        <article class="batch-image-card" data-image-index="{{ forloop.counter0 }}"
+                            {% if not forloop.first %}hidden{% endif %}>
+                            <div class="batch-image-thumb">
+                                <div class="batch-image-canvas" data-rect-id="rect-data-{{ image.id }}"
+                                    data-points-id="points-data-{{ image.id }}" data-class-key="image-{{ image.id }}">
+                                    <img src="{% url 'batch_image_annotated' image.id %}"
+                                        data-plain-src="{% url 'batch_image_annotated' image.id %}?plain=1"
+                                        data-annotated-src="{% url 'batch_image_annotated' image.id %}"
+                                        alt="{{ image.filename }}">
+                                </div>
+                                {% if group.images|length > 1 %}
+                                <button type="button" class="image-nav image-nav-prev" aria-label="Previous image"
+                                    title="Previous image"{% if forloop.first %} disabled{% endif %}>
+                                    <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
+                                        class="image-nav-icon image-nav-icon-prev">
+                                </button>
+                                <button type="button" class="image-nav image-nav-next" aria-label="Next image"
+                                    title="Next image"{% if forloop.last %} disabled{% endif %}>
+                                    <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
+                                        class="image-nav-icon">
+                                </button>
+                                <span class="image-nav-counter">{{ forloop.counter }} / {{ group.images|length }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="batch-image-body">
+                                <h3>{{ image.filename }}</h3>
+                                {% if image.transect_label %}
+                                <p class="batch-image-transect"><i data-lucide="git-branch"></i> {{ image.transect_label }}</p>
+                                {% endif %}
+                                <p class="batch-image-coverage">
+                                    Hard Coral Cover: <strong id="image-coverage-{{ image.id }}">{{ image.coverage_breakdown.percent|default_if_none:"--" }}%</strong>
+                                    <span class="batch-class-badge class-{{ image.coverage_breakdown.coverage_class|default:" pending"|lower }}">
+                                        Category {{ image.coverage_breakdown.coverage_class|default:"Pending" }}
+                                    </span>
+                                    <span class="class-meaning">
+                                        {% if image.coverage_breakdown.coverage_class == 'A' %}HCC more than 44%
+                                        {% elif image.coverage_breakdown.coverage_class == 'B' %}HCC more than 33% up to 44%
+                                        {% elif image.coverage_breakdown.coverage_class == 'C' %}HCC more than 22% up to 33%
+                                        {% elif image.coverage_breakdown.coverage_class == 'D' %}HCC 0-22%
+                                        {% else %}Awaiting analysis{% endif %}
+                                    </span>
+                                </p>
+
+                                <div class="coverage-computation coverage-computation-sm" aria-label="Coverage computation">
+                                    <span class="coverage-computation-label">Computation</span>
+                                    <div class="coverage-substitution">
+                                        {% if image.coverage_breakdown.total %}
+                                        {{ image.coverage_breakdown.hard }} Hard Coral &divide; {{ image.coverage_breakdown.total }} &times; 100
+                                        = <strong class="coverage-result">{{ image.coverage_breakdown.percent }}%</strong>
+                                        {% if image.coverage_breakdown.coverage_class %}&rarr; Category {{ image.coverage_breakdown.coverage_class }}{% endif %}
+                                        {% else %}No classified points.{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="point-legend" aria-label="Point classifications">
+                                    <p class="point-legend-title">
+                                        Point Classifications
+                                        <span class="point-legend-count">{{ image.quadrat_points|length }} points</span>
+                                    </p>
+                                    <ul class="point-legend-list">
+                                        {% for row in image.point_rows %}
+                                        <li class="point-legend-item" data-code="{{ row.code }}">
+                                            <span class="point-legend-num">{{ row.number }}</span>
+                                            <span class="point-legend-code">{{ row.code }}</span>
+                                            <span class="point-legend-name">{{ row.name }}</span>
+                                        </li>
+                                        {% empty %}
+                                        <li class="point-legend-empty">No point classifications recorded.</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                        </div>
+
+                        {% if group.images|length > 1 %}
+                        <div class="batch-thumb-strip" role="tablist" aria-label="Select image">
+                            {% for image in group.images %}
+                            <button type="button" class="batch-thumb{% if forloop.first %} is-active{% endif %}"
+                                data-image-index="{{ forloop.counter0 }}" role="tab"
+                                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+                                title="{{ image.filename }}">
+                                <img src="{% url 'batch_image_annotated' image.id %}?w=200" alt="" loading="lazy">
+                                <span class="batch-thumb-num">{{ forloop.counter }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="batch-empty">No images uploaded yet.</p>
+                    {% endfor %}
                 </div>
             </section>
         </form>
@@ -398,6 +416,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/custom.js' %}?v=4"></script>
-<script src="{% static 'js/batch_detail.js' %}?v=3"></script>
-<script src="{% static 'js/batch_visualization.js' %}?v=7"></script>
+<script src="{% static 'js/batch_detail.js' %}?v=4"></script>
+<script src="{% static 'js/batch_visualization.js' %}?v=8"></script>
 {% endblock %}

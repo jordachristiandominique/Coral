@@ -1164,6 +1164,17 @@ def upload_batch(request):
                            else site.latitude)
             default_lng = (last_transect.longitude if last_transect and last_transect.longitude is not None
                            else site.longitude)
+            # Already-saved transects (with coordinates) to highlight on the map.
+            existing_transects = [
+                {
+                    'number': t.number,
+                    'label': t.label or f'Transect {t.number}',
+                    'latitude': float(t.latitude),
+                    'longitude': float(t.longitude),
+                }
+                for t in site.transects.all()
+                if t.latitude is not None and t.longitude is not None
+            ]
             active_site = {
                 'id': site.id,
                 'name': site.name,
@@ -1174,6 +1185,7 @@ def upload_batch(request):
                 'longitude': default_lng,
                 'transect_count': site.transects.count(),
                 'next_number': next_number,
+                'transects': existing_transects,
             }
 
     context = {
@@ -1493,12 +1505,28 @@ def batch_detail(request, batch_id):
         ]
         image.coverage_breakdown = compute_coverage(image.point_classes)
         image.transect_label = transect_labels.get(image.transect_id, '')
+        image.filename = image.image.name.split('/')[-1] if image.image else 'Image'
+
+    # Group images by transect for the tabbed Uploaded Images viewer.
+    transect_groups = []
+    group_by_id = {}
+    for t in batch.transects.all():
+        group = {'number': t.number, 'label': t.label or f'Transect {t.number}', 'images': []}
+        group_by_id[t.id] = group
+        transect_groups.append(group)
+    unassigned = {'number': None, 'label': 'Unassigned', 'images': []}
+    for image in images:
+        group_by_id.get(image.transect_id, unassigned)['images'].append(image)
+    if unassigned['images']:
+        transect_groups.append(unassigned)
+    transect_groups = [g for g in transect_groups if g['images']]
 
     context = {
         'user': request.user,
         'generated_at': timezone.now(),
         'batch': batch,
         'images': images,
+        'transect_groups': transect_groups,
         'avg_coverage': site['site_percent'],
         'coverage_class': site['coverage_class'],
         'site_hcc': site,

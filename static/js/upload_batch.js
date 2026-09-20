@@ -19,10 +19,9 @@ const initializeUploadBatch = function () {
             scrollWheelZoom: false
         }).setView([7.01, 125.78], 9);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            subdomains: 'abcd',
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
         }).addTo(map);
 
         // updateInputs=false when the change came from the user typing, so we
@@ -129,6 +128,41 @@ const initializeUploadBatch = function () {
             });
         }
 
+        // Highlight the site's already-saved transects (append mode) so the
+        // surveyor sees the area already covered while placing the new pin.
+        const existingLatLngs = [];
+        const activeTransectsScript = document.getElementById('active-transects-data');
+        if (activeTransectsScript) {
+            try {
+                const transects = JSON.parse(activeTransectsScript.textContent || '[]');
+                transects.forEach(function (t) {
+                    if (t.latitude === null || t.longitude === null) {
+                        return;
+                    }
+                    const latlng = L.latLng(Number(t.latitude), Number(t.longitude));
+                    existingLatLngs.push(latlng);
+                    L.circleMarker(latlng, {
+                        radius: 8,
+                        color: '#ffffff',
+                        weight: 2,
+                        fillColor: '#1c5f6d',
+                        fillOpacity: 0.95
+                    })
+                        .addTo(map)
+                        .bindTooltip('T' + t.number, {
+                            permanent: true,
+                            direction: 'top',
+                            className: 'transect-map-label',
+                            offset: [0, -6]
+                        })
+                        .bindPopup('<strong>' + (t.label || ('Transect ' + t.number)) + '</strong><br>'
+                            + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5));
+                });
+            } catch (error) {
+                // Ignore malformed transect data.
+            }
+        }
+
         // Start the pin on the prefilled coordinates (e.g. the previous
         // transect when adding another), falling back to the Davao Gulf default.
         const initialLat = latInput ? parseCoord(latInput.value) : null;
@@ -136,7 +170,15 @@ const initializeUploadBatch = function () {
         if (initialLat !== null && initialLng !== null) {
             const start = L.latLng(initialLat, initialLng);
             setPin(start, false);
-            map.setView(start, 12);
+            // Frame the new pin together with the existing transects when present.
+            if (existingLatLngs.length) {
+                map.fitBounds(L.latLngBounds(existingLatLngs.concat([start])), {
+                    padding: [40, 40],
+                    maxZoom: 14
+                });
+            } else {
+                map.setView(start, 12);
+            }
         } else {
             setPin({ lat: 7.0731, lng: 125.6128 });
         }
