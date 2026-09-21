@@ -291,27 +291,65 @@ class Loader {
 
 // ===== Toast Notifications =====
 class Toast {
+    // Per-type title + icon. Icons are inline Feather-style SVGs (white stroke
+    // on a colored circular badge).
+    static get META() {
+        const check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        const bang = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="7" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+        const info = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="7.5" x2="12.01" y2="7.5"/></svg>';
+        return {
+            success: { title: 'Success', icon: check },
+            danger: { title: 'Error', icon: bang },
+            warning: { title: 'Warning', icon: bang },
+            info: { title: 'Notice', icon: info },
+        };
+    }
+
+    static getStack() {
+        let stack = document.getElementById('toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'toast-stack';
+            stack.className = 'toast-stack';
+            stack.setAttribute('aria-live', 'polite');
+            stack.setAttribute('aria-atomic', 'false');
+            document.body.appendChild(stack);
+        }
+        return stack;
+    }
+
     static show(message, type = 'info', duration = 5000) {
+        const meta = Toast.META[type] || Toast.META.info;
+
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
+        toast.className = `toast toast-${type}`;
+        toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
         toast.innerHTML = `
-            ${message}
-            <button class="toast-close" type="button">✕</button>
+            <span class="toast-icon" aria-hidden="true">${meta.icon}</span>
+            <div class="toast-body">
+                <p class="toast-title"></p>
+                <p class="toast-text"></p>
+            </div>
+            <button class="toast-close" type="button" aria-label="Dismiss">✕</button>
         `;
+        // Insert as text (never HTML) so quotes/apostrophes render correctly and
+        // no markup can be injected.
+        toast.querySelector('.toast-title').textContent = meta.title;
+        toast.querySelector('.toast-text').textContent = message;
 
-        document.body.appendChild(toast);
+        Toast.getStack().appendChild(toast);
 
-        const closeBtn = toast.querySelector('.toast-close');
-        closeBtn.addEventListener('click', () => {
-            toast.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        });
+        const dismiss = () => {
+            toast.style.animation = 'slideOutRight 0.25s ease forwards';
+            setTimeout(() => toast.remove(), 250);
+        };
+
+        toast.querySelector('.toast-close').addEventListener('click', dismiss);
 
         if (duration > 0) {
             setTimeout(() => {
-                if (document.body.contains(toast)) {
-                    toast.style.animation = 'slideOutRight 0.3s ease';
-                    setTimeout(() => toast.remove(), 300);
+                if (toast.isConnected) {
+                    dismiss();
                 }
             }, duration);
         }

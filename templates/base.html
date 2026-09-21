@@ -11,7 +11,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/custom.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}?v=4">
     {% block extra_css %}{% endblock %}
     <script>
         // Apply the saved sidebar-collapsed state before the body paints so the
@@ -29,7 +29,7 @@
     {% if messages %}
     <div id="django-messages" hidden>
         {% for message in messages %}
-        <div data-tags="{{ message.tags|default:'info' }}" data-message="{{ message|escapejs }}"></div>
+        <div data-tags="{{ message.tags|default:'info' }}" data-message="{{ message }}"></div>
         {% endfor %}
     </div>
     {% endif %}
@@ -55,7 +55,7 @@
     </footer>
 
     <!-- JavaScript -->
-    <script src="{% static 'js/custom.js' %}?v=4"></script>
+    <script src="{% static 'js/custom.js' %}?v=5"></script>
     {% block extra_js %}{% endblock %}
 </body>
 
