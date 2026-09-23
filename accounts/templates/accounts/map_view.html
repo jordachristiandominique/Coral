@@ -4,7 +4,7 @@
 {% block title %}Surveyed Sites | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=14">
 <link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=4">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -26,10 +26,6 @@
 
         <div class="nav-profile">
             {% include 'accounts/partials/_profile_menu.html' %}
-            <div class="nav-user-meta" aria-label="Signed in user">
-                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
-                <span class="nav-user-role">{{ user.get_role_display }}</span>
-            </div>
         </div>
     </div>
 </header>

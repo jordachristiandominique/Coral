@@ -158,7 +158,7 @@ def build_batch_coverage_workbook(batch):
     right(1, 'Analysis date:',
           batch.survey_date.strftime('%Y-%m-%d') if batch.survey_date else '')
     cell(2, 1, 'Dataset name:', font=_LABEL);      cell(2, 2, batch.name)
-    right(2, 'Analysis by:', batch.surveyor_names or '')
+    right(2, 'Researchers:', batch.surveyor_names or '')
     cell(3, 1, 'Location:', font=_LABEL);          cell(3, 2, batch.area_name)
     right(3, 'Codefile:', '')
     cell(4, 1, 'Lat / Long:', font=_LABEL)

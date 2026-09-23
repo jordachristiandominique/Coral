@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=14">
 <link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=21">
 {% endblock %}
 
@@ -26,10 +26,6 @@
 
         <div class="nav-profile">
             {% include 'accounts/partials/_profile_menu.html' %}
-            <div class="nav-user-meta" aria-label="Signed in user">
-                <span class="nav-user-name">{{ user.get_full_name|default:user.username }}</span>
-                <span class="nav-user-role">{{ user.get_role_display }}</span>
-            </div>
         </div>
     </div>
 </header>
