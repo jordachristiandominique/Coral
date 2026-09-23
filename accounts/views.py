@@ -1396,9 +1396,13 @@ def batch_image_annotated(request, image_id):
         max_width = 1600
     max_width = max(120, min(max_width, 2400))
     annotate = request.GET.get('plain') != '1'
+    # ?labels=code draws the benthic substrate code (HC/MA/...) at each point
+    # instead of the point number.
+    label_mode = 'code' if request.GET.get('labels') == 'code' else 'number'
 
     try:
-        payload = render_annotated_bytes(image, max_width=max_width, annotate=annotate)
+        payload = render_annotated_bytes(image, max_width=max_width, annotate=annotate,
+                                         label_mode=label_mode)
     except (FileNotFoundError, OSError):
         # Original file missing/unreadable — fall back to the stored image
         return redirect(image.image.url)

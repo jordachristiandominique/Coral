@@ -13,6 +13,8 @@ import io
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .models import CPCE_CODES
+
 QUADRAT_COLOR = (255, 138, 61)   # #ff8a3d, matches the on-screen overlay
 MARKER_COLOR = (255, 255, 255)
 HALO_COLOR = (0, 0, 0)
@@ -38,13 +40,18 @@ def _as_float(value, default=0.0):
         return default
 
 
-def render_annotated_image(batch_image, max_width=None, annotate=True):
+def render_annotated_image(batch_image, max_width=None, annotate=True,
+                           label_mode='number'):
     """Return a PIL Image of ``batch_image`` with quadrat + points drawn on.
 
     ``max_width`` downscales the photo *before* the markers are drawn, so
     thumbnails stay cheap to produce and their markers stay crisp rather than
     being shrunk along with the pixels. If the image has no quadrat data (or
     ``annotate`` is False) the plain photo is returned.
+
+    ``label_mode`` chooses the text drawn beside each cross: ``'number'`` (the
+    1-based point index, the default) or ``'code'`` (the benthic substrate code
+    for that point, e.g. HC / MA / SC).
     """
     with batch_image.image.open('rb') as handle:
         raw = handle.read()
@@ -69,6 +76,7 @@ def render_annotated_image(batch_image, max_width=None, annotate=True):
 
     rect = batch_image.quadrat_rect or None
     points = batch_image.quadrat_points or []
+    point_classes = batch_image.point_classes or []
     if not annotate or not rect:
         return image
 
@@ -105,9 +113,15 @@ def render_annotated_image(batch_image, max_width=None, annotate=True):
         draw.line(horizontal, fill=MARKER_COLOR, width=line_width)
         draw.line(vertical, fill=MARKER_COLOR, width=line_width)
 
+        if label_mode == 'code':
+            class_name = point_classes[index - 1] if index - 1 < len(point_classes) else None
+            label = CPCE_CODES.get(class_name, '--')
+        else:
+            label = str(index)
+
         draw.text(
             (px + arm + 3, py - arm - 3),
-            str(index),
+            label,
             font=font,
             fill=MARKER_COLOR,
             stroke_width=text_stroke,
@@ -117,9 +131,11 @@ def render_annotated_image(batch_image, max_width=None, annotate=True):
     return image
 
 
-def render_annotated_bytes(batch_image, max_width=None, annotate=True, quality=88):
+def render_annotated_bytes(batch_image, max_width=None, annotate=True, quality=88,
+                           label_mode='number'):
     """Return annotated JPEG bytes ready to serve or embed in a report."""
-    image = render_annotated_image(batch_image, max_width=max_width, annotate=annotate)
+    image = render_annotated_image(batch_image, max_width=max_width, annotate=annotate,
+                                   label_mode=label_mode)
     buffer = io.BytesIO()
     image.save(buffer, format='JPEG', quality=quality)
     return buffer.getvalue()

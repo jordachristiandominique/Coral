@@ -5,22 +5,38 @@ const initializeBatchDetail = function () {
 
     const canvasBlocks = Array.from(document.querySelectorAll('.batch-image-canvas'));
     const overlayToggle = document.getElementById('overlay-toggle');
+    const codeToggle = document.getElementById('code-toggle');
     const batchImagesCard = document.querySelector('.batch-images-card');
 
-    // The quadrat box and numbered points are now rendered into the image
-    // server-side (see accounts/image_annotator.py), so no canvas overlay is
-    // drawn here. The toggle swaps between the annotated and original photo.
+    // The quadrat box and point markers are rendered into the image server-side
+    // (see accounts/image_annotator.py), so no canvas overlay is drawn here.
+    // The toggles pick which rendered variant each photo shows:
+    //   overlay off                 -> plain photo (no markers)
+    //   overlay on + codes off      -> numbered points (1, 2, 3...)
+    //   overlay on + codes on       -> benthic substrate codes (HC, MA...)
     if (overlayToggle) {
         const syncToggle = function () {
             const showOverlay = overlayToggle.checked;
+            const showCodes = codeToggle ? codeToggle.checked : false;
+
+            // Codes only make sense with the overlay on.
+            if (codeToggle) {
+                codeToggle.disabled = !showOverlay;
+            }
+
             canvasBlocks.forEach(function (block) {
                 const img = block.querySelector('img');
                 if (!img) {
                     return;
                 }
-                const target = showOverlay
-                    ? img.getAttribute('data-annotated-src')
-                    : img.getAttribute('data-plain-src');
+                let target;
+                if (!showOverlay) {
+                    target = img.getAttribute('data-plain-src');
+                } else if (showCodes) {
+                    target = img.getAttribute('data-code-src');
+                } else {
+                    target = img.getAttribute('data-annotated-src');
+                }
                 if (target && img.getAttribute('src') !== target) {
                     img.setAttribute('src', target);
                 }
@@ -31,6 +47,9 @@ const initializeBatchDetail = function () {
         };
 
         overlayToggle.addEventListener('change', syncToggle);
+        if (codeToggle) {
+            codeToggle.addEventListener('change', syncToggle);
+        }
         syncToggle();
     }
 

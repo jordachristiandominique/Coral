@@ -260,6 +260,9 @@ const initializeUploadBatch = function () {
     };
     const MIN_POINTS = 10;
     const DEFAULT_RECT_SCALE = 0.5;
+    // Quadrat edit affordances: corner grab tolerance (px) and smallest box.
+    const HANDLE_SIZE = 10;
+    const MIN_RECT_SIZE = 24;
     const POINT_CLASSES = [
         'Hard Coral',
         'Soft Coral',
@@ -310,6 +313,8 @@ const describeCoverageClass = function (code) {
     let zoomedPointIndex = -1;
     let aiResultsByFileKey = {};
     let isAnalyzing = false;
+    // Quadrat editing (drag corners to resize / drag inside to move) after analysis.
+    let isDraggingQuadrat = false;
 
     const formatFileSize = function (sizeInBytes) {
         const sizeInMb = sizeInBytes / (1024 * 1024);
@@ -689,19 +694,31 @@ const describeCoverageClass = function (code) {
         ctx.lineWidth = 2;
         ctx.strokeRect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
 
+        // Corner handles show the box is draggable/resizable after analysis.
+        const handles = getHandles(rectPx);
+        ctx.save();
+        ctx.fillStyle = '#ff8a3d';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        Object.values(handles).forEach(function (handle) {
+            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+        });
+        ctx.restore();
+
         // Draw CPCE-style cross markers with point numbers
         if (points && points.length) {
             points.forEach(function (point, index) {
                 const x = rectPx.x + point.x * rectPx.w;
                 const y = rectPx.y + point.y * rectPx.h;
-                // Highlight the point currently selected/zoomed in fullscreen.
+                // Highlight the point currently selected/zoomed in fullscreen:
+                // a crisp yellow ring only (no faded fill) so the point stays
+                // clearly visible.
                 if (index === zoomedPointIndex) {
                     ctx.save();
                     ctx.beginPath();
-                    ctx.arc(x, y, 14, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255, 209, 71, 0.22)';
-                    ctx.fill();
-                    ctx.lineWidth = 2.5;
+                    ctx.arc(x, y, 13, 0, Math.PI * 2);
+                    ctx.lineWidth = 3;
                     ctx.strokeStyle = '#ffd147';
                     ctx.stroke();
                     ctx.restore();
@@ -1853,8 +1870,8 @@ const describeCoverageClass = function (code) {
         if (!imageLoupe || !quadratImage || !quadratCanvas) {
             return;
         }
-        // The hover magnifier and the click-to-zoom shouldn't fight each other.
-        if (zoomedPointIndex >= 0) {
+        // The hover magnifier shouldn't fight click-to-zoom or quadrat editing.
+        if (zoomedPointIndex >= 0 || isDraggingQuadrat) {
             hideLoupe();
             return;
         }
@@ -2365,6 +2382,126 @@ const describeCoverageClass = function (code) {
     if (quadratCanvas && imageLoupe) {
         quadratCanvas.addEventListener('mousemove', updateLoupe);
         quadratCanvas.addEventListener('mouseleave', hideLoupe);
+    }
+
+    // ---- Quadrat editing: drag a corner to resize, drag inside to move ----
+    // Works on the analysed results (aiResultsByFileKey). Points are stored
+    // relative to the box, so they follow it; the new box persists through
+    // syncQuadratInputs() on submit.
+    if (quadratCanvas) {
+        // Pixel rect of the active image's quadrat within the canvas, using the
+        // same letterbox geometry as drawQuadratAndPoints.
+        const getActiveRectPx = function () {
+            const activeFile = getActiveFile();
+            const results = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
+            const geo = getImageDisplayGeometry();
+            if (!results || !results.quadrat_bbox || !geo) {
+                return null;
+            }
+            const b = results.quadrat_bbox;
+            return {
+                x: geo.offsetX + b.x * geo.displayWidth,
+                y: geo.offsetY + b.y * geo.displayHeight,
+                w: b.w * geo.displayWidth,
+                h: b.h * geo.displayHeight
+            };
+        };
+
+        const CURSOR_BY_HANDLE = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' };
+
+        // Build a new pixel rect when dragging one corner (the opposite corner
+        // stays pinned).
+        const resizeRectByHandle = function (rectPx, key, pos) {
+            const left = rectPx.x;
+            const top = rectPx.y;
+            const right = rectPx.x + rectPx.w;
+            const bottom = rectPx.y + rectPx.h;
+            let x0 = left, y0 = top, x1 = right, y1 = bottom;
+            if (key === 'nw') { x0 = pos.x; y0 = pos.y; }
+            else if (key === 'ne') { x1 = pos.x; y0 = pos.y; }
+            else if (key === 'se') { x1 = pos.x; y1 = pos.y; }
+            else if (key === 'sw') { x0 = pos.x; y1 = pos.y; }
+            return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0) };
+        };
+
+        let dragMode = null;   // 'resize' | 'move'
+        let dragHandle = null; // corner key when resizing
+        let dragStart = null;  // pointer pos + rect at mousedown
+
+        const commitRect = function (rectPx) {
+            const activeFile = getActiveFile();
+            const results = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
+            const geo = getImageDisplayGeometry();
+            if (!results || !geo) {
+                return;
+            }
+            const bounds = { x: geo.offsetX, y: geo.offsetY, w: geo.displayWidth, h: geo.displayHeight };
+            const clamped = clampRect(rectPx, bounds);
+            results.quadrat_bbox = {
+                x: (clamped.x - geo.offsetX) / geo.displayWidth,
+                y: (clamped.y - geo.offsetY) / geo.displayHeight,
+                w: clamped.w / geo.displayWidth,
+                h: clamped.h / geo.displayHeight
+            };
+            drawQuadratAndPoints(results.quadrat_bbox, results.points);
+        };
+
+        quadratCanvas.addEventListener('mousedown', function (event) {
+            const rectPx = getActiveRectPx();
+            if (!rectPx) {
+                return;
+            }
+            const pos = getPointerPos(event);
+            const handle = getHandleHit(rectPx, pos);
+            if (handle) {
+                dragMode = 'resize';
+                dragHandle = handle;
+            } else if (isInsideRect(rectPx, pos)) {
+                dragMode = 'move';
+            } else {
+                return;
+            }
+            isDraggingQuadrat = true;
+            dragStart = { x: pos.x, y: pos.y, rect: rectPx };
+            hideLoupe();
+            event.preventDefault();
+        });
+
+        quadratCanvas.addEventListener('mousemove', function (event) {
+            const pos = getPointerPos(event);
+            if (!isDraggingQuadrat) {
+                // Hover feedback: show the right cursor over handles / inside box.
+                const rectPx = getActiveRectPx();
+                if (rectPx) {
+                    const handle = getHandleHit(rectPx, pos);
+                    quadratCanvas.style.cursor = handle
+                        ? CURSOR_BY_HANDLE[handle]
+                        : (isInsideRect(rectPx, pos) ? 'move' : 'default');
+                }
+                return;
+            }
+            let next;
+            if (dragMode === 'resize') {
+                next = resizeRectByHandle(dragStart.rect, dragHandle, pos);
+            } else {
+                const dx = pos.x - dragStart.x;
+                const dy = pos.y - dragStart.y;
+                next = { x: dragStart.rect.x + dx, y: dragStart.rect.y + dy, w: dragStart.rect.w, h: dragStart.rect.h };
+            }
+            commitRect(next);
+        });
+
+        const endDrag = function () {
+            if (!isDraggingQuadrat) {
+                return;
+            }
+            isDraggingQuadrat = false;
+            dragMode = null;
+            dragHandle = null;
+            dragStart = null;
+            updateSummary();
+        };
+        window.addEventListener('mouseup', endDrag);
     }
 
     const reanalyzeBtn = document.getElementById('reanalyze-btn');
