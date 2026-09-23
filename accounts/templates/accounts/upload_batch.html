@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=18">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=21">
 {% endblock %}
 
 {% block content %}
@@ -188,10 +188,8 @@
                     <h2>Image Upload & Analyze</h2>
                 </div>
 
-                <p class="upload-step-note">Add <strong>one transect at a time</strong> — this transect is about
-                    <strong>50 images</strong>. <strong>Drag the transect folder</strong> onto the box, or
-                    <strong>click the box</strong> to choose a folder. The system then detects coral areas and
-                    classifies each image. After you save, you can add the next transect to the same site.
+                <p class="upload-step-note">Add <strong>one transect at a time</strong></strong>. <strong>Drag the transect folder</strong> onto the box, or
+                    <strong>click the box</strong> to choose a folder.
                 </p>
 
                 <div class="dropzone" id="dropzone" role="button" tabindex="0"
@@ -253,7 +251,7 @@
                     <div class="quadrat-head">
                         <div>
                             <h3>Automated Analysis Results</h3>
-                            <p>The system has detected the coral area and identified species. Review and approve the results below.</p>
+                            <p>Review and approve the results below.</p>
                         </div>
                         <div class="quadrat-meta">
                             <span class="quadrat-meta-label">Active Image</span>
@@ -475,7 +473,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=23"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=25"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

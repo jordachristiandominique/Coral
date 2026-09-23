@@ -16,6 +16,8 @@
     --surface-soft: #f7fbfa;
     --navy-color: #255066;
     --shadow-color: rgba(16, 55, 73, 0.12);
+    /* Single source of truth for the UI font (see base.html Google Fonts link). */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -29,7 +31,7 @@ html {
 }
 
 body {
-    font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
     background: linear-gradient(180deg, #eff7f6 0%, #ecf5f4 100%);
     color: var(--text-color);
     line-height: 1.6;

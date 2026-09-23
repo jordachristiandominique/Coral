@@ -86,7 +86,7 @@ const printStyles = `
         body {
             background: white;
             color: #1c5f6d;
-            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
         .researcher-navbar,

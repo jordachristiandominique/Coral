@@ -54,7 +54,7 @@
     padding: 0 12px;
     border: 1px solid rgba(28, 95, 109, 0.2);
     border-radius: 8px;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     color: #1c5f6d;
     background: white;
@@ -101,7 +101,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 200ms ease;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     background: white;
     color: #1c5f6d;
     white-space: nowrap;
@@ -139,11 +139,11 @@
 /* Leaflet Map Customization */
 .leaflet-container {
     background: linear-gradient(135deg, #e8f4f8 0%, #f0faf9 100%);
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
 }
 
 .leaflet-control-container {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     display: none;
 }
 
@@ -263,7 +263,7 @@
 }
 
 .leaflet-popup-content {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-sans);
     color: #1c5f6d;
     margin: 0;
 }

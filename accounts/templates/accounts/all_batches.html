@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
-<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=8">
 {% endblock %}
 
 {% block content %}
@@ -139,57 +139,53 @@
             <button type="button" class="filter-clear-btn" id="batch-clear-btn">Clear</button>
         </section>
 
-        {% include 'accounts/partials/coverage_class_key.html' %}
-
         <section class="batches-grid" aria-label="Batch cards list">
             {% for batch in batches %}
-            <article class="surface-card batch-card">
-                <header class="batch-card-head">
-                    <h2>{{ batch.name }}</h2>
-                </header>
-
-                <p class="batch-meta">
-                    <span><i data-lucide="calendar"></i> {{ batch.survey_date|date:"M d, Y" }}</span>
-                    <span class="meta-dot"></span>
-                    <span><i data-lucide="map-pin"></i> {{ batch.area_name }}</span>
-                    <span class="meta-dot"></span>
-                    <span>{{ batch.image_count }} images</span>
-                </p>
-
-                <p class="batch-uploaded-by">
-                    <i data-lucide="upload"></i>
-                    <span>Uploaded by: {{ batch.user.get_full_name|default:batch.user.username }}</span>
-                </p>
-
-                <p class="batch-surveyors">
-                    <i data-lucide="users"></i>
-                    <span>{{ batch.surveyor_names|default:"Survey by" }}</span>
-                </p>
-                <p class="batch-coverage">
-                    {% with coverage=batch.avg_coverage|default_if_none:"--"|floatformat:0 %}
-                    <span class="coverage-text">Hard Coral Cover: <strong>{{ coverage }}%</strong></span>
-                    {% endwith %}
-                    <span class="batch-class-badge class-{{ batch.coverage_class|default:" pending"|lower }}">
+            {% with cat=batch.coverage_class|default:'pending'|lower %}
+            <article class="surface-card batch-card cat-{{ cat }}"
+                data-name="{{ batch.name }}" data-date="{{ batch.survey_date|date:'Y-m-d' }}"
+                data-category="{{ cat }}">
+                <div class="batch-card-head">
+                    <h3 class="batch-card-name" title="{{ batch.name }}">{{ batch.name }}</h3>
+                    <span class="batch-class-badge class-{{ cat }}">
                         {% if batch.coverage_class %}Category {{ batch.coverage_class }}{% else %}Pending{% endif %}
                     </span>
-                    <span class="batch-transect-count">· {{ batch.transect_count|default:0 }} transect{{ batch.transect_count|pluralize }}</span>
-                </p>
+                </div>
+
+                <div class="batch-meta">
+                    <span><i data-lucide="calendar"></i> {{ batch.survey_date|date:"M d, Y" }}</span>
+                    <span><i data-lucide="map-pin"></i> {{ batch.area_name }}</span>
+                    <span><i data-lucide="image"></i> {{ batch.image_count }} image{{ batch.image_count|pluralize }}</span>
+                </div>
+
+                <div class="batch-people">
+                    <span><i data-lucide="upload"></i> Uploaded by {{ batch.user.get_full_name|default:batch.user.username }}</span>
+                    <span><i data-lucide="users"></i> {{ batch.surveyor_names|default:"—" }}</span>
+                </div>
+
+                <div class="batch-hcc">
+                    <div class="batch-hcc-head">
+                        <span class="batch-hcc-value">{% if batch.avg_coverage is not None %}{{ batch.avg_coverage|floatformat:0 }}%{% else %}--{% endif %}</span>
+                        <span class="batch-hcc-label">Hard Coral Cover · {{ batch.transect_count|default:0 }} transect{{ batch.transect_count|pluralize }}</span>
+                    </div>
+                    <div class="batch-hcc-bar" aria-hidden="true">
+                        <span data-width="{% if batch.avg_coverage is not None %}{{ batch.avg_coverage|floatformat:0 }}{% else %}0{% endif %}"></span>
+                    </div>
+                </div>
 
                 <div class="batch-actions">
-                    <a href="{% url 'batch_detail' batch.id %}" class="action-outline">View Details</a>
-                    <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline">Add transect</a>
-                    <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline">Download Excel</a>
+                    <a href="{% url 'batch_detail' batch.id %}" class="action-primary">View details</a>
+                    <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline"><i data-lucide="plus"></i> Add transect</a>
+                    <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline"><i data-lucide="download"></i> Excel</a>
                     <a href="#" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
                 </div>
             </article>
+            {% endwith %}
             {% empty %}
-            <article class="surface-card batch-card">
-                <header class="batch-card-head">
-                    <h2>No data repositories yet</h2>
-                </header>
-                <p class="batch-meta">
-                    No data repositories have been uploaded to the system yet.
-                </p>
+            <article class="surface-card batch-empty-card">
+                <i data-lucide="folder-open"></i>
+                <h3>No data repositories yet</h3>
+                <p>No data repositories have been uploaded to the system yet.</p>
             </article>
             {% endfor %}
         </section>
@@ -212,6 +208,5 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/custom.js' %}?v=4"></script>
-<script src="{% static 'js/batches.js' %}"></script>
+<script src="{% static 'js/batches.js' %}?v=3"></script>
 {% endblock %}

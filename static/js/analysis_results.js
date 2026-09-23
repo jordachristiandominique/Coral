@@ -119,12 +119,12 @@ const initializeAnalysisResults = function () {
                     ctx.fillStyle = color;
                     ctx.textAlign = align;
                     ctx.textBaseline = 'middle';
-                    ctx.font = 'italic 600 15px "Space Grotesk", sans-serif';
+                    ctx.font = 'italic 600 15px "Inter", sans-serif';
                     ctx.fillText(String(labels[index] || ''), textX, lineEndY);
 
                     const valueX = arc.x + Math.cos(angle) * (inner + -7);
                     const valueY = arc.y + Math.sin(angle) * (inner + -7);
-                    ctx.font = 'italic 600 14px "Space Grotesk", sans-serif';
+                    ctx.font = 'italic 600 14px "Inter", sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText(String(percentage) + '%', valueX, valueY);
                     ctx.restore();

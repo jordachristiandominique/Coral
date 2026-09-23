@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=12">
-<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=4">
 {% endblock %}
 
 {% block content %}
@@ -904,7 +904,7 @@
 <!-- Custom Global Script (profile menu, logout modal) -->
 <script src="{% static 'js/custom.js' %}?v=4"></script>
 <!-- Reports Main Script (includes profile menu, logout modal, PDF export) -->
-<script src="{% static 'js/reports.js' %}"></script>
+<script src="{% static 'js/reports.js' %}?v=2"></script>
 <!-- Reports Builder Script (handles report type and data selection) -->
 <script src="{% static 'js/reports_builder.js' %}?v=2"></script>
 {% endblock %}

@@ -58,8 +58,10 @@ const initializeUploadBatch = function () {
             return Number.isFinite(num) ? num : null;
         };
 
-        // Typing coordinates moves the pin (the other half of the two-way bind)
-        const syncPinFromInputs = function () {
+        // Typing coordinates plots/moves the pin (the other half of the two-way
+        // bind). `recenter` zooms in when the value is committed (blur/change);
+        // while typing it just follows so the pin stays visible.
+        const movePinToInputs = function (recenter) {
             if (!latInput || !lngInput) {
                 return;
             }
@@ -77,10 +79,10 @@ const initializeUploadBatch = function () {
             const latlng = L.latLng(lat, lng);
             setPin(latlng, false);
 
-            // Only recenter when the pin would otherwise be off-screen, so the
-            // map doesn't jump around on every keystroke.
-            if (!map.getBounds().contains(latlng)) {
-                map.panTo(latlng);
+            if (recenter) {
+                map.setView(latlng, Math.max(map.getZoom(), 13));
+            } else {
+                map.panTo(latlng, { animate: true });
             }
         };
 
@@ -88,8 +90,8 @@ const initializeUploadBatch = function () {
             if (!input) {
                 return;
             }
-            input.addEventListener('input', syncPinFromInputs);
-            input.addEventListener('change', syncPinFromInputs);
+            input.addEventListener('input', function () { movePinToInputs(false); });
+            input.addEventListener('change', function () { movePinToInputs(true); });
         });
 
         if (surveyPointsScript) {
@@ -182,6 +184,10 @@ const initializeUploadBatch = function () {
         } else {
             setPin({ lat: 7.0731, lng: 125.6128 });
         }
+
+        // The map card can be laid out after init (inside cards/tabs); recompute
+        // its size so tiles and the pin position render correctly.
+        setTimeout(function () { map.invalidateSize(); }, 200);
     }
 
     const dropzone = document.getElementById('dropzone');
@@ -594,7 +600,7 @@ const describeCoverageClass = function (code) {
         const arm = opts.arm || 7;             // half-length of each cross arm
         const lineWidth = opts.lineWidth || 1.5;
         const color = opts.color || '#ffffff';
-        const font = opts.font || 'bold 11px "Segoe UI", Arial, sans-serif';
+        const font = opts.font || 'bold 11px "Inter", "Segoe UI", Arial, sans-serif';
 
         const strokeCross = function () {
             ctx.beginPath();
@@ -703,7 +709,7 @@ const describeCoverageClass = function (code) {
                 drawCpcePoint(ctx, x, y, index + 1, {
                     arm: 7,
                     lineWidth: 1.5,
-                    font: 'bold 11px "Segoe UI", Arial, sans-serif'
+                    font: 'bold 11px "Inter", "Segoe UI", Arial, sans-serif'
                 });
             });
         }
@@ -1612,7 +1618,7 @@ const describeCoverageClass = function (code) {
                 drawCpcePoint(ctx, x, y, index + 1, {
                     arm: 7,
                     lineWidth: 1.5,
-                    font: 'bold 11px "Segoe UI", Arial, sans-serif'
+                    font: 'bold 11px "Inter", "Segoe UI", Arial, sans-serif'
                 });
             });
         }
@@ -1925,7 +1931,7 @@ const describeCoverageClass = function (code) {
                 drawCpcePoint(ctx, p.x, p.y, index + 1, {
                     arm: 12,
                     lineWidth: 2,
-                    font: 'bold 14px "Segoe UI", Arial, sans-serif'
+                    font: 'bold 14px "Inter", "Segoe UI", Arial, sans-serif'
                 });
             });
         }

@@ -5,6 +5,16 @@ const initializeBatches = function () {
         window.lucide.createIcons();
     }
 
+    // Fill each card's HCC bar from its data-width (kept off the inline style so
+    // the template stays clean); a tick later so the width transition animates.
+    const hccFills = document.querySelectorAll('.batch-hcc-bar > span[data-width]');
+    requestAnimationFrame(function () {
+        hccFills.forEach(function (fill) {
+            const w = parseFloat(fill.getAttribute('data-width'));
+            fill.style.width = (Number.isFinite(w) ? Math.max(0, Math.min(100, w)) : 0) + '%';
+        });
+    });
+
     // ===== Batch Filtering =====
     const clearButton = document.getElementById('batch-clear-btn');
     const batchSearch = document.getElementById('batch-search');
@@ -23,19 +33,18 @@ const initializeBatches = function () {
         batchCards.forEach(card => {
             let show = true;
 
-            // Search filter
+            // Search filter (by site name)
             if (searchTerm) {
-                const batchName = card.querySelector('.batch-card-head h2')?.textContent.toLowerCase();
-                show = show && batchName?.includes(searchTerm);
+                const batchName = (card.dataset.name || '').toLowerCase();
+                show = show && batchName.includes(searchTerm);
             }
 
-            // Class filter
+            // Category filter
             if (classFilter && show) {
-                const classMatch = card.querySelector(`.batch-class-badge.class-${classFilter.toLowerCase()}`);
-                show = show && !!classMatch;
+                show = show && (card.dataset.category === classFilter.toLowerCase());
             }
 
-            card.style.display = show ? 'grid' : 'none';
+            card.style.display = show ? '' : 'none';
             if (show) visibleCards.push(card);
         });
 
@@ -43,8 +52,8 @@ const initializeBatches = function () {
         if (dateFilter && visibleCards.length > 0) {
             const cardsArray = Array.from(visibleCards);
             cardsArray.sort((a, b) => {
-                const dateA = new Date(a.querySelector('.batch-meta span i')?.nextSibling?.textContent || 0);
-                const dateB = new Date(b.querySelector('.batch-meta span i')?.nextSibling?.textContent || 0);
+                const dateA = new Date(a.dataset.date || 0);
+                const dateB = new Date(b.dataset.date || 0);
 
                 return dateFilter === 'latest' ? dateB - dateA : dateA - dateB;
             });
