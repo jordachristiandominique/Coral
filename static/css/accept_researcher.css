@@ -1,5 +1,6 @@
 /* Accept Researcher page specific layout overrides */
-button {
+/* Content buttons use an 8px radius, but never the round navbar bell/avatar. */
+button:not(.nav-bell):not(.profile-trigger) {
     border-radius: 8px !important;
 }
 

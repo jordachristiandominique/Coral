@@ -4,8 +4,8 @@
 {% block title %}Settings | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=14">
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=6">
 {% endblock %}
 
 {% block content %}
@@ -94,7 +94,24 @@
             <p>Manage your account information and profile photo.</p>
         </section>
 
-        <div class="settings-grid">
+        <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+            <button type="button" class="settings-tab is-active" role="tab" data-settings-tab="profile" aria-selected="true">
+                <svg class="settings-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Profile</span>
+            </button>
+            <button type="button" class="settings-tab" role="tab" data-settings-tab="security" aria-selected="false">
+                <svg class="settings-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <span>Password &amp; Security</span>
+            </button>
+        </div>
+
+        <div class="settings-panels">
+            <div class="settings-panel" data-settings-panel="profile">
+            <div class="settings-grid">
             <!-- Profile Information -->
             <section class="surface-card settings-card" aria-label="Profile information">
                 <h2>Profile Information</h2>
@@ -202,9 +219,12 @@
                 </form>
                 {% endif %}
             </section>
+            </div>
+            </div>
 
+            <div class="settings-panel" data-settings-panel="security">
             <!-- Security / Change Password -->
-            <section class="surface-card settings-card settings-card-full" aria-label="Security">
+            <section class="surface-card settings-card" aria-label="Security">
                 <h2>Security</h2>
                 <p class="settings-card-sub">Change your account password.</p>
 
@@ -242,6 +262,7 @@
                 <p class="settings-hint">You signed in with Google, so your password is managed there.</p>
                 {% endif %}
             </section>
+            </div>
         </div>
     </main>
 </div>
@@ -262,8 +283,57 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script>
+    // Settings tabs: every section stays on the one page; the tabs jump to a
+    // section on click and highlight the section you're currently viewing.
+    (function () {
+        var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-settings-tab]'));
+        var panels = Array.prototype.slice.call(document.querySelectorAll('[data-settings-panel]'));
+        if (!tabs.length || !panels.length) { return; }
+
+        var byName = {};
+        panels.forEach(function (panel) {
+            byName[panel.getAttribute('data-settings-panel')] = panel;
+        });
+
+        var setActive = function (name) {
+            tabs.forEach(function (tab) {
+                var on = tab.getAttribute('data-settings-tab') === name;
+                tab.classList.toggle('is-active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+        };
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var name = tab.getAttribute('data-settings-tab');
+                var panel = byName[name];
+                if (panel) { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                setActive(name);
+            });
+        });
+
+        // Scroll-spy: the active tab follows the section nearest the top.
+        var ticking = false;
+        var onScroll = function () {
+            if (ticking) { return; }
+            ticking = true;
+            window.requestAnimationFrame(function () {
+                var line = 150;
+                var current = panels[0].getAttribute('data-settings-panel');
+                panels.forEach(function (panel) {
+                    if (panel.getBoundingClientRect().top <= line) {
+                        current = panel.getAttribute('data-settings-panel');
+                    }
+                });
+                setActive(current);
+                ticking = false;
+            });
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+    })();
+
     // Profile photo: live preview + filename + enable Upload only once a valid
     // image is chosen (mirrors the 5 MB server-side cap).
     (function () {

@@ -661,6 +661,9 @@ const initializeCoralSense = () => {
         };
 
         const openMenu = function () {
+            // Only one navbar dropdown open at a time.
+            const nm = document.querySelector('[data-notif-menu]');
+            if (nm) { nm.classList.remove('is-open'); }
             profileMenu.classList.add('is-open');
             profileTrigger.setAttribute('aria-expanded', 'true');
             profileDropdown.setAttribute('aria-hidden', 'false');
@@ -693,6 +696,80 @@ const initializeCoralSense = () => {
             item.addEventListener('click', function () {
                 closeMenu();
             });
+        });
+    }
+
+    // ===== Notification Bell Dropdown =====
+    const notifMenu = document.querySelector('[data-notif-menu]');
+    const notifTrigger = document.querySelector('[data-notif-trigger]');
+    const notifDropdown = document.querySelector('[data-notif-dropdown]');
+
+    if (notifMenu && notifTrigger && notifDropdown) {
+        const markReadUrl = notifDropdown.getAttribute('data-markread-url');
+        const csrf = notifDropdown.getAttribute('data-csrf') || '';
+
+        const clearUnread = function () {
+            const badge = notifMenu.querySelector('[data-notif-badge]');
+            if (badge) { badge.remove(); }
+            notifDropdown.querySelectorAll('.notif-item.is-unread').forEach(function (item) {
+                item.classList.remove('is-unread');
+            });
+            const markBtn = notifDropdown.querySelector('[data-notif-markread]');
+            if (markBtn) { markBtn.remove(); }
+        };
+
+        const markAllRead = function () {
+            if (markReadUrl) {
+                fetch(markReadUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+                }).catch(function () { /* non-blocking */ });
+            }
+            clearUnread();
+        };
+
+        const closeNotif = function () {
+            notifMenu.classList.remove('is-open');
+            notifTrigger.setAttribute('aria-expanded', 'false');
+        };
+
+        notifTrigger.addEventListener('click', function (event) {
+            event.stopPropagation();
+            if (notifMenu.classList.contains('is-open')) {
+                closeNotif();
+                return;
+            }
+            // Only one navbar dropdown open at a time.
+            const pm = document.querySelector('[data-profile-menu]');
+            if (pm) { pm.classList.remove('is-open'); }
+
+            notifMenu.classList.add('is-open');
+            notifTrigger.setAttribute('aria-expanded', 'true');
+
+            // Opening the bell counts as having seen them.
+            if (notifMenu.querySelector('[data-notif-badge]')) {
+                markAllRead();
+            }
+        });
+
+        const markReadBtn = notifDropdown.querySelector('[data-notif-markread]');
+        if (markReadBtn) {
+            markReadBtn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                markAllRead();
+            });
+        }
+
+        document.addEventListener('click', function (event) {
+            if (!notifMenu.contains(event.target)) {
+                closeNotif();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeNotif();
+            }
         });
     }
 

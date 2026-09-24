@@ -23,7 +23,7 @@ from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
 from .models import (
-    User, ImageBatch, BatchImage, Transect, Report, CPCE_CODES,
+    User, ImageBatch, BatchImage, Transect, Report, Notification, CPCE_CODES,
     compute_coverage, classify_hcc, compute_site_hcc,
 )
 from .report_generator import ReportGenerator
@@ -891,6 +891,12 @@ def accept_researcher(request):
                     pending_user = User.objects.get(id=user_id, role='pending')
                     pending_user.role = 'researcher'
                     pending_user.save(update_fields=['role', 'updated_at'])
+                    Notification.objects.create(
+                        recipient=pending_user,
+                        verb='account_approved',
+                        message='Your account has been approved — welcome to CoralSense!',
+                        url=reverse('researcher_dashboard'),
+                    )
                     messages.success(request, f'{pending_user.get_full_name() or pending_user.email} has been approved.')
                 except User.DoesNotExist:
                     messages.error(request, 'Pending user not found or already processed.')
@@ -904,6 +910,14 @@ def accept_researcher(request):
         'pending_researchers': pending_researchers,
     }
     return render(request, 'accounts/accept_researcher.html', context)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def notifications_mark_read(request):
+    """Mark all of the current user's notifications as read (navbar bell)."""
+    updated = request.user.notifications.filter(is_read=False).update(is_read=True)
+    return JsonResponse({'ok': True, 'updated': updated})
 
 
 @login_required(login_url='login')
@@ -1019,23 +1033,22 @@ def upload_batch(request):
         if not images:
             errors.append('Please upload at least one image.')
 
-        # Coordinates are per-transect, so they are entered/validated in BOTH
-        # modes (each transect can sit at a different spot).
-        latitude_raw = request.POST.get('latitude', '').strip()
-        longitude_raw = request.POST.get('longitude', '').strip()
-        if not latitude_raw or not longitude_raw:
-            errors.append('Latitude and longitude are required.')
-        try:
-            latitude = Decimal(latitude_raw)
-            longitude = Decimal(longitude_raw)
-        except (InvalidOperation, TypeError):
-            latitude = None
-            longitude = None
-            errors.append('Latitude or longitude is invalid.')
-
-        # Site metadata (name/date/surveyors/area) is only entered/validated when
-        # creating a NEW site; when appending it comes from the existing batch.
+        # A site has ONE location, shared by all its transects. Coordinates and
+        # site metadata are entered/validated only when creating a NEW site;
+        # when appending a transect they come from the existing site.
         if existing_batch is None:
+            latitude_raw = request.POST.get('latitude', '').strip()
+            longitude_raw = request.POST.get('longitude', '').strip()
+            if not latitude_raw or not longitude_raw:
+                errors.append('Latitude and longitude are required.')
+            try:
+                latitude = Decimal(latitude_raw)
+                longitude = Decimal(longitude_raw)
+            except (InvalidOperation, TypeError):
+                latitude = None
+                longitude = None
+                errors.append('Latitude or longitude is invalid.')
+
             batch_name = request.POST.get('batch_name', '').strip()
             survey_date = request.POST.get('survey_date', '').strip()
             surveyor_names = request.POST.get('surveyor_names', '').strip()
@@ -1048,6 +1061,10 @@ def upload_batch(request):
                 errors.append('Survey by is required.')
             if not area_name:
                 errors.append('Area name is required.')
+        else:
+            # Appending: reuse the site's single location for the new transect.
+            latitude = existing_batch.latitude
+            longitude = existing_batch.longitude
 
         # Where to return on validation failure (keep the active site if appending).
         redirect_target = (
@@ -1102,12 +1119,12 @@ def upload_batch(request):
                 )
 
             # One transect per submit, appended after any existing transects.
-            # Each transect keeps its own coordinates.
+            # All transects in a site share the site's single location.
             number = (batch.transects.aggregate(m=Max('number'))['m'] or 0) + 1
             label = request.POST.get('transect_label', '').strip() or f'Transect {number}'
             transect = Transect.objects.create(
                 batch=batch, number=number, label=label,
-                latitude=latitude, longitude=longitude,
+                latitude=batch.latitude, longitude=batch.longitude,
             )
 
             for index, image in enumerate(images, start=1):
@@ -1157,35 +1174,18 @@ def upload_batch(request):
         site = ImageBatch.objects.filter(**active_filter).first()
         if site:
             next_number = (site.transects.aggregate(m=Max('number'))['m'] or 0) + 1
-            # Default the coordinates to the most recent transect's location
-            # (fall back to the site's), editable for the transect being added.
-            last_transect = site.transects.order_by('-number').first()
-            default_lat = (last_transect.latitude if last_transect and last_transect.latitude is not None
-                           else site.latitude)
-            default_lng = (last_transect.longitude if last_transect and last_transect.longitude is not None
-                           else site.longitude)
-            # Already-saved transects (with coordinates) to highlight on the map.
-            existing_transects = [
-                {
-                    'number': t.number,
-                    'label': t.label or f'Transect {t.number}',
-                    'latitude': float(t.latitude),
-                    'longitude': float(t.longitude),
-                }
-                for t in site.transects.all()
-                if t.latitude is not None and t.longitude is not None
-            ]
+            # All transects share the site's single location, so the coordinates
+            # for the transect being added are just the site's (locked).
             active_site = {
                 'id': site.id,
                 'name': site.name,
                 'area_name': site.area_name,
                 'survey_date': site.survey_date.isoformat() if site.survey_date else '',
                 'surveyor_names': site.surveyor_names,
-                'latitude': default_lat,
-                'longitude': default_lng,
+                'latitude': site.latitude,
+                'longitude': site.longitude,
                 'transect_count': site.transects.count(),
                 'next_number': next_number,
-                'transects': existing_transects,
             }
 
     context = {

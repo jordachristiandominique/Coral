@@ -326,3 +326,32 @@ class Report(models.Model):
     @property
     def is_failed(self):
         return self.status == 'failed'
+
+
+class Notification(models.Model):
+    """A short in-app message shown in the navbar bell dropdown.
+
+    Created for workflow events: a new pending registration (recipients = admins)
+    and an account approval (recipient = the approved user).
+    """
+    VERB_CHOICES = [
+        ('registration_pending', 'New registration pending approval'),
+        ('account_approved', 'Account approved'),
+    ]
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications'
+    )
+    verb = models.CharField(max_length=40, choices=VERB_CHOICES)
+    message = models.CharField(max_length=255)
+    url = models.CharField(max_length=300, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Notification'
+        verbose_name_plural = 'Notifications'
+
+    def __str__(self):
+        return f"{self.get_verb_display()} → {self.recipient}"

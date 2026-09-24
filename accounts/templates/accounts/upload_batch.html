@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=14">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
 <link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=21">
 {% endblock %}
 
@@ -147,26 +147,27 @@
 
                 <div class="coordinates-row">
                     <label class="field-floating">
-                        <input type="text" id="latitude" name="latitude" placeholder=" " value="{% if active_site %}{{ active_site.latitude }}{% else %}7.0731{% endif %}">
+                        <input type="text" id="latitude" name="latitude" placeholder=" " value="{% if active_site %}{{ active_site.latitude }}{% else %}7.0731{% endif %}"{% if active_site %} readonly{% endif %}>
                         <span>Latitude</span>
                     </label>
 
                     <label class="field-floating">
-                        <input type="text" id="longitude" name="longitude" placeholder=" " value="{% if active_site %}{{ active_site.longitude }}{% else %}125.6128{% endif %}">
+                        <input type="text" id="longitude" name="longitude" placeholder=" " value="{% if active_site %}{{ active_site.longitude }}{% else %}125.6128{% endif %}"{% if active_site %} readonly{% endif %}>
                         <span>Longitude</span>
                     </label>
 
+                    {% if not active_site %}
                     <button type="button" class="action-outline map-select-btn" id="map-select-btn">
                         <i data-lucide="map-pin"></i>
                         Select on Map
                     </button>
+                    {% endif %}
                 </div>
 
                 {% if active_site %}
-                <p class="field-help">Coordinates default to the previous transect — edit them (or click the map) if
-                    this transect is at a different spot.</p>
-                {% endif %}
-
+                <p class="field-help">All transects in this site share the same location, so the coordinates are
+                    locked to the site.</p>
+                {% else %}
                 <div class="map-card">
                     <div class="map-card-head">
                         <h3>Capture Location</h3>
@@ -174,8 +175,8 @@
                     </div>
                     <div id="upload-batch-map" class="upload-batch-map" aria-label="Interactive location map"></div>
                     {{ survey_points|json_script:"survey-points-data" }}
-                    {% if active_site %}{{ active_site.transects|json_script:"active-transects-data" }}{% endif %}
                 </div>
+                {% endif %}
             </section>
 
             <section class="surface-card upload-step-card" aria-label="Step 2 image upload">
