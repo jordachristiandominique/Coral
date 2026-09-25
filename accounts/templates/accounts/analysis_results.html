@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/analysis_results.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'css/analysis_results.css' %}?v=5">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
 
@@ -158,16 +158,25 @@
         <section class="analysis-section" aria-labelledby="overview-title">
             <div class="section-header">
                 <h2 id="overview-title">Overview</h2>
-                <p class="section-description">General data repository metrics and coverage classification</p>
+                <p class="section-description">Per-site hard coral cover with uncertainty and reference benchmarks</p>
             </div>
             <div class="analysis-charts" aria-label="Overview charts">
-            <article class="surface-card chart-card compact-chart">
+            <article class="surface-card chart-card compact-chart" style="grid-column: 1 / -1;">
                 <div class="card-header">
-                    <h2>Coverage Trend</h2>
-                    <span class="chart-sub">Monthly average</span>
+                    <h2>Site Hard Coral Cover</h2>
+                    <span class="chart-sub">Site mean &plusmn; SE &middot; thresholds 22/33/44% &middot; national avg 22.8%</span>
                 </div>
-                <canvas id="analysisTrendChart" height="140"></canvas>
+                <canvas id="analysisSiteHccChart" height="150"></canvas>
             </article>
+            </div>
+        </section>
+
+        <section class="analysis-section" aria-labelledby="composition-title">
+            <div class="section-header">
+                <h2 id="composition-title">Community Composition</h2>
+                <p class="section-description">HCC category grades and the reef's overall benthic makeup</p>
+            </div>
+            <div class="analysis-charts" aria-label="Composition charts">
             <article class="surface-card chart-card compact-chart">
                 <div class="card-header">
                     <h2>HCC Category Distribution</h2>
@@ -175,21 +184,19 @@
                 </div>
                 <canvas id="analysisClassChart" height="140"></canvas>
             </article>
-            </div>
-        </section>
-
-        <section class="analysis-section" aria-labelledby="composition-title">
-            <div class="section-header">
-                <h2 id="composition-title">Benthic Substrate Composition</h2>
-                <p class="section-description">Detailed breakdown of all 7 benthic substrate classes</p>
-            </div>
-            <div class="analysis-charts" aria-label="Benthic substrate composition chart">
-            <article class="surface-card chart-card compact-chart" style="grid-column: 1 / -1;">
+            <article class="surface-card chart-card compact-chart">
                 <div class="card-header">
                     <h2>Benthic Substrate Composition</h2>
                     <span class="chart-sub">All 7 benthic substrate classes</span>
                 </div>
                 <canvas id="analysisCoralClassChart" height="140"></canvas>
+            </article>
+            <article class="surface-card chart-card compact-chart" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2>Composition by Site</h2>
+                    <span class="chart-sub">Per-site benthic breakdown (100%)</span>
+                </div>
+                <canvas id="analysisSiteBenthicChart" height="150"></canvas>
             </article>
             </div>
         </section>
@@ -214,7 +221,6 @@
                             <th>Images</th>
                             <th>Avg HCC</th>
                             <th>Hard Coral %</th>
-                            <th>Soft Coral %</th>
                             <th>Cat. A</th>
                             <th>Cat. B</th>
                             <th>Cat. C</th>
@@ -234,9 +240,6 @@
                                 <span style="color: #d4a574; font-weight: 600;">{{ month_stat.hard_coral_pct|floatformat:1 }}%</span>
                             </td>
                             <td>
-                                <span style="color: #e85d75; font-weight: 600;">{{ month_stat.soft_coral_pct|floatformat:1 }}%</span>
-                            </td>
-                            <td>
                                 <span class="class-count class-a">{{ month_stat.class_a_count }}</span>
                             </td>
                             <td>
@@ -251,7 +254,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="10" class="table-empty">No monthly data available.</td>
+                            <td colspan="9" class="table-empty">No monthly data available.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -367,7 +370,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/researcher_dashboard.js' %}"></script>
-<script src="{% static 'js/analysis_results.js' %}?v=7"></script>
+<script src="{% static 'js/analysis_results.js' %}?v=9"></script>
 {% endblock %}

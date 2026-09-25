@@ -55,6 +55,7 @@
 .filter-field {
     display: grid;
     gap: 6px;
+    min-width: 0;
     font-size: 11px;
     color: #5b7a86;
     font-weight: 700;
@@ -64,6 +65,8 @@
 
 .filter-field input,
 .filter-field select {
+    width: 100%;
+    min-width: 0;
     height: 42px;
     padding: 8px 12px;
     border-radius: 10px;
@@ -123,6 +126,15 @@
 
 .compact-chart {
     min-height: 220px;
+}
+
+/* Full-width research charts need more room for per-site bars + labels. */
+#analysisSiteHccChart {
+    min-height: 300px;
+}
+
+#analysisSiteBenthicChart {
+    min-height: 340px;
 }
 
 .chart-sub {

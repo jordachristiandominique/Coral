@@ -24,7 +24,7 @@ from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
 from .models import (
     User, ImageBatch, BatchImage, Transect, Report, Notification, CPCE_CODES,
-    compute_coverage, classify_hcc, compute_site_hcc,
+    NATIONAL_HCC_AVERAGE, compute_coverage, classify_hcc, compute_site_hcc,
 )
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
@@ -389,6 +389,8 @@ def _apply_analysis_filters(request, queryset):
 
 
 def _build_analysis_rows(queryset):
+    benthic_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
+                       'Algae Assemblage', 'Abiotic', 'Other Biota']
     rows = []
     for batch in queryset:
         # Recalculate coverage from point_classes (HC+SC only)
@@ -396,8 +398,17 @@ def _build_analysis_rows(queryset):
         for image in batch.images.all():
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
-        
-        # Site HCC = mean of the transect means (transect = replicate).
+
+        # Per-site benthic composition (% of all classified points in each of
+        # the 7 classes) for the "Composition by Site" chart.
+        benthic = {}
+        if all_point_classes:
+            total = len(all_point_classes)
+            for cls in benthic_classes:
+                benthic[cls] = round(all_point_classes.count(cls) / total * 100, 1)
+
+        # Site HCC = mean of the transect means (transect = replicate); `se` is
+        # the standard error across those transect means.
         site = compute_site_hcc(batch)
         coverage_value = site['site_percent'] if site['site_percent'] is not None else 0
         coverage_class = _coverage_class(coverage_value) if site['site_percent'] is not None else 'Pending'
@@ -412,6 +423,9 @@ def _build_analysis_rows(queryset):
             'image_count': batch.image_count,
             'avg_coverage': coverage_value,
             'coverage_class': coverage_class,
+            'se': site['se'],
+            'n_transects': site['n_transects'],
+            'benthic': benthic,
             'latitude': float(batch.latitude),
             'longitude': float(batch.longitude),
         })
@@ -643,6 +657,7 @@ def analysis_results(request):
             'hard_soft_labels': hard_soft_labels,
             'hard_coral_trend': hard_coral_trend,
             'soft_coral_trend': soft_coral_trend,
+            'national_hcc_average': NATIONAL_HCC_AVERAGE,
         },
         'filter_state': filter_state,
         'area_options': area_options,
