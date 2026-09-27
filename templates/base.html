@@ -11,7 +11,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/custom.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}?v=7">
     {% block extra_css %}{% endblock %}
     <script>
         // Apply the saved sidebar-collapsed state before the body paints so the
@@ -40,19 +40,75 @@
     </main>
 
     <!-- Footer -->
+    {% if '/accounts/researcher/' in request.path %}
+    <footer class="footer-slim">
+        <div class="container footer-slim-row">
+            <p class="footer-copy">&copy; {% now "Y" %} CoralSense &middot; Davao del Norte State College</p>
+            <p class="footer-note">HCC results are AI-assisted estimates; validate with field data.</p>
+        </div>
+    </footer>
+    {% else %}
     <footer>
         <div class="container footer-shell">
-            <div class="footer-brand">
-                <img src="{% static 'images/landing/dnsc-logo.png' %}" alt="DNSC logo" class="footer-dnsc-logo">
-                <div>
-                    <p class="footer-credit">Davao del Norte State College (DNSC)</p>
-                    <p class="footer-team">Developed by Christian Jorda, Kyla Samson, Queenie Sumalinog</p>
+            <div class="footer-grid">
+                <div class="footer-col footer-col-brand">
+                    <p class="footer-logo-text">CoralSense</p>
+                    <p class="footer-note">AI-assisted coral reef monitoring for the Davao Gulf.</p>
+                    <div class="footer-brand">
+                        <img src="{% static 'images/landing/dnsc-logo.png' %}" alt="DNSC logo" class="footer-dnsc-logo">
+                        <div>
+                            <p class="footer-credit">Davao del Norte State College (DNSC)</p>
+                            <p class="footer-team">Developed by Christian Jorda, Kyla Samson, Queenie Sumalinog</p>
+                        </div>
+                    </div>
+                    {# TODO: replace the placeholder with the project's contact email #}
+                    <p class="footer-note">Contact: <a href="mailto:your-email@dnsc.edu.ph">[your-email@dnsc.edu.ph]</a></p>
+                </div>
+
+                <nav class="footer-col" aria-label="Footer navigation">
+                    <p class="footer-heading">Explore</p>
+                    <ul class="footer-list">
+                        <li><a href="{% url 'landing_page' %}">Home</a></li>
+                        <li><a href="{% url 'landing_page' %}#how-it-works">How It Works</a></li>
+                        <li><a href="{% url 'landing_page' %}#about-project">About the Project</a></li>
+                        <li><a href="{% url 'landing_page' %}#hcc-scale">HCC Scale</a></li>
+                        <li><a href="{% url 'public_dashboard' %}">Public Dashboard</a></li>
+                        {% if user.is_authenticated %}
+                        <li><a href="{% url 'researcher_dashboard' %}">Researcher Dashboard</a></li>
+                        {% else %}
+                        <li><a href="{% url 'login' %}">Login</a></li>
+                        <li><a href="{% url 'register' %}">Register</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+
+                <div class="footer-col">
+                    <p class="footer-heading">Research Basis</p>
+                    <ul class="footer-list">
+                        <li><a href="https://doi.org/10.31398/tpjf/27.2.2020-0008" target="_blank"
+                                rel="noopener noreferrer">HCC scale: Licuanan (2020), Philippine Journal of Fisheries</a></li>
+                        <li><a href="https://sdgs.un.org/goals/goal14" target="_blank" rel="noopener noreferrer">UN SDG 14: Life Below Water</a></li>
+                        <li><span>Point-intercept (CPCE) method for Hard Coral Cover</span></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <p class="footer-heading">Data &amp; Privacy</p>
+                    <p class="footer-note">HCC results are AI-assisted estimates for research and monitoring. Validate
+                        critical conservation decisions with field surveys.</p>
+                    <p class="footer-note">Personal information is handled in accordance with the Data Privacy Act of
+                        2012 (RA 10173).</p>
+                    <p class="footer-note">Map tiles &copy; Esri &middot; Leaflet</p>
                 </div>
             </div>
 
-            <p class="footer-copy">&copy; 2026 CoralSense. All rights reserved.</p>
+            <div class="footer-bottom">
+                <p class="footer-copy">&copy; {% now "Y" %} CoralSense &middot; A DNSC capstone project</p>
+                <span class="footer-sdg-pill">SDG 14 Aligned</span>
+            </div>
         </div>
     </footer>
+    {% endif %}
 
     <!-- JavaScript -->
     <script src="{% static 'js/custom.js' %}?v=6"></script>

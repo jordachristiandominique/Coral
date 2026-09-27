@@ -97,7 +97,7 @@
         </div>
     </section>
 
-    <section class="workflow-section">
+    <section class="workflow-section" id="how-it-works">
         <div class="workflow-header">
             <!-- <p class="workflow-kicker">Section 4</p> -->
             <h2>How It Works</h2>
@@ -225,11 +225,12 @@
     <!-- Biodiversity Classes Section -->
     <hr>
 
-    <section class="biodiversity-section" aria-label="Biodiversity classification">
+    <section class="biodiversity-section" id="hcc-scale" aria-label="Biodiversity classification">
         <div class="biodiversity-header text-center">
             <p class="features-kicker">Hard Coral Cover Guide</p>
             <h2>HCC Assessment Scale</h2>
-            <p class="biodiversity-subtitle">Licuanan (2020) scale, benchmarked to the Philippine national average
+            <p class="biodiversity-subtitle"><a href="https://doi.org/10.31398/tpjf/27.2.2020-0008" target="_blank"
+                    rel="noopener noreferrer" class="citation-link">Licuanan (2020)</a> scale, benchmarked to the Philippine national average
                 (22.8%) and the Tubbataha Reefs benchmark.</p>
         </div>
 
@@ -280,23 +281,15 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const revealTargets = document.querySelectorAll(
-            '.landing-intro, .features-section, .workflow-section, .about-project-section, .cta-banner, .biodiversity-section, .public-dashboard-callout'
-        );
-
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const revealDirections = ['landing-slide-left', 'landing-slide-right', 'landing-slide'];
-
-        revealTargets.forEach((section, index) => {
-            section.classList.add('landing-slide');
-            section.classList.add(revealDirections[index % revealDirections.length]);
-            if (prefersReducedMotion) {
-                section.classList.add('is-visible');
-            }
-        });
 
         if (!prefersReducedMotion && 'IntersectionObserver' in window) {
-            const observer = new IntersectionObserver((entries, observe) => {
+            // Apply the hidden starting state instantly; otherwise already-rendered
+            // elements animate *out* first and can skip their entrance.
+            const root = document.documentElement;
+            root.classList.add('reveal-setup');
+
+            const revealOnce = (entries, observe) => {
                 entries.forEach((entry) => {
                     if (!entry.isIntersecting) {
                         return;
@@ -305,14 +298,80 @@
                     entry.target.classList.add('is-visible');
                     observe.unobserve(entry.target);
                 });
-            }, {
-                threshold: 0.18,
-                rootMargin: '0px 0px -10% 0px'
+            };
+
+            const revealObserver = new IntersectionObserver(revealOnce, {
+                threshold: 0.2,
+                rootMargin: '0px 0px -8% 0px'
             });
 
-            revealTargets.forEach((section) => observer.observe(section));
-        } else if (!prefersReducedMotion) {
-            revealTargets.forEach((section) => section.classList.add('is-visible'));
+            const addReveal = (element, direction, delay = 0) => {
+                if (!element) {
+                    return;
+                }
+
+                element.classList.add('landing-slide', `landing-slide-${direction}`);
+                element.style.setProperty('--reveal-delay', `${delay}s`);
+
+                // Drop the reveal classes once the entrance is done so hover transitions work as before.
+                const cleanUp = (event) => {
+                    if (event.target !== element || event.propertyName !== 'transform'
+                        || !element.classList.contains('is-visible')) {
+                        return;
+                    }
+
+                    element.classList.remove('landing-slide', `landing-slide-${direction}`, 'is-visible');
+                    element.style.removeProperty('--reveal-delay');
+                    element.removeEventListener('transitionend', cleanUp);
+                };
+                element.addEventListener('transitionend', cleanUp);
+
+                revealObserver.observe(element);
+            };
+
+            // Our Approach: text from the left, map from the right.
+            addReveal(document.querySelector('.landing-intro > div:first-child'), 'left');
+            addReveal(document.querySelector('.landing-intro-card'), 'right', 0.1);
+
+            // Section headings rise into place.
+            document.querySelectorAll(
+                '.features-header, .workflow-header, .about-project-header, .biodiversity-header, .public-dashboard-callout'
+            ).forEach((header) => addReveal(header, 'up'));
+
+            // Card rows: left half from the left, right half from the right, a middle card rises.
+            document.querySelectorAll('.features-grid, .about-project-grid, .cta-banner, .biodiversity-grid').forEach((grid) => {
+                const cards = Array.from(grid.children);
+                const middle = (cards.length - 1) / 2;
+
+                cards.forEach((card, index) => {
+                    let direction = 'up';
+                    if (index < middle) {
+                        direction = 'left';
+                    } else if (index > middle) {
+                        direction = 'right';
+                    }
+                    addReveal(card, direction, index * 0.1);
+                });
+            });
+
+            // Timeline steps reveal one by one: left cards slide in from the left, right cards from the right.
+            const workflowTimeline = document.querySelector('.workflow-timeline');
+            if (workflowTimeline) {
+                workflowTimeline.classList.add('workflow-animate');
+
+                // The line may be taller than the viewport, so it starts drawing as soon as it enters.
+                new IntersectionObserver(revealOnce, { threshold: 0 }).observe(workflowTimeline);
+
+                const workflowObserver = new IntersectionObserver(revealOnce, {
+                    threshold: 0.35,
+                    rootMargin: '0px 0px -8% 0px'
+                });
+
+                workflowTimeline.querySelectorAll('.workflow-item').forEach((item) => workflowObserver.observe(item));
+            }
+
+            void root.offsetHeight; // commit the hidden state before re-enabling transitions
+            root.classList.remove('reveal-setup');
         }
 
         const mapElement = document.getElementById('davao-gulf-map');

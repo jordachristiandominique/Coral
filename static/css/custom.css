@@ -580,20 +580,6 @@ footer {
     gap: 0.85rem;
 }
 
-.footer-dnsc-badge {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    border: 1px solid rgba(227, 245, 248, 0.52);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.88rem;
-    letter-spacing: 0.08em;
-    font-weight: 700;
-    background: rgba(255, 255, 255, 0.12);
-}
-
 .footer-dnsc-logo {
     width: 48px;
     height: 48px;
@@ -617,36 +603,109 @@ footer {
     color: rgba(236, 250, 252, 0.92);
 }
 
-.footer-links-wrap {
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1.3fr;
+    gap: 2rem;
+}
+
+.footer-col {
+    display: grid;
+    align-content: start;
+    gap: 0.7rem;
+}
+
+.footer-logo-text {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.footer-heading {
+    margin: 0 0 0.15rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #a9dde3;
+}
+
+.footer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.footer-list a,
+.footer-note a {
+    color: #f1fbfd;
+    text-decoration: none;
+}
+
+.footer-list a:hover,
+.footer-note a:hover {
+    color: #a9dde3;
+    text-decoration: underline;
+}
+
+.footer-list span {
+    color: rgba(236, 250, 252, 0.88);
+}
+
+.footer-note {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: rgba(236, 250, 252, 0.85);
+}
+
+.footer-bottom {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.8rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid rgba(206, 234, 239, 0.2);
 }
 
-.footer-links,
-.footer-social {
+.footer-sdg-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-}
-
-.footer-links a,
-.footer-social a {
-    color: #f1fbfd;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border: 1px solid rgba(233, 248, 252, 0.28);
+    padding: 0.3rem 0.75rem;
     border-radius: 999px;
-    padding: 0.36rem 0.75rem;
+    border: 1px solid rgba(233, 248, 252, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
-.footer-links a:hover,
-.footer-social a:hover {
-    color: #0f5b67;
-    background: #e7f5f7;
+footer.footer-slim {
+    padding: 0.9rem 0;
+}
+
+.footer-slim-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.2rem;
+}
+
+.footer-slim .footer-note {
+    font-size: 0.8rem;
+}
+
+@media (max-width: 1024px) {
+    .footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .footer-copy {
@@ -971,24 +1030,46 @@ footer {
 }
 
 /* ===== Landing ===== */
+/* Scroll reveal: classes are added by JS and removed once the animation ends,
+   so cards get their own hover transitions back. */
+body:has(.landing-hero) {
+    overflow-x: clip;
+}
+
+.reveal-setup .landing-slide,
+.reveal-setup .workflow-animate::before,
+.reveal-setup .workflow-animate .workflow-panel,
+.reveal-setup .workflow-animate .workflow-marker {
+    transition: none !important;
+}
+
 .landing-slide {
     opacity: 0;
-    transform: translateY(28px);
-    transition: opacity 0.65s ease, transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);
     will-change: opacity, transform;
 }
 
+.landing-slide.landing-slide-up,
+.landing-slide.landing-slide-left,
 .landing-slide.landing-slide-right {
-    transform: translateX(36px);
+    transition: opacity 0.7s ease var(--reveal-delay, 0s),
+        transform 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) var(--reveal-delay, 0s);
+}
+
+.landing-slide.landing-slide-up {
+    transform: translateY(32px);
 }
 
 .landing-slide.landing-slide-left {
-    transform: translateX(-36px);
+    transform: translateX(-72px);
+}
+
+.landing-slide.landing-slide-right {
+    transform: translateX(72px);
 }
 
 .landing-slide.is-visible {
     opacity: 1;
-    transform: translateX(0) translateY(0);
+    transform: translate(0, 0);
 }
 
 .landing-hero {
@@ -1413,6 +1494,42 @@ footer {
     grid-column: 1;
 }
 
+/* Scroll reveal (class added by JS, so content stays visible without it) */
+.workflow-animate::before {
+    transform: translateX(-50%) scaleY(0);
+    transform-origin: top;
+    transition: transform 1.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.workflow-animate.is-visible::before {
+    transform: translateX(-50%) scaleY(1);
+}
+
+.workflow-animate .workflow-panel {
+    opacity: 0;
+    transform: translateX(-72px);
+    transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
+    will-change: opacity, transform;
+}
+
+.workflow-animate .workflow-item.right .workflow-panel {
+    transform: translateX(72px);
+}
+
+.workflow-animate .workflow-marker {
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s;
+}
+
+.workflow-animate .workflow-item.is-visible .workflow-panel {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.workflow-animate .workflow-item.is-visible .workflow-marker {
+    transform: translate(-50%, -50%) scale(1);
+}
+
 .workflow-panel h3 {
     font-size: 1.34rem;
     line-height: 1.2;
@@ -1467,8 +1584,10 @@ footer {
 
 .about-project-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.1rem;
+    max-width: 760px;
+    margin: 0 auto;
 }
 
 .about-project-card {
@@ -1661,6 +1780,17 @@ footer {
     font-size: 0.92rem;
 }
 
+.citation-link {
+    color: #1c5f6d;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.citation-link:hover {
+    color: #2a8793;
+}
+
 .biodiversity-label {
     margin-bottom: 0.35rem;
     font-size: 0.8rem;
@@ -1744,6 +1874,7 @@ footer {
 @media (prefers-reduced-motion: reduce) {
 
     .landing-slide,
+    .landing-slide.landing-slide-up,
     .landing-slide.landing-slide-right,
     .landing-slide.landing-slide-left {
         opacity: 1;
@@ -1837,10 +1968,19 @@ footer {
         grid-template-columns: 1fr;
     }
 
-    .footer-links-wrap,
     .footer-brand {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        align-items: flex-start;
     }
 
     .workflow-section {
@@ -1878,6 +2018,23 @@ footer {
 
     .workflow-panel {
         min-height: auto;
+    }
+
+    .workflow-animate::before {
+        transform: scaleY(0);
+    }
+
+    .workflow-animate.is-visible::before {
+        transform: scaleY(1);
+    }
+
+    .workflow-animate .workflow-item.left .workflow-panel,
+    .workflow-animate .workflow-item.right .workflow-panel {
+        transform: translateX(40px);
+    }
+
+    .workflow-animate .workflow-item.is-visible .workflow-panel {
+        transform: translateX(0);
     }
 
     .auth-shell {
