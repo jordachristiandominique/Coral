@@ -37,6 +37,18 @@ Dependencies: `pip install -r requirements.txt`. No pytest, lint, or bundler con
 - Migrations include data migrations (`0010`, `0012`); new model changes need `makemigrations` and must keep `makemigrations --check` clean.
 - Python: standard library + pinned deps only; `reportlab`, `openpyxl`, `Pillow` are already in use for exports/annotation — reuse them.
 
+## Project skills
+
+Five repository-local skills live in `.agents/skills/`; read the matching `SKILL.md` when its task applies:
+
+- `coralsense-survey-hcc` (custom): survey uploads, transects, benthic classifications, HCC, and exports.
+- `coralsense-template-debugging` (custom): Django template, CSS, and vanilla JavaScript diagnosis, including editor-only warnings.
+- `coralsense-frontend-design` (custom): responsive frontend design and mockups; sample output at `examples/frontend-design/dashboard.html`.
+- `jupyter-notebook` (OpenAI download): training/comparison notebook authoring and editing.
+- `playwright` (OpenAI download): browser automation and UI verification.
+
+Downloaded source: `https://github.com/openai/skills/tree/main/skills/.curated`. Preserve upstream resources and resolve helper paths from the local skill directory; their global-path examples do not match this repository-local installation. Playwright requires Node/npm and a compatible Bash shell for its wrapper; installing this skill does not install those tools. The skills do not change `requirements.txt`. `CLAUDE.md` shares these instructions with Claude users.
+
 ## Verification checklist
 
 Before finishing a change, run and report:

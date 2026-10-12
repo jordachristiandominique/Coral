@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CoralSense · Frontend design sample</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..750&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#173d47;--teal:#1c5f6d;--muted:#526b73;--line:#d7e5e7;--paper:#f3f7f7;--orange:#f4a16d}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:var(--teal)}button,input,select{font:inherit}button,select{cursor:pointer}a,button,input,select{outline-offset:4px}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #ac4f1c}
+    .skip{position:absolute;left:16px;top:-70px;background:white;padding:10px;z-index:3}.skip:focus{top:10px}
+    .container{max-width:1180px;margin:auto;padding:0 28px}.top{background:white;border-bottom:1px solid var(--line)}.top .container{display:flex;align-items:center;justify-content:space-between;min-height:78px;gap:20px}
+    .brand{font-weight:750;font-size:22px;letter-spacing:-1px;display:flex;align-items:center;gap:10px}.brand svg{width:34px;height:34px}nav{display:flex;gap:25px;flex-wrap:wrap}nav a{text-decoration:none;font-size:14px;color:var(--muted);padding:10px 0}nav a[aria-current]{color:var(--teal);font-weight:700;border-bottom:2px solid var(--teal)}
+    .demo{background:#e4efef;color:#345861;padding:8px 0;font-size:12px}.demo strong{margin-right:8px}main{padding:38px 0 48px}.heading{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:26px}.eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--teal)}h1{font-size:clamp(30px,4vw,42px);line-height:1.15;letter-spacing:-1.4px;margin:9px 0 12px}p{margin:0}.muted{color:var(--muted)}
+    .button{display:inline-flex;align-items:center;justify-content:center;background:var(--teal);color:white;border:1px solid var(--teal);border-radius:8px;padding:11px 18px;font-weight:650;text-decoration:none;white-space:nowrap}.button:hover{background:#164b56}.button.secondary{background:white;color:var(--teal)}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:25px}.metric{padding:22px;background:white;border:1px solid var(--line);border-radius:12px}.metric p{font-size:13px;color:var(--muted)}.metric strong{display:block;font-size:32px;letter-spacing:-1px;margin:7px 0 2px;font-variant-numeric:tabular-nums}.metric small{font-size:12px;color:var(--muted)}
+    .panels{display:grid;grid-template-columns:1.6fr 1fr;gap:22px;margin-bottom:28px}.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:25px}h2{font-size:19px;margin:0 0 5px;letter-spacing:-.4px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:18px}.tag{font-size:11px;border-radius:5px;padding:4px 8px;background:#eef4f4;color:var(--teal);font-weight:700}
+    .chart{display:block;width:100%;height:auto;margin-top:20px}.chart text{font-family:"Inter",system-ui,sans-serif;fill:#526b73;font-size:12px}.chart .value{fill:#173d47;font-size:13px;font-weight:650}.chart-note{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+    .category-row{display:flex;justify-content:space-between;gap:20px;padding:15px 0;border-bottom:1px solid var(--line);font-size:14px}.category-row:last-of-type{border-bottom:0}.category-row small{display:block;color:var(--muted);font-size:12px}.category-row strong{font-size:22px;font-variant-numeric:tabular-nums}.note{font-size:12px;color:var(--muted);margin-top:14px}
+    .sites-head{display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:18px}.filters{display:flex;align-items:center;gap:10px}.filters label{font-size:13px;font-weight:650}select{border:1px solid #acbfc3;border-radius:7px;padding:9px 30px 9px 12px;background:white;color:var(--ink)}
+    .site-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.site{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden}.site-band{height:90px;background:#dcebed;position:relative;overflow:hidden}.site-band:before,.site-band:after{content:"";position:absolute;width:110%;height:100px;border:1px solid #b4d4d8;border-radius:50%;left:-5%;top:35px;transform:rotate(-10deg)}.site-band:after{top:60px;transform:rotate(8deg)}.site-band.two{background:#e6eeee}.site-band.three{background:#e7edf2}.location{position:absolute;left:20px;top:20px;font-size:11px;letter-spacing:1.5px;color:#345861;font-weight:700}.site-body{padding:21px}.site h3{margin:0 0 3px;font-size:18px}.site .date{color:var(--muted);font-size:12px}.site-stat{display:flex;justify-content:space-between;align-items:center;margin:20px 0 15px}.percent{font-size:31px;font-weight:700;letter-spacing:-1px}.percent small{display:block;font-size:11px;font-weight:500;letter-spacing:0;color:var(--muted)}.badge{font-size:12px;font-weight:700;background:#e6f0ee;color:#245d4d;padding:6px 9px;border-radius:5px}.badge.c{background:#f6eddc;color:#73531c}.badge.d{background:#edf0f2;color:#48535c}.site-footer{border-top:1px solid var(--line);padding-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)}.details{border:0;background:none;color:var(--teal);font-weight:700;padding:5px 0}
+    #filter-status{font-size:12px;color:var(--muted);margin-top:14px}footer{border-top:1px solid var(--line);padding:20px 0;color:var(--muted);font-size:12px}footer .container{display:flex;justify-content:space-between;gap:20px}.empty{padding:25px;border:1px dashed var(--line);border-radius:12px;background:white}.empty[hidden],.site[hidden]{display:none}
+    dialog{border:1px solid var(--line);border-radius:14px;padding:28px;max-width:460px;width:calc(100% - 36px);color:var(--ink)}dialog::backdrop{background:rgba(14,40,49,.45)}dialog h2{margin-bottom:14px}dialog p{margin-bottom:20px}dialog form{text-align:right}
+    @media(max-width:850px){.metrics{grid-template-columns:repeat(2,1fr)}.panels{grid-template-columns:1fr}.site-grid{grid-template-columns:repeat(2,1fr)}.top .container{flex-wrap:wrap;padding-top:15px;padding-bottom:10px}nav{gap:20px}}
+    @media(max-width:560px){.container{padding:0 18px}.heading,.sites-head{align-items:flex-start;flex-direction:column;gap:16px}main{padding-top:28px}.metrics{gap:10px}.metric{padding:16px}.metric strong{font-size:27px}.site-grid{grid-template-columns:1fr}.panel{padding:20px}nav{font-size:12px;gap:17px}footer .container{flex-direction:column;gap:5px}.filters{width:100%}.filters select{flex:1}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top"><div class="container">
+    <div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#1c5f6d"/><path d="M20 31V12m0 13-9-7m9 2 8-7m-17 5v-5m17 0v-5m-8 8-4-5" stroke="#f4a16d" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>CoralSense</div>
+    <nav aria-label="Sample navigation"><a href="#main" aria-current="page">Overview</a><a href="#sites">Survey sites</a><a href="#coverage">HCC categories</a></nav>
+  </div></header>
+  <div class="demo"><div class="container"><strong>DESIGN SAMPLE</strong>Illustrative data only · No connection to live survey records</div></div>
+  <main id="main" class="container">
+    <section class="heading" aria-labelledby="page-title"><div><div class="eyebrow">Research workspace</div><h1 id="page-title">A clearer view of our reefs.</h1><p class="muted">Explore survey coverage, compare sites, and follow the evidence.</p></div><a class="button" href="#sites">Explore survey sites <span aria-hidden="true">&nbsp;↗</span></a></section>
+    <section class="metrics" aria-label="Sample survey overview">
+      <article class="metric"><p>Survey sites</p><strong>3</strong><small>Across three sample areas</small></article>
+      <article class="metric"><p>Survey photographs</p><strong>450</strong><small>150 photographs per site</small></article>
+      <article class="metric"><p>Mean site HCC</p><strong>30.0%</strong><small>Mean of the three site values</small></article>
+      <article class="metric"><p>Sampling transects</p><strong>9</strong><small>Three replicates per site</small></article>
+    </section>
+    <div class="panels">
+      <section class="panel" aria-labelledby="chart-title"><div class="panel-head"><div><h2 id="chart-title">Hard Coral Cover by site</h2><p class="muted" style="font-size:13px">Site values, with transects as sampling replicates</p></div><span class="tag">SAMPLE</span></div>
+        <svg class="chart" viewBox="0 0 580 230" role="img" aria-labelledby="plot-title plot-desc"><title id="plot-title">Sample site Hard Coral Cover</title><desc id="plot-desc">Talikud Reef: 48 percent, Category A. Samal Coast: 26 percent, Category C. Davao Gulf: 16 percent, Category D.</desc>
+          <g stroke="#e5edef"><path d="M120 20V185M253 20V185M387 20V185M520 20V185"/></g>
+          <text x="0" y="57">Talikud Reef</text><text x="0" y="112">Samal Coast</text><text x="0" y="167">Davao Gulf</text>
+          <g fill="#1c5f6d"><rect x="120" y="35" width="320" height="30" rx="4"/><rect x="120" y="90" width="173.33" height="30" rx="4" fill="#2a8793"/><rect x="120" y="145" width="106.67" height="30" rx="4" fill="#6e9da5"/></g>
+          <text class="value" x="450" y="56">48%</text><text class="value" x="303" y="111">26%</text><text class="value" x="237" y="166">16%</text>
+          <text x="120" y="212" text-anchor="middle">0%</text><text x="253" y="212" text-anchor="middle">20%</text><text x="387" y="212" text-anchor="middle">40%</text><text x="520" y="212" text-anchor="middle">60%</text>
+        </svg><p class="chart-note">HCC measures Hard Coral points only. Soft Coral is excluded from the numerator.</p>
+      </section>
+      <section id="coverage" class="panel" aria-labelledby="coverage-title"><h2 id="coverage-title">HCC category overview</h2><p class="muted" style="font-size:13px">Site counts using the project's A–D scale</p>
+        <div class="category-row"><div>Category A<small>more than 44%</small></div><strong>1</strong></div>
+        <div class="category-row"><div>Category B<small>more than 33% up to 44%</small></div><strong>0</strong></div>
+        <div class="category-row"><div>Category C<small>more than 22% up to 33%</small></div><strong>1</strong></div>
+        <div class="category-row"><div>Category D<small>0-22%</small></div><strong>1</strong></div>
+        <p class="note">Categories describe hard coral coverage. They are not a complete assessment of reef health.</p>
+      </section>
+    </div>
+    <section id="sites" aria-labelledby="sites-title"><div class="sites-head"><div><div class="eyebrow">Field observations</div><h2 id="sites-title">Survey sites</h2><p class="muted" style="font-size:13px">A small collection of illustrative survey records</p></div><div class="filters"><label for="category">Category</label><select id="category"><option value="all">All categories</option><option value="A">Category A</option><option value="B">Category B</option><option value="C">Category C</option><option value="D">Category D</option></select></div></div>
+      <div class="site-grid">
+        <article class="site" data-category="A"><div class="site-band"><span class="location">TALIKUD ISLAND</span></div><div class="site-body"><h3>Talikud Reef</h3><p class="date">Sample survey · September 18, 2026</p><div class="site-stat"><div class="percent">48.0%<small>Hard Coral Cover</small></div><span class="badge">Category A</span></div><div class="site-footer"><span>3 transects · 150 photos</span><button class="details" data-name="Talikud Reef" data-hcc="48.0%" data-grade="A">View details <span aria-hidden="true">↗</span><span style="position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden"> for Talikud Reef</span></button></div></div></article>
+        <article class="site" data-category="C"><div class="site-band two"><span class="location">SAMAL ISLAND</span></div><div class="site-body"><h3>Samal Coast</h3><p class="date">Sample survey · September 20, 2026</p><div class="site-stat"><div class="percent">26.0%<small>Hard Coral Cover</small></div><span class="badge c">Category C</span></div><div class="site-footer"><span>3 transects · 150 photos</span><button class="details" data-name="Samal Coast" data-hcc="26.0%" data-grade="C">View details <span aria-hidden="true">↗</span><span style="position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden"> for Samal Coast</span></button></div></div></article>
+        <article class="site" data-category="D"><div class="site-band three"><span class="location">DAVAO GULF</span></div><div class="site-body"><h3>Davao Gulf</h3><p class="date">Sample survey · September 22, 2026</p><div class="site-stat"><div class="percent">16.0%<small>Hard Coral Cover</small></div><span class="badge d">Category D</span></div><div class="site-footer"><span>3 transects · 150 photos</span><button class="details" data-name="Davao Gulf" data-hcc="16.0%" data-grade="D">View details <span aria-hidden="true">↗</span><span style="position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden"> for Davao Gulf</span></button></div></div></article>
+      </div><p class="empty" id="empty" hidden>No sample sites in this category. Select “All categories” to show the collection.</p><p id="filter-status" role="status" aria-live="polite">Showing 3 of 3 sample sites. Overview metrics remain for all sites.</p>
+    </section>
+    <noscript><p class="note">All sample sites are displayed. Category filtering and detail dialogs require JavaScript.</p></noscript>
+  </main>
+  <footer><div class="container"><span>CoralSense · Reef monitoring with evidence</span><span>Frontend design skill · Standalone sample output</span></div></footer>
+  <dialog id="site-dialog" aria-labelledby="dialog-title"><h2 id="dialog-title">Survey details</h2><p id="dialog-content"></p><p class="note">Demonstration values only. This sample does not read or write application data.</p><form method="dialog"><button class="button">Close details</button></form></dialog>
+  <script>
+    const category = document.getElementById('category');
+    const sites = [...document.querySelectorAll('.site')];
+    category.addEventListener('change', () => {
+      let visible = 0;
+      sites.forEach(site => {
+        site.hidden = category.value !== 'all' && site.dataset.category !== category.value;
+        if (!site.hidden) visible += 1;
+      });
+      document.getElementById('empty').hidden = visible !== 0;
+      document.getElementById('filter-status').textContent = `Showing ${visible} of ${sites.length} sample sites. Overview metrics remain for all sites.`;
+    });
+    const dialog = document.getElementById('site-dialog');
+    document.querySelectorAll('.details').forEach(button => button.addEventListener('click', () => {
+      document.getElementById('dialog-title').textContent = button.dataset.name;
+      document.getElementById('dialog-content').textContent = `${button.dataset.hcc} Hard Coral Cover · Category ${button.dataset.grade}. Three sample transects with 50 photographs each; 150 photographs in total.`;
+      dialog.showModal();
+    }));
+  </script>
+</body>
+</html>
