@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoralSense - Area Analysis Demo</title>
+<link rel="stylesheet" href="upload_area_demo.css">
+</head>
+<body>
+<main class="demo-shell">
+<header><a href="../frontend-design/dashboard.html">Frontend dashboard sample</a>
+<h1>CoralSense Area Analysis Demo</h1>
+<p>Standalone prototype. No account, server, or database is required. Images stay in this browser session.</p></header>
+<section class="demo-photo-controls" aria-label="Choose demonstration photographs">
+<label for="area-demo-files">Choose photographs</label>
+<input id="area-demo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<label for="area-demo-image">Active photograph</label>
+<select id="area-demo-image"><option value="">Geometry illustration (no photograph)</option></select>
+<button type="button" id="area-demo-clear">Clear photographs</button>
+<p>Use the examples or edit the boxes yourself. No AI model runs, and nothing is uploaded or saved.</p>
+</section>
+                <section class="area-demo" id="area-demo" aria-labelledby="area-demo-title">
+                    <span class="area-demo-label">MOCK ANALYSIS / NOT REAL AI DETECTION</span>
+                    <h3 id="area-demo-title">Verify detection areas and representative points</h3>
+                    <p id="area-demo-photo">No image selected - geometry illustration</p>
+                    <p>Sky blue is the quadrat interior; violet boxes represent accepted Hard Coral regions.
+                        The example boxes are not inferred from the photograph. Adjust them to explore the proposed method.</p>
+                    <div class="area-demo-metrics" aria-live="polite">
+                        <div><span>Raw box-area estimate (active image)</span><strong id="area-demo-coverage">55.00%</strong></div>
+                        <div><span>Ten representative markers</span><strong id="area-demo-count"></strong></div>
+                        <div class="area-demo-computation"><span>Point-based HCC computation</span><strong id="area-demo-hcc-result">60%</strong><p id="area-demo-hcc-computation"></p><small>Hard Coral points / total representative points × 100. The HCC category is assigned from this point-based value.</small></div>
+                        <div><span>Category from point-based HCC</span><strong id="area-demo-category">Category A</strong></div>
+                    </div>
+                    <p id="area-demo-formula"></p>
+                    <p id="area-demo-square" class="area-demo-square" role="status" aria-live="polite"></p>
+                    <div class="area-demo-controls">
+                        <button type="button" id="area-demo-make-square">Make quadrat square</button>
+                        <label><input type="checkbox" id="area-demo-lock-square"> Lock quadrat to 1:1</label>
+                    </div>
+                    <p class="area-demo-legend">Make square fits a centered square inside the current quadrat and enables the lock. The lock keeps image-pixel width and height equal during resizing and numeric edits. Coral boxes stay fixed; results recalculate and require review.</p>
+                    <p class="area-demo-legend">Square means equal width and height in the image (within 1 pixel). This indicator updates while resizing. It does not measure physical dimensions or correct camera perspective.</p>
+                    <div class="area-demo-controls" aria-label="Example coverage presets">
+                        <button type="button" data-area-preset="0">0% example</button>
+                        <button type="button" data-area-preset="30">30% example</button>
+                        <button type="button" data-area-preset="53">53% example</button>
+                        <button type="button" data-area-preset="54">54% example</button>
+                        <button type="button" data-area-preset="55">55% example</button>
+                        <button type="button" data-area-preset="100">100% example</button>
+                        <button type="button" id="area-demo-add">Add Hard Coral box</button>
+                    </div>
+                    <div class="area-demo-controls">
+                        <label for="area-demo-target">Drag or resize:</label>
+                        <select id="area-demo-target" aria-label="Choose quadrat, coral box, or markers to edit"></select>
+                    </div>
+                    <div class="area-demo-layout">
+                        <div>
+                            <canvas id="area-demo-canvas" width="900" height="600" role="img" tabindex="0"
+                                aria-label="Area estimate preview. Left and right arrows select markers; Shift and an arrow move the selected marker. Exact results are provided above."></canvas>
+                            <p class="area-demo-legend">Sky blue: quadrat | Violet: Hard Coral boxes | White +: Hard Coral | Gold +: unclassified remainder</p>
+                            <div class="area-demo-controls">
+                                <label><input type="checkbox" id="area-demo-show-boxes" checked> Show boxes</label>
+                                <label><input type="checkbox" id="area-demo-show-points" checked> Show markers</label>
+                                <label><input type="checkbox" id="area-demo-fill-quadrat" checked> Quadrat color fill</label>
+                                <label><input type="checkbox" id="area-demo-fill-boxes" checked> Coral box color fill</label>
+                            </div>
+                            <p>Choose a box above, drag inside it to move, or drag a square corner handle to resize. Coverage and markers update immediately.
+                                Choose Representative + markers to drag the crosses within their regions. Keyboard: focus the preview, use Left/Right to select a marker, then Shift+arrow to move it. Marker movement does not change raw coverage.
+                                The percentage fields remain available for precise box edits; coordinates are relative to the whole image.</p>
+                            <details><summary>Marker allocation and limitations</summary>
+                                <p id="area-demo-marker-list" class="area-demo-marker-list"></p>
+                                <p>Markers are distributed by non-overlapping area, with balanced patterns (three form a triangle).
+                                    Remaining markers are unclassified, not automatically Abiotic. Boxes can include non-coral pixels;
+                                    this is a detection-box estimate, not segmentation or independent point sampling.</p>
+                            </details>
+                        </div>
+                        <div><h4>Edit quadrat and accepted boxes</h4><div id="area-demo-editor"></div></div>
+                    </div>
+                    <p>Only box portions inside the quadrat count. Overlaps count once. Estimates of 53% and 54% receive five Hard Coral markers; 55% receives six. The raw coverage is never replaced by the marker percentage.</p>
+                    <button type="button" id="area-demo-approve">Mark demo as reviewed</button>
+                    <p id="area-demo-status" role="status" aria-live="polite"></p>
+                </section>
+
+</main>
+<script src="upload_area_demo.js"></script>
+</body>
+</html>

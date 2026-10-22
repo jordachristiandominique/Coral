@@ -1,5 +1,9 @@
 # CoralSense Agent Skills Setup
 
+CoralSense is a coral reef monitoring application that helps researchers organize underwater survey photographs and assess Hard Coral Cover (HCC) using point-based benthic classifications. It provides survey dashboards, maps, analysis, and data exports, with administrator approval for researcher accounts.
+
+The project uses Django, SQLite, and server-rendered HTML with CSS and vanilla JavaScript. This document describes the branch, project guidance, and reusable agent skills prepared to support development within the existing codebase.
+
 ## 1. Create a New Branch First
 
 The setup was isolated from `main` on a new branch. Its original name was `chore/project-agent-skills`; it was renamed to `agent-skills` on October 12, 2026.
