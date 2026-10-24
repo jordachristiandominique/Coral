@@ -12,6 +12,17 @@
         const clipped = intersect(quadrat, box);
         return clipped ? clipped.w * clipped.h / (quadrat.w * quadrat.h) * 100 : 0;
     }
+    function pickCoralBox(boxes, point) {
+        return boxes.map((box,index)=>({box,index}))
+            .filter(({box})=>point.x>=box.x && point.x<=box.x+box.w && point.y>=box.y && point.y<=box.y+box.h)
+            .sort((a,b)=>a.box.w*a.box.h-b.box.w*b.box.h || a.index-b.index)[0]?.index ?? -1;
+    }
+    function pickLayerBox(boxes, order, point) {
+        return order.find(i => {
+            const b=boxes[i];
+            return b && point.x>=b.x && point.x<=b.x+b.w && point.y>=b.y && point.y<=b.y+b.h;
+        }) ?? -1;
+    }
     function placeLabels(items, obstacles, imageWidth, imageHeight, stacked, previous = {}) {
         const placed = [], preferences = {};
         const collides = (a, b) => a.x < b.x + b.w + 5 && a.x + a.w + 5 > b.x && a.y < b.y + b.h + 5 && a.y + a.h + 5 > b.y;
@@ -157,7 +168,7 @@
             ...allocate(cells.filter(c => !c.hard), 10 - hardCount)];
         return { percent, category: category(percent), hardCount, points, hardArea, overlaps:summarizeOverlaps(q, cells) };
     }
-    const api = { calculate, intersect, category, pattern, transformRect, quadratDimensions, squareRect, resizeSquare, boxAreaPercent, placeLabels, outerEdges };
+    const api = { calculate, intersect, category, pattern, transformRect, quadratDimensions, squareRect, resizeSquare, boxAreaPercent, placeLabels, outerEdges, pickCoralBox, pickLayerBox };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.CoralAreaGeometry = api;
     if (typeof document === 'undefined') return;
@@ -169,7 +180,6 @@
         const editor = document.getElementById('area-demo-editor');
         const status = document.getElementById('area-demo-status');
         const photoName = document.getElementById('area-demo-photo');
-        const targetSelect = document.getElementById('area-demo-target');
         const squareLock = document.getElementById('area-demo-lock-square');
         const viewport = document.getElementById('area-demo-viewport');
         const labelLayer = document.getElementById('area-demo-labels');
@@ -178,16 +188,55 @@
         let labelPreferences = {}, selectedLabel = null;
         const imageSize = () => ({ width: image ? image.naturalWidth : canvas.width, height: image ? image.naturalHeight : canvas.height });
         let target = 'box:0', boxDrag = null;
+        let editMode = 'boxes';
+        let pinNextSelection = false;
         let q, boxes, result, image = null, file = null, loadToken = 0, moved = {}, dragIndex = -1;
         let reviewed = false;
         let selectedMarker = 0;
         const imageStates = new Map();
+        let history = [], markerBefore = null, menuBox = null;
+        const contextMenu = document.getElementById('area-demo-context-menu');
+        const undoButton = document.getElementById('area-demo-undo');
+        const snapshot = () => JSON.parse(JSON.stringify({q,boxes,moved,target,editMode,squareLocked:squareLock.checked}));
+        const geometryKey = state => JSON.stringify({q:state.q,boxes:state.boxes,moved:state.moved,squareLocked:state.squareLocked});
+        const closeMenu = () => {contextMenu.hidden=true;menuBox=null;};
+        function remember(before) {
+            if (before && geometryKey(before)!==geometryKey(snapshot())) {
+                history.push(before);if(history.length>50)history.shift();
+            }
+            undoButton.disabled=!history.length;
+        }
+        function undo() {
+            closeMenu();endDrag();
+            const before=history.pop();if(!before)return;
+            q=before.q;boxes=before.boxes;target=before.target;editMode=before.editMode;squareLock.checked=before.squareLocked;
+            selectedLabel=target.startsWith('box:')?target:null;labelPreferences={};
+            fields();refresh();moved=before.moved;draw();undoButton.disabled=!history.length;
+            status.textContent='Change undone. Review the restored result.';
+        }
+        function deleteBox(index) {
+            if(index<0 || index>=boxes.length)return;
+            const before=snapshot();closeMenu();boxes.splice(index,1);
+            target=boxes.length?'box:'+Math.min(index,boxes.length-1):'';selectedLabel=null;
+            fields();refresh();remember(before);
+        }
+        function openMenu(index,x,y) {
+            if(index<0 || !boxes[index])return;
+            target='box:'+index;selectedLabel=target;pinNextSelection=true;fields();draw();
+            menuBox=boxes[index];contextMenu.hidden=false;
+            const bounds=contextMenu.getBoundingClientRect();
+            contextMenu.style.left=clamp(x,8,Math.max(8,root.innerWidth-bounds.width-8))+'px';
+            contextMenu.style.top=clamp(y,8,Math.max(8,root.innerHeight-bounds.height-8))+'px';
+            document.getElementById('area-demo-context-delete').focus();
+        }
         const contains = (b, x, y) => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h;
         const selectedRect = () => target === 'quadrat' ? q : target.startsWith('box:') ? boxes[Number(target.split(':')[1])] : null;
         const corners = b => ({ nw: {x:b.x,y:b.y}, ne: {x:b.x+b.w,y:b.y}, sw: {x:b.x,y:b.y+b.h}, se: {x:b.x+b.w,y:b.y+b.h} });
         function canEditBox() {
-            return target === 'quadrat' || document.getElementById('area-demo-show-boxes').checked;
+            const b=selectedRect();
+            return target === 'quadrat' || (b && document.getElementById('area-demo-show-boxes').checked);
         }
+        const layerHit = p => pickLayerBox(boxes,boxes.map((_,i)=>i).reverse(),p);
         function boxHit(p) {
             const rect = selectedRect();
             if (!rect || !canEditBox()) return null;
@@ -223,8 +272,12 @@
                     button = document.createElement('button');button.type='button';
                     button.addEventListener('click', () => {
                         selectedLabel=item.id;
-                        target=item.kind==='box' ? item.id : 'markers';fields();draw();
+                        target=item.kind==='box' ? item.id : 'markers';editMode=item.kind==='box'?'boxes':'markers';pinNextSelection=true;fields();draw();
                         status.textContent='Selected '+button.textContent+'.';
+                    });
+                    button.addEventListener('contextmenu',event=>{
+                        if(item.kind!=='box')return;
+                        event.preventDefault();openMenu(Number(item.id.split(':')[1]),event.clientX,event.clientY);
                     });
                     labelNodes.set(item.id,button);labelLayer.append(button);
                 }
@@ -253,6 +306,8 @@
             });
         }
         function draw() {
+            undoButton.disabled=!history.length;
+            ['boxes','quadrat','markers','hand'].forEach(name=>document.getElementById('area-demo-edit-'+name).setAttribute('aria-pressed',String(editMode===name)));
             const width = canvas.width, height = canvas.height;
             const dimensions = quadratDimensions(q, image ? image.naturalWidth : width, image ? image.naturalHeight : height);
             const indicator = document.getElementById('area-demo-square');
@@ -277,7 +332,7 @@
                 ctx.fillStyle = 'rgba(91,158,240,.26)'; ctx.fillRect(q.x * width, q.y * height, q.w * width, q.h * height);
             }
             ctx.save(); ctx.beginPath(); ctx.rect(q.x * width, q.y * height, q.w * width, q.h * height); ctx.clip();
-            (document.getElementById('area-demo-show-boxes').checked ? boxes : []).forEach((b, i) => {
+            (document.getElementById('area-demo-show-boxes').checked ? boxes : []).forEach(b => {
                 ctx.fillStyle = 'rgba(139,34,255,.45)'; ctx.strokeStyle = '#a24bff'; ctx.lineWidth = 3;
                 if (document.getElementById('area-demo-fill-boxes').checked) {
                     ctx.fillRect(b.x * width, b.y * height, b.w * width, b.h * height);
@@ -343,13 +398,14 @@
             draw();
         }
         function fields() {
-            if (target.startsWith('box:') && !selectedRect()) target = 'quadrat';
-            targetSelect.replaceChildren();
-            [['quadrat', 'Quadrat interior'], ...boxes.map((_, i) => ['box:' + i, 'Hard Coral box ' + (i + 1)]), ['markers', 'Representative + markers']]
-                .forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; targetSelect.append(option); });
-            targetSelect.value = target;
+            if (target.startsWith('box:') && !selectedRect()) target = boxes.length ? 'box:0' : '';
             editor.replaceChildren();
-            [{ title: 'Quadrat interior', box: q }, ...boxes.map((box, i) => ({ title: 'Hard Coral box ' + (i + 1), box, index: i }))]
+            const selected = target==='quadrat' ? [{title:'Quadrat interior',box:q}] : target.startsWith('box:') && selectedRect()
+                ? [{title:'Hard Coral box '+(Number(target.split(':')[1])+1),box:selectedRect(),index:Number(target.split(':')[1])}] : [];
+            if(!selected.length) {
+                const hint=document.createElement('p');hint.textContent='Select a quadrat or coral box to edit its dimensions.';editor.append(hint);
+            }
+            selected
                 .forEach(({ title, box, index }) => {
                     const fieldset = document.createElement('fieldset'), legend = document.createElement('legend');
                     legend.textContent = title; fieldset.append(legend);
@@ -361,6 +417,7 @@
                         input.addEventListener('change', () => {
                             const n = input.valueAsNumber;
                             if (!Number.isFinite(n) || !input.checkValidity()) { input.reportValidity(); return; }
+                            const before=snapshot();
                             box[key] = n / 100;
                             if (index === undefined && squareLock.checked) {
                                 const size = imageSize();
@@ -375,13 +432,13 @@
                             }
                             box.x = clamp(box.x, 0, .999); box.y = clamp(box.y, 0, .999);
                             box.w = clamp(box.w, .001, 1 - box.x); box.h = clamp(box.h, .001, 1 - box.y);
-                            fields(); refresh();
+                            fields(); refresh();remember(before);
                         });
                         label.append(input); fieldset.append(label);
                     });
                     if (index !== undefined) {
                         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove box';
-                        remove.addEventListener('click', () => { boxes.splice(index, 1); fields(); refresh(); }); fieldset.append(remove);
+                        remove.addEventListener('click', () => deleteBox(index)); fieldset.append(remove);
                         const area = document.createElement('p');
                         area.textContent = 'Area inside quadrat: ' + boxAreaPercent(q, box).toFixed(2) + '%';
                         area.className = 'area-demo-box-area'; fieldset.append(area);
@@ -389,27 +446,29 @@
                     editor.append(fieldset);
                 });
         }
-        function preset(percent) {
+        function preset(percent, record=true) {
+            const before=record && q?snapshot():null;closeMenu();
             boxDrag = null; dragIndex = -1;
             q = { x: .1, y: .1, w: .8, h: .8 };
             if (squareLock.checked) { const size = imageSize(); q = squareRect(q, size.width, size.height); }
             boxes = percent === 0 ? [] : [{ x: q.x, y: q.y, w: q.w * percent / 100, h: q.h }];
-            fields(); refresh();
+            fields(); refresh();remember(before);
         }
         function setFile(next) {
             if (file === next) return;
+            closeMenu();endDrag();
             boxDrag = null; dragIndex = -1;
             labelPreferences = {}; selectedLabel = null;
-            imageStates.set(file, { q, boxes, moved, reviewed });
+            imageStates.set(file, { q, boxes, moved, reviewed, history });
             file = next; image = null; const token = ++loadToken;
             photoName.textContent = next ? next.name : 'No image selected - geometry illustration';
             const previous = imageStates.get(next);
             if (previous) {
-                q = previous.q; boxes = previous.boxes;
+                q = previous.q; boxes = previous.boxes;history=previous.history || [];
                 fields(); refresh(); moved = previous.moved; reviewed = previous.reviewed;
                 if (reviewed) status.textContent = 'Demo reviewed. Preview only - no result has been saved.';
                 draw();
-            } else preset(55);
+            } else {history=[];preset(55,false);}
             if (!next) {
                 canvas.width = 900; canvas.height = 600;
                 if (squareLock.checked) { q = squareRect(q, 900, 600); fields(); refresh(); } else draw();
@@ -428,18 +487,30 @@
             };
             img.src = url;
         }
-        targetSelect.addEventListener('change', () => { target = targetSelect.value; selectedLabel = null; boxDrag = null; dragIndex = -1; draw(); });
-        function makeSquare() {
+        ['boxes','quadrat','markers','hand'].forEach(name=>document.getElementById('area-demo-edit-'+name).addEventListener('click',()=>{
+            editMode=name;target=name==='hand'?'':name==='boxes'?(boxes.length?'box:0':''):name;
+            pinNextSelection=false;
+            selectedLabel=null;boxDrag=null;dragIndex=-1;fields();draw();
+            status.textContent=name==='hand'?'Hand tool: drag an annotation directly. Newest coral box takes priority; the quadrat stays behind coral boxes.':name==='boxes'?'Click a coral box to select and drag it. Smallest boxes take priority in overlaps.':
+                name==='quadrat'?'Quadrat editing: drag inside the quadrat or resize its corners.':'Marker editing: drag a + within its matching region.';
+        }));
+        function makeSquare(before=snapshot()) {
+            squareLock.checked=true;
             boxDrag = null; dragIndex = -1;
             const size = imageSize(); q = squareRect(q, size.width, size.height);
-            target = 'quadrat'; fields(); refresh();
+            target = 'quadrat'; editMode='quadrat';fields(); refresh();remember(before);
         }
-        document.getElementById('area-demo-make-square').addEventListener('click', () => { squareLock.checked = true; makeSquare(); });
-        squareLock.addEventListener('change', () => { if (squareLock.checked) makeSquare(); });
+        document.getElementById('area-demo-make-square').addEventListener('click', () => makeSquare());
+        squareLock.addEventListener('change', () => {
+            const before=snapshot();before.squareLocked=!squareLock.checked;
+            if (squareLock.checked) makeSquare(before);else remember(before);
+        });
         panel.querySelectorAll('[data-area-preset]').forEach(button => button.addEventListener('click', () => preset(Number(button.dataset.areaPreset))));
         document.getElementById('area-demo-add').addEventListener('click', () => {
             if (boxes.length >= 20) { status.textContent = 'Demo limit: 20 boxes.'; return; }
-            boxes.push({ x: q.x + q.w * .65, y: q.y + q.h * .2, w: q.w * .2, h: q.h * .2 }); fields(); refresh();
+            const before=snapshot();closeMenu();
+            boxes.push({ x: q.x + q.w * .65, y: q.y + q.h * .2, w: q.w * .2, h: q.h * .2 });
+            target='box:'+(boxes.length-1);selectedLabel=target;fields();refresh();remember(before);
         });
         ['boxes', 'points', 'overlaps', 'area-labels'].forEach(name => document.getElementById('area-demo-show-' + name).addEventListener('change', () => draw()));
         ['quadrat', 'boxes'].forEach(name => document.getElementById('area-demo-fill-' + name).addEventListener('change', draw));
@@ -455,10 +526,27 @@
             if (event.button !== undefined && event.button !== 0) return;
             if (boxDrag || dragIndex >= 0) return;
             const point = position(event);
-            const handle = boxHit(point);
+            let handle = boxHit(point);
+            if(editMode==='hand' && (!handle || (handle==='move' && !pinNextSelection))) {
+                const index=document.getElementById('area-demo-show-boxes').checked && contains(q,point.x,point.y)?layerHit(point):-1;
+                if(index>=0 || contains(q,point.x,point.y)) {
+                    target=index>=0?'box:'+index:'quadrat';selectedLabel=index>=0?target:null;fields();draw();handle='move';
+                } else handle=null;
+            }
+            if(editMode==='boxes' && document.getElementById('area-demo-show-boxes').checked) {
+                // Preserve selected corner handles; otherwise pick the smallest hit box.
+                if(!handle || (handle==='move' && !pinNextSelection)) {
+                    const index=contains(q,point.x,point.y)?pickCoralBox(boxes,point):-1;
+                    if(index>=0) {
+                        target='box:'+index;selectedLabel=target;fields();draw();handle='move';
+                    } else handle=null;
+                }
+            }
             if (handle) {
+                pinNextSelection=false;
                 event.preventDefault();
                 boxDrag = { rect: selectedRect(), initial: {...selectedRect()}, start: point, handle, pointer: event.pointerId };
+                boxDrag.before=snapshot();
                 canvas.setPointerCapture(event.pointerId); return;
             }
             if (target !== 'markers') return;
@@ -468,7 +556,7 @@
                 const at = moved[i] || p;
                 return Math.hypot((at.x - point.x) * bounds.width, (at.y - point.y) * bounds.height) < 18;
             });
-            if (dragIndex >= 0) canvas.setPointerCapture(event.pointerId);
+            if (dragIndex >= 0) {markerBefore=snapshot();canvas.setPointerCapture(event.pointerId);}
         });
         canvas.addEventListener('pointermove', event => {
             const p = position(event);
@@ -483,7 +571,8 @@
             }
             if (dragIndex < 0) {
                 const hit = boxHit(p);
-                canvas.style.cursor = hit === 'move' ? 'move' : hit ? (hit === 'nw' || hit === 'se' ? 'nwse-resize' : 'nesw-resize') : target === 'markers' ? 'grab' : 'default';
+                const coralHit=(editMode==='boxes'||editMode==='hand') && document.getElementById('area-demo-show-boxes').checked && contains(q,p.x,p.y) && (editMode==='hand'?layerHit(p):pickCoralBox(boxes,p))>=0;
+                canvas.style.cursor = hit === 'move' ? 'move' : hit ? (hit === 'nw' || hit === 'se' ? 'nwse-resize' : 'nesw-resize') : coralHit?'pointer':target === 'markers' ? 'grab' : 'default';
                 return;
             }
             const hard = boxes.some(b => contains(b, p.x, p.y));
@@ -491,11 +580,15 @@
             moved[dragIndex] = p; reviewed = false;
             status.textContent = 'Marker moved; raw coverage unchanged. Review the demonstration again.'; draw();
         });
-        const endDrag = () => { dragIndex = -1; boxDrag = null; canvas.style.cursor = 'default'; };
+        function endDrag() {
+            const before=boxDrag?boxDrag.before:markerBefore;
+            dragIndex=-1;boxDrag=null;markerBefore=null;canvas.style.cursor='default';remember(before);
+        }
         canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
         canvas.addEventListener('lostpointercapture', endDrag);
         canvas.addEventListener('focus', draw); canvas.addEventListener('blur', draw);
         canvas.addEventListener('keydown', event => {
+            if (editMode !== 'markers') return;
             if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
             event.preventDefault();
             if (!event.shiftKey) {
@@ -506,12 +599,30 @@
                 const next = { x: old.x + (event.key === 'ArrowRight' ? .005 : event.key === 'ArrowLeft' ? -.005 : 0),
                     y: old.y + (event.key === 'ArrowDown' ? .005 : event.key === 'ArrowUp' ? -.005 : 0) };
                 if (contains(q, next.x, next.y) && boxes.some(b => contains(b, next.x, next.y)) === result.points[selectedMarker].hard) {
+                    const before=snapshot();
                     // Moved coordinates keep the original point's region membership.
                     moved[selectedMarker] = { ...next, hard: result.points[selectedMarker].hard };
                     reviewed = false; status.textContent = 'Marker moved; raw coverage unchanged. Review the demonstration again.';
+                    remember(before);
                 }
             }
             draw();
+        });
+        canvas.addEventListener('contextmenu',event=>{
+            event.preventDefault();const p=position(event);
+            if(!document.getElementById('area-demo-show-boxes').checked)return;
+            const selected=target.startsWith('box:')?Number(target.split(':')[1]):-1;
+            const index=selected>=0 && contains(boxes[selected],p.x,p.y)?selected:editMode==='hand'?layerHit(p):pickCoralBox(boxes,p);
+            if(contains(q,p.x,p.y))openMenu(index,event.clientX,event.clientY);
+        });
+        document.getElementById('area-demo-context-delete').addEventListener('click',()=>deleteBox(boxes.indexOf(menuBox)));
+        document.getElementById('area-demo-context-cancel').addEventListener('click',closeMenu);
+        undoButton.addEventListener('click',undo);
+        document.addEventListener('pointerdown',event=>{if(!contextMenu.contains(event.target))closeMenu();});
+        document.addEventListener('keydown',event=>{
+            if(event.key==='Escape'){closeMenu();return;}
+            const typing=event.target && (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || event.target.isContentEditable);
+            if(!typing && (event.ctrlKey||event.metaKey) && !event.shiftKey && event.key.toLowerCase()==='z') {event.preventDefault();undo();}
         });
         const picker = document.getElementById('area-demo-files');
         const imageSelect = document.getElementById('area-demo-image');
@@ -537,10 +648,10 @@
         });
         document.getElementById('area-demo-clear').addEventListener('click', () => {
             selectedFiles = []; picker.value = ''; imageStates.clear(); rebuildImageSelect();
-            imageStates.clear(); preset(55);
+            imageStates.clear();history=[];preset(55,false);
         });
         root.CoralAreaDemo = { setFile };
-        preset(55);
+        preset(55,false);
         if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => draw()).observe(canvas);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

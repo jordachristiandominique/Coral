@@ -9,6 +9,11 @@ body {margin:0;background:#eff5f7;color:#173e4b;font:16px/1.5 "Inter",system-ui,
 .demo-photo-controls select,.demo-photo-controls button {font:inherit;padding:8px;border:1px solid #87aeb9;border-radius:6px;background:white;color:#173e4b}
 button {cursor:pointer}
 :focus-visible {outline:3px solid #b35c21;outline-offset:3px}
+.area-demo-context-menu {position:fixed;z-index:1000;background:white;border:1px solid #9cb6c0;border-radius:8px;padding:6px;box-shadow:0 6px 20px #173e4b33;max-width:calc(100vw - 16px)}
+.area-demo-context-menu[hidden] {display:none}
+.area-demo-context-menu button {display:block;width:100%;padding:10px;border:0;background:white;text-align:left;font:inherit;color:#173e4b}
+.area-demo-context-menu button:first-child {color:#a02525}
+.area-demo-context-menu button:hover {background:#edf4f6}
 .area-demo {border:1px solid #bed3da;background:#f6fafb;border-radius:12px;padding:20px;margin:18px 0;scroll-margin-top:90px}
 .area-demo[hidden] {display:none}
 .area-demo h3 {margin:0 0 8px;color:#1c5f6d}
@@ -41,6 +46,7 @@ button {cursor:pointer}
 .area-demo-controls select {max-width:100%;border:1px solid #87aeb9;border-radius:6px;padding:8px;background:white;color:#173e4b;font:inherit}
 .area-demo button {background:#fff;color:#1c5f6d;border:1px solid #87aeb9;border-radius:6px;padding:8px 12px;font:inherit;cursor:pointer}
 .area-demo button:hover {background:#e2eff2}
+.area-demo-controls>button[aria-pressed="true"] {background:#1c5f6d;color:white;border-color:#1c5f6d}
 .area-demo button:focus-visible,.area-demo input:focus-visible,.area-demo select:focus-visible {outline:3px solid #b35c21;outline-offset:3px}
 .area-demo canvas:focus-visible {outline:3px solid #b35c21;outline-offset:3px}
 .area-demo fieldset {display:flex;flex-wrap:wrap;gap:8px;border:1px solid #bdced5;border-radius:8px;padding:10px;margin-bottom:12px;min-width:0}

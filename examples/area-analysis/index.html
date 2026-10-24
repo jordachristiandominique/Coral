@@ -49,8 +49,11 @@
                         <button type="button" id="area-demo-add">Add Hard Coral box</button>
                     </div>
                     <div class="area-demo-controls">
-                        <label for="area-demo-target">Drag or resize:</label>
-                        <select id="area-demo-target" aria-label="Choose quadrat, coral box, or markers to edit"></select>
+                        <button type="button" id="area-demo-edit-boxes" aria-pressed="true">Select coral boxes</button>
+                        <button type="button" id="area-demo-edit-quadrat" aria-pressed="false">Edit quadrat</button>
+                        <button type="button" id="area-demo-edit-markers" aria-pressed="false">Edit markers</button>
+                        <button type="button" id="area-demo-edit-hand" aria-pressed="false">✋ Hand tool</button>
+                        <button type="button" id="area-demo-undo" disabled>Undo (Ctrl+Z)</button>
                     </div>
                     <div class="area-demo-layout">
                         <div>
@@ -72,8 +75,8 @@
                                 <label><input type="checkbox" id="area-demo-fill-boxes" checked> Coral box color fill</label>
                             </div>
                             <p id="area-demo-overlap-summary" class="area-demo-overlap-summary" aria-live="polite"></p>
-                            <p>Choose a box above, drag inside it to move, or drag a square corner handle to resize. Coverage and markers update immediately.
-                                Choose Representative + markers to drag the crosses within their regions. Keyboard: focus the preview, use Left/Right to select a marker, then Shift+arrow to move it. Marker movement does not change raw coverage.
+                            <p>Click a coral box to select it and drag to move; smaller boxes take priority where boxes overlap in Select coral boxes mode. Hand tool gives the newest coral box priority without a Layers panel. Drag a selected corner handle to resize. Use Edit quadrat or Edit markers for those separate modes; select a label for precise selection. Coverage and markers update immediately.
+                                In marker mode, drag the crosses within their regions. Keyboard: focus the preview, use Left/Right to select a marker, then Shift+arrow to move it. Marker movement does not change raw coverage.
                                 The percentage fields remain available for precise box edits; coordinates are relative to the whole image.</p>
                             <details><summary>Marker allocation and limitations</summary>
                                 <p id="area-demo-marker-list" class="area-demo-marker-list"></p>
@@ -82,7 +85,11 @@
                                     this is a detection-box estimate, not segmentation or independent point sampling.</p>
                             </details>
                         </div>
-                        <div><h4>Edit quadrat and accepted boxes</h4><div id="area-demo-editor"></div></div>
+                        <div>
+                            <h4>Edit selected quadrat or box</h4>
+                            <p class="area-demo-legend">Only the selected shape appears here. Right-click a coral box or its label to delete it. Ctrl+Z (Cmd+Z on Mac) undoes edits; use Undo when typing in a field.</p>
+                            <div id="area-demo-editor"></div>
+                        </div>
                     </div>
                     <p>Only box portions inside the quadrat count. Overlaps count once. Estimates of 53% and 54% receive five Hard Coral markers; 55% receives six. The raw coverage is never replaced by the marker percentage.</p>
                     <button type="button" id="area-demo-approve">Mark demo as reviewed</button>
@@ -90,6 +97,10 @@
                 </section>
 
 </main>
+<div id="area-demo-context-menu" class="area-demo-context-menu" role="dialog" aria-label="Selected coral box actions" hidden>
+    <button type="button" id="area-demo-context-delete">Delete selected coral box</button>
+    <button type="button" id="area-demo-context-cancel">Cancel</button>
+</div>
 <script src="upload_area_demo.js"></script>
 </body>
 </html>

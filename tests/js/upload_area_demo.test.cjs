@@ -1,10 +1,25 @@
 // Run with: node --test tests/js/upload_area_demo.test.cjs
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculate, category, transformRect, quadratDimensions, squareRect, resizeSquare, boxAreaPercent, placeLabels, outerEdges } = require('../../examples/area-analysis/upload_area_demo.js');
+const { calculate, category, transformRect, quadratDimensions, squareRect, resizeSquare, boxAreaPercent, placeLabels, outerEdges, pickCoralBox, pickLayerBox } = require('../../examples/area-analysis/upload_area_demo.js');
 const q = { x: .1, y: .1, w: .8, h: .8 };
 const box = percent => ({ x: q.x, y: q.y, w: q.w * percent / 100, h: q.h });
 const inside = (b, p) => p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h;
+
+test('hand tool follows drawing order while click selection favors the smallest box', () => {
+    const boxes=[{x:0,y:0,w:1,h:1},{x:.2,y:.2,w:.2,h:.2}], p={x:.3,y:.3};
+    assert.equal(pickLayerBox(boxes,[0,1],p),0);
+    assert.equal(pickLayerBox(boxes,[1,0],p),1);
+    assert.equal(pickCoralBox(boxes,p),1);
+    assert.equal(pickLayerBox(boxes,[1,0],{x:2,y:2}),-1);
+});
+
+test('direct selection chooses the smallest overlapping box with stable ties', () => {
+    const boxes=[{x:0,y:0,w:1,h:1},{x:.2,y:.2,w:.2,h:.2},{x:.2,y:.2,w:.2,h:.2}];
+    assert.equal(pickCoralBox(boxes,{x:.3,y:.3}),1);
+    assert.equal(pickCoralBox(boxes,{x:.8,y:.8}),0);
+    assert.equal(pickCoralBox(boxes,{x:2,y:2}),-1);
+});
 
 test('overlap outlines remove internal seams including partially shared edges', () => {
     const cells=[{x:0,y:0,w:.5,h:1},{x:.5,y:0,w:.5,h:.4},{x:.5,y:.4,w:.5,h:.6}];
@@ -146,114 +161,72 @@ test('box moves stay in the image and corner resizes preserve positive dimension
     }
 });
 
-test('standalone review/edit lifecycle, per-image retention, and photograph clearing', () => {
-    const vm = require('node:vm'), fs = require('node:fs');
+test('selected-only editing, context deletion, transaction undo, and per-image history', () => {
+    const vm=require('node:vm'), fs=require('node:fs');
     class Element {
-        constructor() { this.children = []; this.listeners = {}; this.checked = true; this.dataset = {}; this.style = {}; this.attributes = {}; this.classList = { toggle() {} }; }
-        append(...children) { children.forEach(c=>c.parent=this); this.children.push(...children); }
-        replaceChildren() { this.children = []; }
-        remove() { if(this.parent) this.parent.children=this.parent.children.filter(c=>c!==this); }
-        setAttribute(name,value) { this.attributes[name]=value; }
-        getBoundingClientRect() { return {left:0,top:0,width:Math.min(154,(this.textContent||'').length*7+16),height:32}; }
-        addEventListener(type, callback) { this.listeners[type] = callback; }
+        constructor() {this.children=[];this.listeners={};this.checked=true;this.dataset={};this.style={};this.attributes={};this.classList={toggle(){}};}
+        append(...children) {children.forEach(c=>c.parent=this);this.children.push(...children);}
+        replaceChildren() {this.children=[];}
+        remove() {if(this.parent)this.parent.children=this.parent.children.filter(c=>c!==this);}
+        setAttribute(k,v) {this.attributes[k]=v;}
+        getBoundingClientRect() {return {left:0,top:0,width:Math.min(154,(this.textContent||'').length*7+16),height:32};}
+        addEventListener(type,callback) {this.listeners[type]=callback;}
         querySelectorAll(selector) {
-            if (selector === '[data-area-preset]') return [];
-            const result = [];
-            const visit = node => { if (node.tag === selector) result.push(node); node.children.forEach(visit); };
-            this.children.forEach(visit); return result;
+            if(selector==='[data-area-preset]')return [];
+            const result=[];const visit=n=>{if(n.tag===selector)result.push(n);n.children.forEach(visit);};this.children.forEach(visit);return result;
         }
-        checkValidity() { return true; }
+        contains(target) {return target===this || this.children.some(c=>c.contains(target));}
+        focus() {document.activeElement=this;}
+        checkValidity() {return true;}
         scrollIntoView() {}
     }
-    const nodes = new Map();
-    const node = id => { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
-    const canvas = node('area-demo-canvas'); canvas.width = 900; canvas.height = 600;
-    node('area-demo-lock-square').checked = false;
-    canvas.style = {};
-    canvas.getBoundingClientRect = () => ({left:0,top:0,width:900,height:600});
-    canvas.setPointerCapture = () => {};
+    const nodes=new Map(), node=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
+    const canvas=node('area-demo-canvas');canvas.width=900;canvas.height=600;
+    canvas.getBoundingClientRect=()=>({left:0,top:0,width:900,height:600});canvas.setPointerCapture=()=>{};
+    canvas.getContext=()=>new Proxy({},{get:(_,key)=>key==='measureText'?text=>({width:text.length*8}):()=>{}});
     node('area-demo-viewport').getBoundingClientRect=()=>({width:1070,height:600});
-    canvas.getContext = () => new Proxy({}, { get: (_, key) => key === 'measureText' ? text => ({width:text.length * 8}) : () => {} });
-    const document = { readyState: 'complete', getElementById: node,
-        createElement(tag) { const e = new Element(); e.tag = tag; return e; },
-        createElementNS(_,tag) {const e = new Element(); e.tag=tag; return e;}, dispatchEvent() {} };
-    const sandbox = { document, Event: class {}, Image: class {}, URL: { createObjectURL: () => 'blob:demo', revokeObjectURL() {} } };
-    vm.runInNewContext(fs.readFileSync('examples/area-analysis/upload_area_demo.js', 'utf8'), sandbox);
-    const controller = sandbox.CoralAreaDemo;
-    const a = {name:'a.jpg'}, b = {name:'b.jpg'};
+    node('area-demo-lock-square').checked=false;
+    const document={readyState:'complete',getElementById:node,listeners:{},
+        addEventListener(type,callback){this.listeners[type]=callback;},
+        createElement(tag){const e=new Element();e.tag=tag;return e;},
+        createElementNS(_,tag){return this.createElement(tag);},
+        createTextNode(text){const e=new Element();e.textContent=text;return e;},dispatchEvent(){}};
+    const sandbox={document,innerWidth:1200,innerHeight:800,Event:class{},Image:class{},URL:{createObjectURL:()=> 'blob:demo',revokeObjectURL(){}}};
+    vm.runInNewContext(fs.readFileSync('examples/area-analysis/upload_area_demo.js','utf8'),sandbox);
+    const controller=sandbox.CoralAreaDemo, a={name:'a.jpg'}, b={name:'b.jpg'};
+    const select=target=>node(target==='quadrat'?'area-demo-edit-quadrat':'area-demo-edit-boxes').listeners.click();
+    const input=(field,value)=>{const e=node('area-demo-editor').children[0].children[field].children[0];e.valueAsNumber=value;e.listeners.change();};
+    const legend=()=>node('area-demo-editor').children[0].children[0].textContent;
+    const count=()=>node('area-demo-labels').children.filter(c=>c.className==='area-region-label box').length;
+    const raw=()=>node('area-demo-coverage').textContent;
+    const pointer=(x,y)=>({clientX:x*900,clientY:y*600,pointerId:1,button:0,preventDefault(){}});
+    const ctrlz=()=>document.listeners.keydown({key:'z',ctrlKey:true,target:canvas,preventDefault(){}});
     controller.setFile(a);
-    assert(node('area-demo-labels').children.length>0);
-    const firstLabel=node('area-demo-labels').children[0];
-    firstLabel.listeners.click();
-    assert.equal(firstLabel.attributes['aria-pressed'],'true');
-    assert.equal(node('area-demo-target').value,'box:0');
-    node('area-demo-show-area-labels').checked=false;
-    node('area-demo-show-area-labels').listeners.change();
-    assert.equal(node('area-demo-labels').children.length,0);
-    assert.equal(node('area-demo-leaders').children.length,0);
-    assert.equal(node('area-demo-coverage').textContent,'55.00%');
-    node('area-demo-show-area-labels').checked=true;
-    node('area-demo-show-area-labels').listeners.change();
-    assert(node('area-demo-labels').children.length>0);
-    assert.equal(node('area-demo-coverage').textContent, '55.00%');
-    // The explicit square action enables the lock and updates the indicator.
-    node('area-demo-make-square').listeners.click();
-    assert.equal(node('area-demo-lock-square').checked, true);
-    assert.match(node('area-demo-square').textContent, /^Square:/);
-    const qWidth = node('area-demo-editor').children[0].children[3].children[0];
-    qWidth.valueAsNumber = 40; qWidth.listeners.change();
-    assert.match(node('area-demo-square').textContent, /^Square:/);
-    node('area-demo-lock-square').checked = false;
-    node('area-demo-clear').listeners.click();
-    controller.setFile(a);
-    node('area-demo-target').value = 'box:0'; node('area-demo-target').listeners.change();
-    assert.equal(node('area-demo-hcc-result').textContent, '60%');
-    assert.equal(node('area-demo-hcc-computation').textContent, '6 Hard Coral points / 10 total points × 100 = 60%');
-    // Raw 44% is Category B, but its four representative HC points produce 40%, also B.
-    // Raw 24% is Category C, while two points produce 20% and must display Category D.
-    let widthInput = node('area-demo-editor').children[1].children[3].children[0];
-    widthInput.valueAsNumber = 19.2; widthInput.listeners.change();
-    assert.equal(node('area-demo-coverage').textContent, '24.00%');
-    assert.equal(node('area-demo-hcc-result').textContent, '20%');
-    assert.equal(node('area-demo-category').textContent, 'Category D');
-    // Restore 55% for the remaining lifecycle checks.
-    widthInput = node('area-demo-editor').children[1].children[3].children[0];
-    widthInput.valueAsNumber = 44; widthInput.listeners.change();
+    assert.equal(node('area-demo-editor').children.length,1);assert.equal(legend(),'Hard Coral box 1');
+    assert.equal(raw(),'55.00%');assert.equal(node('area-demo-hcc-result').textContent,'60%');
+    select('quadrat');assert.equal(legend(),'Quadrat interior');assert.equal(node('area-demo-editor').children.length,1);
+    select('box:0');input(3,24);assert.equal(raw(),'30.00%');ctrlz();assert.equal(raw(),'55.00%');
+    node('area-demo-add').listeners.click();assert.equal(count(),2);assert.equal(legend(),'Hard Coral box 2');
+    const beforeDelete=raw();
+    canvas.listeners.contextmenu({...pointer(.7,.34),button:2});
+    assert.equal(node('area-demo-context-menu').hidden,false);
+    node('area-demo-context-delete').listeners.click();assert.equal(count(),1);assert.equal(node('area-demo-context-menu').hidden,true);
+    ctrlz();assert.equal(count(),2);assert.equal(raw(),beforeDelete);assert.equal(legend(),'Hard Coral box 2');
+    // Both pointer movements belong to one resize transaction.
+    canvas.listeners.pointerdown(pointer(.78,.42));canvas.listeners.pointermove(pointer(.82,.46));canvas.listeners.pointermove(pointer(.86,.5));canvas.listeners.pointerup();
+    assert.notEqual(raw(),beforeDelete);ctrlz();assert.equal(raw(),beforeDelete);assert.equal(count(),2);
+    ctrlz();assert.equal(count(),1);assert.equal(raw(),'55.00%');
+    // Image A history must not affect image B.
+    select('box:0');input(3,24);controller.setFile(b);assert.equal(raw(),'55.00%');ctrlz();assert.equal(raw(),'55.00%');
+    controller.setFile(a);assert.equal(raw(),'30.00%');ctrlz();assert.equal(raw(),'55.00%');
+    // Visibility never mutates coverage or approval.
     node('area-demo-approve').listeners.click();
-    assert.match(node('area-demo-status').textContent, /Demo reviewed/);
-    for (const id of ['area-demo-fill-quadrat', 'area-demo-fill-boxes']) {
-        node(id).checked = false; node(id).listeners.change();
-        assert.equal(node('area-demo-coverage').textContent, '55.00%');
-        assert.equal(node('area-demo-hcc-result').textContent, '60%');
-        assert.match(node('area-demo-status').textContent, /Demo reviewed/);
-        node(id).checked = true; node(id).listeners.change();
-    }
-    const width = node('area-demo-editor').children[1].children[3].children[0];
-    width.valueAsNumber = 24; width.listeners.change();
-    assert.equal(node('area-demo-coverage').textContent, '30.00%');
-    assert.match(node('area-demo-status').textContent, /Needs review/);
-    controller.setFile(b); assert.equal(node('area-demo-coverage').textContent, '55.00%');
-    controller.setFile(a); assert.equal(node('area-demo-coverage').textContent, '30.00%');
-    // Resize HC box from 24% to 40% of image width, with the opposite corner fixed.
-    node('area-demo-approve').listeners.click();
-    const pointer = (x,y) => ({clientX:x*900,clientY:y*600,pointerId:1,button:0,preventDefault(){}});
-    canvas.listeners.pointerdown(pointer(.34,.9));
-    canvas.listeners.pointermove(pointer(.5,.9));
-    canvas.listeners.pointerup();
-    assert.equal(node('area-demo-coverage').textContent, '50.00%');
-    assert.match(node('area-demo-status').textContent, /Needs review/);
-    // Moving the same fully enclosed box keeps its area and coverage unchanged.
-    canvas.listeners.pointerdown(pointer(.3,.5));
-    canvas.listeners.pointermove(pointer(.4,.5));
-    canvas.listeners.pointerup();
-    assert.equal(node('area-demo-coverage').textContent, '50.00%');
-    assert.equal(node('area-demo-editor').children[1].children[1].children[0].value, '20.0');
-    const picker = node('area-demo-files');
-    picker.files = [{name:'test.jpg',type:'image/jpeg'}];
-    picker.listeners.change();
-    assert.equal(node('area-demo-photo').textContent, 'test.jpg');
-    node('area-demo-clear').listeners.click();
-    assert.equal(picker.value, '');
-    assert.match(node('area-demo-photo').textContent, /No image selected/);
-    assert.equal(node('area-demo-coverage').textContent, '55.00%');
+    node('area-demo-fill-boxes').checked=false;node('area-demo-fill-boxes').listeners.change();assert.match(node('area-demo-status').textContent,/Demo reviewed/);
+    node('area-demo-show-area-labels').checked=false;node('area-demo-show-area-labels').listeners.change();assert.equal(node('area-demo-labels').children.length,0);
+    node('area-demo-show-area-labels').checked=true;node('area-demo-show-area-labels').listeners.change();assert(node('area-demo-labels').children.length>0);
+    // A square action can also be undone, including its lock setting.
+    node('area-demo-make-square').listeners.click();assert.equal(legend(),'Quadrat interior');assert.match(node('area-demo-square').textContent,/^Square:/);
+    ctrlz();assert.equal(node('area-demo-lock-square').checked,false);
+    const picker=node('area-demo-files');picker.files=[{name:'local.jpg',type:'image/jpeg'}];picker.listeners.change();assert.equal(node('area-demo-photo').textContent,'local.jpg');
+    node('area-demo-clear').listeners.click();assert.equal(picker.value,'');assert.match(node('area-demo-photo').textContent,/No image selected/);assert(node('area-demo-undo').disabled);
 });
