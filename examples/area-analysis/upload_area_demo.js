@@ -8,6 +8,32 @@
         const h = Math.min(a.y + a.h, b.y + b.h) - y;
         return w > 0 && h > 0 ? { x, y, w, h } : null;
     }
+    function boxAreaPercent(quadrat, box) {
+        const clipped = intersect(quadrat, box);
+        return clipped ? clipped.w * clipped.h / (quadrat.w * quadrat.h) * 100 : 0;
+    }
+    function placeLabels(items, obstacles, imageWidth, imageHeight, stacked, previous = {}) {
+        const placed = [], preferences = {};
+        const collides = (a, b) => a.x < b.x + b.w + 5 && a.x + a.w + 5 > b.x && a.y < b.y + b.h + 5 && a.y + a.h + 5 > b.y;
+        let railY = stacked ? imageHeight + 12 : 0;
+        for (const item of items) {
+            const b = item.rect, w = item.w, h = item.h, gap = 16;
+            const candidates = [
+                {side:'above', x:b.x, y:b.y-h-gap, w,h},
+                {side:'right', x:b.x+b.w+gap, y:b.y, w,h},
+                {side:'below', x:b.x, y:b.y+b.h+gap, w,h},
+                {side:'left', x:b.x-w-gap, y:b.y, w,h}
+            ];
+            candidates.sort((a,b) => Number(b.side === previous[item.id]) - Number(a.side === previous[item.id]));
+            const fit = candidates.find(c => c.x >= 0 && c.y >= 0 && c.x+c.w <= imageWidth && c.y+c.h <= imageHeight &&
+                !obstacles.some(o => collides(c,o)) && !placed.some(o => collides(c,o)));
+            const position = fit || {side:'rail',x:stacked ? 0 : imageWidth+16,y:railY,w,h};
+            if (!fit) railY += h + 10;
+            preferences[item.id] = position.side;
+            placed.push({...item,...position});
+        }
+        return {labels:placed, preferences, height:Math.max(imageHeight,railY)};
+    }
     function category(p) {
         return p > 44 ? 'A' : p > 33 ? 'B' : p > 22 ? 'C' : 'D';
     }
@@ -42,7 +68,7 @@
         return { x: left, y: top, w: right - left, h: bottom - top };
     }
     function cellsFor(q, boxes) {
-        const clipped = boxes.map(b => intersect(q, b)).filter(Boolean);
+        const clipped = boxes.map((b, index) => { const rect = intersect(q, b); return rect ? {...rect, index} : null; }).filter(Boolean);
         const xs = [...new Set([q.x, q.x + q.w, ...clipped.flatMap(b => [b.x, b.x + b.w])])].sort((a, b) => a - b);
         const cells = [];
         for (let i = 0; i < xs.length - 1; i++) {
@@ -51,11 +77,49 @@
             const ys = [...new Set([q.y, q.y + q.h, ...active.flatMap(b => [b.y, b.y + b.h])])].sort((a, b) => a - b);
             for (let j = 0; j < ys.length - 1; j++) {
                 const y = ys[j], h = ys[j + 1] - y;
-                const hard = active.some(b => y + h / 2 > b.y && y + h / 2 < b.y + b.h);
-                if (w * h > 0) cells.push({ x, y, w, h, hard });
+                const owners = active.filter(b => y + h / 2 > b.y && y + h / 2 < b.y + b.h).map(b => b.index);
+                if (w * h > 0) cells.push({ x, y, w, h, hard: owners.length > 0, owners });
             }
         }
         return cells;
+    }
+    function summarizeOverlaps(q, cells) {
+        const regions = new Map();
+        cells.filter(c => c.owners.length > 1).forEach(c => {
+            const key = c.owners.join(',');
+            if (!regions.has(key)) regions.set(key, {owners:c.owners, area:0, cells:[], anchor:c});
+            const group = regions.get(key); group.area += c.w * c.h; group.cells.push(c);
+            if (c.w * c.h > group.anchor.w * group.anchor.h) group.anchor = c;
+        });
+        const groups = [...regions.values()].map(g => ({...g, percent:g.area / (q.w * q.h) * 100}));
+        return {groups, percent:groups.reduce((sum,g) => sum + g.percent,0)};
+    }
+    function outerEdges(cells) {
+        const segments = [], epsilon = 1e-10;
+        for (const c of cells) {
+            const sides = [
+                { horizontal:true, at:c.y, start:c.x, end:c.x+c.w, opposite:n=>n.y+n.h },
+                { horizontal:true, at:c.y+c.h, start:c.x, end:c.x+c.w, opposite:n=>n.y },
+                { horizontal:false, at:c.x, start:c.y, end:c.y+c.h, opposite:n=>n.x+n.w },
+                { horizontal:false, at:c.x+c.w, start:c.y, end:c.y+c.h, opposite:n=>n.x }
+            ];
+            for (const side of sides) {
+                let exposed = [[side.start, side.end]];
+                for (const neighbor of cells) {
+                    if (neighbor === c || Math.abs(side.at-side.opposite(neighbor))>epsilon) continue;
+                    const start = side.horizontal ? neighbor.x : neighbor.y;
+                    const end = start + (side.horizontal ? neighbor.w : neighbor.h);
+                    exposed = exposed.flatMap(([a,b]) => {
+                        if (end <= a+epsilon || start >= b-epsilon) return [[a,b]];
+                        return [[a,Math.min(b,start)],[Math.max(a,end),b]].filter(([x,y])=>y-x>epsilon);
+                    });
+                }
+                exposed.forEach(([a,b])=>segments.push(side.horizontal
+                    ? {x1:a,y1:side.at,x2:b,y2:side.at}
+                    : {x1:side.at,y1:a,x2:side.at,y2:b}));
+            }
+        }
+        return segments;
     }
     function pattern(n) {
         if (n === 1) return [[0.5, 0.5]];
@@ -91,9 +155,9 @@
         const hardCount = clamp(Math.floor(percent / 10 + 0.5 + 1e-10), 0, 10);
         const points = [...allocate(cells.filter(c => c.hard), hardCount),
             ...allocate(cells.filter(c => !c.hard), 10 - hardCount)];
-        return { percent, category: category(percent), hardCount, points, hardArea };
+        return { percent, category: category(percent), hardCount, points, hardArea, overlaps:summarizeOverlaps(q, cells) };
     }
-    const api = { calculate, intersect, category, pattern, transformRect, quadratDimensions, squareRect, resizeSquare };
+    const api = { calculate, intersect, category, pattern, transformRect, quadratDimensions, squareRect, resizeSquare, boxAreaPercent, placeLabels, outerEdges };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.CoralAreaGeometry = api;
     if (typeof document === 'undefined') return;
@@ -107,6 +171,11 @@
         const photoName = document.getElementById('area-demo-photo');
         const targetSelect = document.getElementById('area-demo-target');
         const squareLock = document.getElementById('area-demo-lock-square');
+        const viewport = document.getElementById('area-demo-viewport');
+        const labelLayer = document.getElementById('area-demo-labels');
+        const leaders = document.getElementById('area-demo-leaders');
+        const labelNodes = new Map();
+        let labelPreferences = {}, selectedLabel = null;
         const imageSize = () => ({ width: image ? image.naturalWidth : canvas.width, height: image ? image.naturalHeight : canvas.height });
         let target = 'box:0', boxDrag = null;
         let q, boxes, result, image = null, file = null, loadToken = 0, moved = {}, dragIndex = -1;
@@ -127,6 +196,62 @@
                 Math.abs(c.x - p.x) * bounds.width <= 13 && Math.abs(c.y - p.y) * bounds.height <= 13);
             return handle ? handle[0] : contains(rect, p.x, p.y) ? 'move' : null;
         }
+        function updateLabels() {
+            const bounds = canvas.getBoundingClientRect(), width = bounds.width, height = bounds.height;
+            if (!width || !height) return;
+            const pixelRect = b => ({x:b.x*width,y:b.y*height,w:b.w*width,h:b.h*height});
+            const showBoxes = document.getElementById('area-demo-show-boxes').checked;
+            const showAreaLabels = document.getElementById('area-demo-show-area-labels').checked;
+            const items = showBoxes && showAreaLabels ? boxes.map((b,i) => ({id:'box:'+i,rect:pixelRect(b),
+                text:'HC '+(i+1)+' | '+boxAreaPercent(q,b).toFixed(2)+'%', kind:'box'})) : [];
+            if (showBoxes && showAreaLabels && document.getElementById('area-demo-show-overlaps').checked) {
+                result.overlaps.groups.forEach(g => items.push({id:'overlap:'+g.owners.join(','),rect:pixelRect(g.anchor),
+                    text:g.owners.map(i=>'HC '+(i+1)).join(' + ')+' | '+g.percent.toFixed(2)+'%',kind:'overlap'}));
+            }
+            for (const [id, button] of labelNodes) {
+                if (!items.some(i=>i.id===id)) {button.remove();labelNodes.delete(id);}
+            }
+            const obstacles = boxes.map(pixelRect);
+            if (document.getElementById('area-demo-show-points').checked) result.points.forEach((p,i) => {
+                const at = moved[i] || p;
+                obstacles.push({x:at.x*width-20,y:at.y*height-28,w:52,h:48});
+            });
+            [q,...boxes].forEach(b => Object.values(corners(b)).forEach(c=>obstacles.push({x:c.x*width-14,y:c.y*height-14,w:28,h:28})));
+            items.forEach(item => {
+                let button = labelNodes.get(item.id);
+                if (!button) {
+                    button = document.createElement('button');button.type='button';
+                    button.addEventListener('click', () => {
+                        selectedLabel=item.id;
+                        target=item.kind==='box' ? item.id : 'markers';fields();draw();
+                        status.textContent='Selected '+button.textContent+'.';
+                    });
+                    labelNodes.set(item.id,button);labelLayer.append(button);
+                }
+                button.className='area-region-label '+item.kind;
+                button.textContent=item.text;
+                button.setAttribute('aria-pressed',String(selectedLabel===item.id));
+                const size=button.getBoundingClientRect();item.w=size.width;item.h=size.height;
+            });
+            const stacked=viewport.getBoundingClientRect().width < width+100;
+            const layout=placeLabels(items,obstacles,width,height,stacked,labelPreferences);
+            labelPreferences=layout.preferences;
+            viewport.style.minHeight=Math.ceil(layout.height)+'px';
+            leaders.replaceChildren();
+            leaders.setAttribute('viewBox','0 0 '+viewport.getBoundingClientRect().width+' '+layout.height);
+            layout.labels.forEach(item => {
+                const button=labelNodes.get(item.id);button.style.left=item.x+'px';button.style.top=item.y+'px';
+                const b=item.rect, cx=b.x+b.w/2,cy=b.y+b.h/2;
+                const endX=clamp(cx,item.x,item.x+item.w),endY=clamp(cy,item.y,item.y+item.h);
+                const dx=endX-cx,dy=endY-cy;
+                const factor=item.kind==='overlap' ? 0 : .5/Math.max(Math.abs(dx)/(b.w||1),Math.abs(dy)/(b.h||1),.001);
+                const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+                line.setAttribute('x1',cx+dx*factor);line.setAttribute('y1',cy+dy*factor);
+                line.setAttribute('x2',endX);line.setAttribute('y2',endY);
+                line.setAttribute('stroke',item.kind==='box'?'#ba88ff':'#eebc56');
+                line.setAttribute('stroke-width',selectedLabel===item.id?'2.5':'1.25');leaders.append(line);
+            });
+        }
         function draw() {
             const width = canvas.width, height = canvas.height;
             const dimensions = quadratDimensions(q, image ? image.naturalWidth : width, image ? image.naturalHeight : height);
@@ -140,6 +265,11 @@
             document.getElementById('area-demo-category').textContent = 'Category ' + category(pointPercent);
             document.getElementById('area-demo-hcc-computation').textContent =
                 result.hardCount + ' Hard Coral points / ' + result.points.length + ' total points × 100 = ' + pointPercent.toFixed(0) + '%';
+            const overlapName = group => group.owners.map(i => 'HC ' + (i + 1)).join(' + ');
+            document.getElementById('area-demo-overlap-summary').textContent = result.overlaps.groups.length
+                ? 'Total shared area: ' + result.overlaps.percent.toFixed(2) + '% of quadrat (counted once). ' +
+                    result.overlaps.groups.map(g => overlapName(g) + ': ' + g.percent.toFixed(2) + '%').join('; ')
+                : 'No overlapping Hard Coral regions inside the quadrat.';
             ctx.clearRect(0, 0, width, height);
             ctx.fillStyle = '#183a43'; ctx.fillRect(0, 0, width, height);
             if (image) ctx.drawImage(image, 0, 0, width, height);
@@ -153,11 +283,26 @@
                     ctx.fillRect(b.x * width, b.y * height, b.w * width, b.h * height);
                 }
                 ctx.strokeRect(b.x * width, b.y * height, b.w * width, b.h * height);
-                ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#fff';
-                ctx.fillText('HC ' + (i + 1), b.x * width + 5, b.y * height + 20);
             });
             ctx.restore(); ctx.strokeStyle = '#68b4ff'; ctx.lineWidth = 4;
             ctx.strokeRect(q.x * width, q.y * height, q.w * width, q.h * height);
+            if (document.getElementById('area-demo-show-boxes').checked && document.getElementById('area-demo-show-overlaps').checked) {
+                result.overlaps.groups.forEach(group => {
+                    ctx.save(); ctx.strokeStyle = '#ffce66'; ctx.lineWidth = selectedLabel==='overlap:'+group.owners.join(',') ? 5 : 2;
+                    group.cells.forEach(c => {
+                        if (document.getElementById('area-demo-fill-boxes').checked) {
+                            ctx.fillStyle = 'rgba(255,191,69,.28)'; ctx.fillRect(c.x * width,c.y * height,c.w * width,c.h * height);
+                        }
+                    });
+                    ctx.beginPath();
+                    outerEdges(group.cells).forEach(edge => {
+                        ctx.moveTo(edge.x1*width,edge.y1*height);
+                        ctx.lineTo(edge.x2*width,edge.y2*height);
+                    });
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
             (document.getElementById('area-demo-show-points').checked ? result.points : []).forEach((p, i) => {
                 const position = moved[i] || p, x = position.x * width, y = position.y * height;
                 ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9);
@@ -182,6 +327,7 @@
                     ctx.strokeRect(c.x * width - hw / 2, c.y * height - hh / 2, hw, hh);
                 });
             }
+            updateLabels();
         }
         function refresh(geometryChanged = true) {
             if (geometryChanged) { result = calculate(q, boxes); moved = {}; }
@@ -236,6 +382,9 @@
                     if (index !== undefined) {
                         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove box';
                         remove.addEventListener('click', () => { boxes.splice(index, 1); fields(); refresh(); }); fieldset.append(remove);
+                        const area = document.createElement('p');
+                        area.textContent = 'Area inside quadrat: ' + boxAreaPercent(q, box).toFixed(2) + '%';
+                        area.className = 'area-demo-box-area'; fieldset.append(area);
                     }
                     editor.append(fieldset);
                 });
@@ -250,6 +399,7 @@
         function setFile(next) {
             if (file === next) return;
             boxDrag = null; dragIndex = -1;
+            labelPreferences = {}; selectedLabel = null;
             imageStates.set(file, { q, boxes, moved, reviewed });
             file = next; image = null; const token = ++loadToken;
             photoName.textContent = next ? next.name : 'No image selected - geometry illustration';
@@ -278,7 +428,7 @@
             };
             img.src = url;
         }
-        targetSelect.addEventListener('change', () => { target = targetSelect.value; boxDrag = null; dragIndex = -1; draw(); });
+        targetSelect.addEventListener('change', () => { target = targetSelect.value; selectedLabel = null; boxDrag = null; dragIndex = -1; draw(); });
         function makeSquare() {
             boxDrag = null; dragIndex = -1;
             const size = imageSize(); q = squareRect(q, size.width, size.height);
@@ -291,7 +441,7 @@
             if (boxes.length >= 20) { status.textContent = 'Demo limit: 20 boxes.'; return; }
             boxes.push({ x: q.x + q.w * .65, y: q.y + q.h * .2, w: q.w * .2, h: q.h * .2 }); fields(); refresh();
         });
-        ['boxes', 'points'].forEach(name => document.getElementById('area-demo-show-' + name).addEventListener('change', () => draw()));
+        ['boxes', 'points', 'overlaps', 'area-labels'].forEach(name => document.getElementById('area-demo-show-' + name).addEventListener('change', () => draw()));
         ['quadrat', 'boxes'].forEach(name => document.getElementById('area-demo-fill-' + name).addEventListener('change', draw));
         // Hiding overlays does not alter geometry or approval.
         document.getElementById('area-demo-approve').addEventListener('click', () => {
@@ -391,6 +541,7 @@
         });
         root.CoralAreaDemo = { setFile };
         preset(55);
+        if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => draw()).observe(canvas);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();

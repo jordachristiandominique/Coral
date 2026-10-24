@@ -54,15 +54,24 @@
                     </div>
                     <div class="area-demo-layout">
                         <div>
+                            <div id="area-demo-viewport" class="area-demo-viewport">
                             <canvas id="area-demo-canvas" width="900" height="600" role="img" tabindex="0"
                                 aria-label="Area estimate preview. Left and right arrows select markers; Shift and an arrow move the selected marker. Exact results are provided above."></canvas>
+                            <svg id="area-demo-leaders" class="area-demo-leaders" aria-hidden="true"></svg>
+                            <div id="area-demo-labels" class="area-demo-labels" aria-label="Select a box or shared area"></div>
+                            </div>
+                            <p class="area-demo-legend">Select a purple box label or amber overlap label to highlight its region. Crowded labels move into the margin; connector lines identify their regions.</p>
                             <p class="area-demo-legend">Sky blue: quadrat | Violet: Hard Coral boxes | White +: Hard Coral | Gold +: unclassified remainder</p>
+                            <p class="area-demo-legend">Each box label shows its clipped area as a percentage of the quadrat. Individual percentages can overlap; total raw coverage counts shared areas only once.</p>
                             <div class="area-demo-controls">
                                 <label><input type="checkbox" id="area-demo-show-boxes" checked> Show boxes</label>
+                                <label><input type="checkbox" id="area-demo-show-area-labels" checked> Show box area labels</label>
                                 <label><input type="checkbox" id="area-demo-show-points" checked> Show markers</label>
+                                <label><input type="checkbox" id="area-demo-show-overlaps" checked> Show overlap indicators</label>
                                 <label><input type="checkbox" id="area-demo-fill-quadrat" checked> Quadrat color fill</label>
                                 <label><input type="checkbox" id="area-demo-fill-boxes" checked> Coral box color fill</label>
                             </div>
+                            <p id="area-demo-overlap-summary" class="area-demo-overlap-summary" aria-live="polite"></p>
                             <p>Choose a box above, drag inside it to move, or drag a square corner handle to resize. Coverage and markers update immediately.
                                 Choose Representative + markers to drag the crosses within their regions. Keyboard: focus the preview, use Left/Right to select a marker, then Shift+arrow to move it. Marker movement does not change raw coverage.
                                 The percentage fields remain available for precise box edits; coordinates are relative to the whole image.</p>

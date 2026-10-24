@@ -1,10 +1,58 @@
 // Run with: node --test tests/js/upload_area_demo.test.cjs
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculate, category, transformRect, quadratDimensions, squareRect, resizeSquare } = require('../../examples/area-analysis/upload_area_demo.js');
+const { calculate, category, transformRect, quadratDimensions, squareRect, resizeSquare, boxAreaPercent, placeLabels, outerEdges } = require('../../examples/area-analysis/upload_area_demo.js');
 const q = { x: .1, y: .1, w: .8, h: .8 };
 const box = percent => ({ x: q.x, y: q.y, w: q.w * percent / 100, h: q.h });
 const inside = (b, p) => p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h;
+
+test('overlap outlines remove internal seams including partially shared edges', () => {
+    const cells=[{x:0,y:0,w:.5,h:1},{x:.5,y:0,w:.5,h:.4},{x:.5,y:.4,w:.5,h:.6}];
+    const edges=outerEdges(cells);
+    assert(edges.every(e => e.x1===e.x2 ? e.x1===0 || e.x1===1 : e.y1===0 || e.y1===1));
+    const perimeter=edges.reduce((sum,e)=>sum+Math.hypot(e.x2-e.x1,e.y2-e.y1),0);
+    assert(Math.abs(perimeter-4)<1e-10);
+    const lShape=outerEdges([{x:0,y:0,w:1,h:.5},{x:0,y:.5,w:.5,h:.5}]);
+    assert(Math.abs(lShape.reduce((sum,e)=>sum+Math.hypot(e.x2-e.x1,e.y2-e.y1),0)-4)<1e-10);
+    assert.equal(outerEdges([]).length,0);
+});
+
+test('crowded label layout uses a non-overlapping rail and stacks below on narrow screens', () => {
+    const items=Array.from({length:12},(_,i)=>({id:'box:'+i,rect:{x:20,y:20,w:40,h:40},w:150,h:30}));
+    const blocked=[{x:0,y:0,w:400,h:300}];
+    const wide=placeLabels(items,blocked,400,300,false);
+    assert(wide.labels.every(l=>l.x>=416));
+    assert(wide.height>=12*40);
+    for(let i=1;i<wide.labels.length;i++) assert(wide.labels[i].y>=wide.labels[i-1].y+wide.labels[i-1].h+5);
+    const narrow=placeLabels(items,blocked,400,300,true);
+    assert(narrow.labels.every(l=>l.y>=312));
+    const free=placeLabels([items[0]],[],400,300,false);
+    assert.notEqual(free.labels[0].side,'rail');
+    const stable=placeLabels([items[0]],[],400,300,false,free.preferences);
+    assert.deepEqual(stable.labels,free.labels);
+});
+
+test('box area indicators count only the intersection with the quadrat', () => {
+    assert(Math.abs(boxAreaPercent(q, box(55)) - 55) < 1e-10);
+    assert.equal(boxAreaPercent(q, {x:0,y:0,w:.05,h:.05}), 0);
+    assert.equal(boxAreaPercent(q, {x:0,y:0,w:1,h:1}), 100);
+    assert(Math.abs(boxAreaPercent(q, {x:0,y:.1,w:.5,h:.8}) - 50) < 1e-10);
+});
+
+test('overlap indicators report disjoint shared areas without triple-counting', () => {
+    const unit = {x:0,y:0,w:1,h:1};
+    let result = calculate(unit,[{x:0,y:0,w:.6,h:1},{x:.4,y:0,w:.4,h:1}]);
+    assert(Math.abs(result.overlaps.percent-20)<1e-10);
+    assert.equal(result.percent,80);
+    assert.deepEqual(result.overlaps.groups[0].owners,[0,1]);
+    const half = {x:0,y:0,w:.5,h:1};
+    result = calculate(unit,[half,half,half]);
+    assert.equal(result.overlaps.percent,50);
+    assert.equal(result.overlaps.groups.length,1);
+    assert.deepEqual(result.overlaps.groups[0].owners,[0,1,2]);
+    assert.equal(calculate(q,[{x:0,y:0,w:.05,h:.05},{x:0,y:0,w:.05,h:.05}]).overlaps.percent,0);
+    assert.equal(calculate(unit,[half,{x:.5,y:0,w:.5,h:1}]).overlaps.percent,0);
+});
 
 test('square snapping and all locked corner resizes respect pixel aspect and image bounds', () => {
     for (const [w,h] of [[1200,800],[800,1200],[900,600]]) {
@@ -101,9 +149,12 @@ test('box moves stay in the image and corner resizes preserve positive dimension
 test('standalone review/edit lifecycle, per-image retention, and photograph clearing', () => {
     const vm = require('node:vm'), fs = require('node:fs');
     class Element {
-        constructor() { this.children = []; this.listeners = {}; this.checked = true; this.dataset = {}; this.classList = { toggle() {} }; }
-        append(...children) { this.children.push(...children); }
+        constructor() { this.children = []; this.listeners = {}; this.checked = true; this.dataset = {}; this.style = {}; this.attributes = {}; this.classList = { toggle() {} }; }
+        append(...children) { children.forEach(c=>c.parent=this); this.children.push(...children); }
         replaceChildren() { this.children = []; }
+        remove() { if(this.parent) this.parent.children=this.parent.children.filter(c=>c!==this); }
+        setAttribute(name,value) { this.attributes[name]=value; }
+        getBoundingClientRect() { return {left:0,top:0,width:Math.min(154,(this.textContent||'').length*7+16),height:32}; }
         addEventListener(type, callback) { this.listeners[type] = callback; }
         querySelectorAll(selector) {
             if (selector === '[data-area-preset]') return [];
@@ -121,14 +172,29 @@ test('standalone review/edit lifecycle, per-image retention, and photograph clea
     canvas.style = {};
     canvas.getBoundingClientRect = () => ({left:0,top:0,width:900,height:600});
     canvas.setPointerCapture = () => {};
-    canvas.getContext = () => new Proxy({}, { get: () => () => {} });
+    node('area-demo-viewport').getBoundingClientRect=()=>({width:1070,height:600});
+    canvas.getContext = () => new Proxy({}, { get: (_, key) => key === 'measureText' ? text => ({width:text.length * 8}) : () => {} });
     const document = { readyState: 'complete', getElementById: node,
-        createElement(tag) { const e = new Element(); e.tag = tag; return e; }, dispatchEvent() {} };
+        createElement(tag) { const e = new Element(); e.tag = tag; return e; },
+        createElementNS(_,tag) {const e = new Element(); e.tag=tag; return e;}, dispatchEvent() {} };
     const sandbox = { document, Event: class {}, Image: class {}, URL: { createObjectURL: () => 'blob:demo', revokeObjectURL() {} } };
     vm.runInNewContext(fs.readFileSync('examples/area-analysis/upload_area_demo.js', 'utf8'), sandbox);
     const controller = sandbox.CoralAreaDemo;
     const a = {name:'a.jpg'}, b = {name:'b.jpg'};
     controller.setFile(a);
+    assert(node('area-demo-labels').children.length>0);
+    const firstLabel=node('area-demo-labels').children[0];
+    firstLabel.listeners.click();
+    assert.equal(firstLabel.attributes['aria-pressed'],'true');
+    assert.equal(node('area-demo-target').value,'box:0');
+    node('area-demo-show-area-labels').checked=false;
+    node('area-demo-show-area-labels').listeners.change();
+    assert.equal(node('area-demo-labels').children.length,0);
+    assert.equal(node('area-demo-leaders').children.length,0);
+    assert.equal(node('area-demo-coverage').textContent,'55.00%');
+    node('area-demo-show-area-labels').checked=true;
+    node('area-demo-show-area-labels').listeners.change();
+    assert(node('area-demo-labels').children.length>0);
     assert.equal(node('area-demo-coverage').textContent, '55.00%');
     // The explicit square action enables the lock and updates the indicator.
     node('area-demo-make-square').listeners.click();

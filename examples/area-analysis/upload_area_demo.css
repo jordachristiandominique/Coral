@@ -24,7 +24,17 @@ button {cursor:pointer}
 .area-demo-computation small {display:block;font-size:12px;line-height:1.6;color:#435b65}
 .area-demo-layout {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:18px;margin:16px 0;align-items:start}
 .area-demo canvas {display:block;width:100%;height:auto;border-radius:8px;touch-action:none;background:#183a43}
+.area-demo-viewport {position:relative;padding-right:170px;isolation:isolate}
+.area-demo-labels,.area-demo-leaders {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.area-demo-leaders {z-index:1;overflow:visible}
+.area-demo-labels {z-index:2}
+.area-demo-labels .area-region-label {position:absolute;pointer-events:auto;max-width:154px;white-space:normal;overflow-wrap:anywhere;margin:0;padding:5px 7px;border:1px solid #ad78ee;border-radius:4px;background:#271c40;color:white;font-size:12px;line-height:1.35;text-align:left}
+.area-demo-labels .area-region-label.overlap {background:#49350e;border-color:#d9aa4c;color:#ffe4a1}
+.area-demo-labels .area-region-label:hover,.area-demo-labels .area-region-label[aria-pressed="true"] {outline:2px solid #fff;outline-offset:1px;background:#543079}
+.area-demo-labels .area-region-label.overlap:hover,.area-demo-labels .area-region-label.overlap[aria-pressed="true"] {background:#77521a}
+@media(max-width:600px) {.area-demo-viewport{padding-right:0}.area-demo-labels .area-region-label{max-width:100%}}
 .area-demo-legend {font-size:13px;color:#334d58}
+.area-demo-overlap-summary {padding:10px;border:1px solid #c69a4d;border-radius:7px;background:#fff6e1;color:#654813;font-size:13px}
 .area-demo-square {padding:10px 12px;border:1px solid #c69a4d;border-radius:7px;background:#fff5df;color:#684611;font-weight:650}
 .area-demo-square[data-square="true"] {background:#e5f3ec;border-color:#6b9e86;color:#205b42}
 .area-demo-controls {display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
@@ -35,6 +45,7 @@ button {cursor:pointer}
 .area-demo canvas:focus-visible {outline:3px solid #b35c21;outline-offset:3px}
 .area-demo fieldset {display:flex;flex-wrap:wrap;gap:8px;border:1px solid #bdced5;border-radius:8px;padding:10px;margin-bottom:12px;min-width:0}
 .area-demo legend {font-size:14px;font-weight:700;padding:0 4px}
+.area-demo fieldset .area-demo-box-area {width:100%;margin:0;color:#61409a;font-size:13px;font-weight:650}
 .area-demo fieldset label {width:calc(50% - 4px);font-size:12px}
 .area-demo input[type=number] {display:block;width:100%;min-width:0;padding:7px;border:1px solid #8ca8b2;border-radius:5px;background:#fff;font:inherit;color:#173e4b}
 .area-demo details {padding:8px 0}.area-demo summary {cursor:pointer;font-weight:650}
