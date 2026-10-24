@@ -12,9 +12,15 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import Config, RepositoryEnv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Only database settings are environment-driven here. Existing development
+# SECRET_KEY/DEBUG behavior is intentionally unchanged.
+database_env = Config(RepositoryEnv(str(BASE_DIR / '.env'))) if (BASE_DIR / '.env').is_file() else Config({})
 
 
 # Quick-start development settings - unsuitable for production
@@ -83,12 +89,28 @@ WSGI_APPLICATION = 'coral_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
+DB_ENGINE = database_env('DB_ENGINE', default='sqlite').lower()
+if DB_ENGINE == 'postgresql':
+    DATABASES = {'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': database_env('DB_NAME'),
+        'USER': database_env('DB_USER'),
+        'PASSWORD': database_env('DB_PASSWORD'),
+        'HOST': database_env('DB_HOST', default='127.0.0.1'),
+        'PORT': database_env('DB_PORT', default='5432'),
+        'CONN_MAX_AGE': 0,
+        'OPTIONS': {
+            'connect_timeout': 5,
+            'sslmode': database_env('DB_SSLMODE', default='prefer'),
+        },
+    }}
+elif DB_ENGINE == 'sqlite':
+    DATABASES = {'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+    }}
+else:
+    raise ImproperlyConfigured('DB_ENGINE must be sqlite or postgresql.')
 
 
 # Password validation

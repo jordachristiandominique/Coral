@@ -32,3 +32,6 @@ build/
 # Static files
 /staticfiles/
 /media/
+
+# Local database backups and credentials
+/backups/

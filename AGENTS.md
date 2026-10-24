@@ -8,8 +8,8 @@ Django 5.2.6 monolith + vanilla JS. One local app: `accounts`. Full architecture
 python manage.py runserver            # dev server at http://localhost:8000
 python manage.py check                # system check
 python manage.py makemigrations --check   # fail if model changes lack migrations
-python manage.py migrate              # apply migrations (SQLite: db.sqlite3)
-python manage.py test                 # test suite (currently an empty stub in accounts/tests.py)
+python manage.py migrate              # apply migrations to the configured database
+python manage.py test                 # database configuration, signal, and audit regression tests
 ```
 
 Dependencies: `pip install -r requirements.txt`. No pytest, lint, or bundler config exists.
@@ -20,7 +20,7 @@ Dependencies: `pip install -r requirements.txt`. No pytest, lint, or bundler con
 - **Templates:** project-level `templates/` for public pages (`base.html`, landing, public dashboard); app pages in `accounts/templates/accounts/`. Page-specific JS/CSS goes in `static/js/` / `static/css/`, named after the page.
 - **No DRF, no Channels:** JSON endpoints are hand-rolled `JsonResponse` views called with `fetch()` from `static/js/`. Do not introduce DRF, serializers, websockets, or a JS framework unless asked.
 - **Auth pattern:** every view uses `@login_required(login_url='login')` plus manual role guards (`is_pending()` / `is_admin()` / `is_superadmin()`). Follow the same pattern; role redirects are pending → `pending_approval`, superadmin → `admin:index`, others → `researcher_dashboard`.
-- **Settings:** `coral_app/settings.py` is committed with `DEBUG=True` and a dev `SECRET_KEY` and does not read `.env`. Don't "fix" this silently; it's a known, deliberate-for-dev state (see `knowledge.md` §8).
+- **Settings:** `coral_app/settings.py` retains `DEBUG=True` and a dev `SECRET_KEY`. Only database settings read project `.env` / process environment; SQLite is the unconfigured default. Do not silently change the deliberate development values. See `docs/postgresql-local-setup.md` for PostgreSQL configuration and rollback.
 
 ## Domain invariants (do not break)
 
@@ -55,4 +55,4 @@ Before finishing a change, run and report:
 
 1. `python manage.py check`
 2. `python manage.py makemigrations --check`
-3. `python manage.py test` (note: currently no real tests exist; report that honestly rather than treating an empty pass as coverage)
+3. `python manage.py test` (report the actual count and backend; tests now cover database configuration, fixture-safe notifications, and the migration audit, not full application workflows)

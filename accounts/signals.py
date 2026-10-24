@@ -13,7 +13,7 @@ def notify_admins_of_new_registration(sender, instance, created, **kwargs):
 
     Runs on creation only, so approving/editing a user later never re-notifies.
     """
-    if not created or instance.role != 'pending':
+    if kwargs.get('raw') or not created or instance.role != 'pending':
         return
 
     name = instance.get_full_name() or instance.username

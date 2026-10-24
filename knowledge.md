@@ -8,7 +8,7 @@
 |---|---|---|
 | Framework | Django **5.2.6** (pinned) | `requirements.txt` |
 | App type | Monolithic, server-rendered Django + vanilla JS (no bundler, no node) | `static/` tree, `templates/base.html` |
-| Database | SQLite at `db.sqlite3` | `coral_app/settings.py` (`DATABASES`) |
+| Database | Environment-selectable PostgreSQL or SQLite fallback at `db.sqlite3` | `coral_app/settings.py` (`DATABASES`) |
 | Auth | django-allauth 65.9.0, Google OAuth provider, email login, custom `User` with roles | `coral_app/settings.py` (`INSTALLED_APPS`, `AUTHENTICATION_BACKENDS`, `SOCIALACCOUNT_PROVIDERS`), `accounts/models.py` |
 | Domain | Coral reef monitoring ("CoralSense", DNSC capstone): image-batch surveys → point-intercept benthic classification → Hard Coral Cover (HCC) stats on the Licuanan (2020) A–D scale | `accounts/models.py` (`CPCE_CODES`, `classify_hcc` docstrings), `templates/base.html` footer |
 | Local apps | One: `accounts` | `coral_app/settings.py` |
@@ -17,7 +17,7 @@
 
 | Area | Location | Notes | Source |
 |---|---|---|---|
-| Settings | `coral_app/settings.py` | Plain settings; `SECRET_KEY` and `DEBUG=True` **hardcoded**; `os.environ.get` used only for Google OAuth client id/secret. Does **not** read `.env` despite `.env.example` existing. | `coral_app/settings.py`, `.env.example` |
+| Settings | `coral_app/settings.py` | Plain settings; `SECRET_KEY` and `DEBUG=True` **hardcoded**; `os.environ.get` used only for Google OAuth client id/secret. Reads only database variables from project `.env` or process environment; retains hardcoded development DEBUG/SECRET_KEY. | `coral_app/settings.py`, `.env.example` |
 | Root URLconf | `coral_app/urls.py` | `''` landing, `public-dashboard/`, `admin/`, `accounts/` include, `oauth/` (allauth); media served in DEBUG via `static()` | `coral_app/urls.py` |
 | Project views | `coral_app/views.py` | `landing_page`, `public_dashboard` (public HCC dashboard) | `coral_app/views.py` |
 | Single app | `accounts/` | models, views (1,803 lines), forms, signals, context processor, admin, plus helpers: `excel_export.py` (openpyxl), `report_generator.py` (reportlab), `image_annotator.py` (Pillow annotation rendering) | `accounts/` directory, `accounts/apps.py` (registers `signals` in `ready()`) |
@@ -97,7 +97,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 
 ### Backend
 
-SQLite, `ENGINE: 'django.db.backends.sqlite3'`, `NAME: BASE_DIR / 'db.sqlite3'` (`coral_app/settings.py` `DATABASES`). `.env.example` shows a commented-out `DATABASE_URL` for PostgreSQL, but nothing in settings consumes env config.
+`coral_app/settings.py` selects PostgreSQL when `DB_ENGINE=postgresql`, reading `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, and `DB_SSLMODE`. The default or explicit `DB_ENGINE=sqlite` preserves `BASE_DIR / 'db.sqlite3'` independently of `DB_NAME`. Only database variables are environment-driven; existing development settings remain unchanged. See `docs/postgresql-local-setup.md`.
 
 ### Models (`accounts/models.py`)
 
@@ -147,12 +147,12 @@ All standard `manage.py` (settings module `coral_app.settings` — `manage.py`; 
 | Run dev server | `python manage.py runserver` (http://localhost:8000) |
 | System check | `python manage.py check` |
 | Apply migrations | `python manage.py migrate` (`makemigrations` when models change) |
-| Run tests | `python manage.py test` — **caveat:** `accounts/tests.py` is the untouched stub, so the suite is effectively empty |
+| Run tests | `python manage.py test` — seven targeted configuration, fixture-signal, timestamp, and database-audit regression tests; PostgreSQL requires the separate local test role (see setup guide); not full workflow coverage |
 | Collect static | `python manage.py collectstatic` → `STATIC_ROOT = BASE_DIR / 'staticfiles'` |
 | Superuser | `python manage.py createsuperuser` |
 | Shell | `python manage.py shell` |
 
-No `pyproject.toml`, no pytest config, no lint/format tooling committed. Python 3.14+ claimed by `README.md`; `.venv/` exists locally. Setup flow: copy `.env.example` → `.env`, migrate, create superuser (README) — but note settings ignores `.env` (see §8).
+No `pyproject.toml`, no pytest config, no lint/format tooling committed. Python 3.14+ claimed by `README.md`; the local `.venv/` uses Python 3.13.7. Database variables now read `.env`; the remaining development settings retain their existing behavior. Follow `docs/postgresql-local-setup.md` for the verified database workflow.
 
 ## 7. Request trace — image-batch upload POST
 
@@ -165,7 +165,7 @@ The core write path, end to end:
 5. **View guards** — `accounts/views.py:1025` `upload_batch`: pending users → `pending_approval`; append-mode lookup restricted to the user's own batch unless admin (`append_filter`).
 6. **Validation** — requires ≥1 file; on new sites requires name/date/surveyor/area/valid lat+lng; per image requires `image_quadrat_<n>` JSON with `rect`, `points`, and `point_classes` as a list whose length equals the point count, with no empty class strings.
 7. **Model/ORM** — inside `transaction.atomic()` (:1140): create `ImageBatch` (or reuse `existing_batch_id`), create `Transect` with `number = Max('number') + 1` and the site's coordinates, then one `BatchImage` per uploaded file — per-image `coverage_percent` = hard-coral points/total × 100 (Decimal, 2dp) and `coverage_class = classify_hcc(...)`; finally `compute_site_hcc(batch)` caches the transect's mean HCC onto the `Transect` row.
-8. **Storage/DB** — image files land under `MEDIA_ROOT/batch_images/`; rows persist to SQLite `db.sqlite3`.
+8. **Storage/DB** — image files land under `MEDIA_ROOT/batch_images/`; rows persist to the configured backend (local PostgreSQL after the October 24 transfer; SQLite remains an explicit fallback).
 9. **Response** — redirect to `upload_batch?site=<batch.id>` with a success/diagnostic `messages` toast; the toast payload is rendered server-side into `templates/base.html:20-28` and animated by `static/js/custom.js`. GET of the same URL re-renders `accounts/upload_batch.html` with `active_site` pre-fill and a `survey_points` JSON blob for the map (`accounts/views.py` GET branch).
 10. **Downstream consumers** — `point_classes` feeds the public/researcher dashboards, batch lists/detail, maps, analysis, and exports. Most headline site statistics use `compute_site_hcc`, but `ReportGenerator` averages cached image coverage, analysis monthly statistics pool points, and the upload preview pools points across images. These are confirmed differences in weighting, not equivalent uses of the canonical site function (`accounts/report_generator.py`, `accounts/views.py::analysis_results`, `static/js/upload_batch.js::computeTransectCoverage`).
 
@@ -182,7 +182,7 @@ Source findings checked on 2026-10-10; these do not imply runtime testing:
 - **Coordinates:** editing batch coordinates does not synchronize existing transect coordinates (`accounts/views.py::batch_detail`). Shared site coordinates remain the intended invariant in `AGENTS.md`.
 - **Dashboard years:** the researcher dashboard groups trends by month name/number without year, merging years (`accounts/views.py::researcher_dashboard`).
 - **Validation:** upload checks basic payload completeness but not allowed class membership, complete JSON shape, geographic bounds, or uploaded image content/size (`accounts/views.py::upload_batch`).
-- **Settings/env drift:** `.env.example` implies environment-driven configuration, but settings do not load `.env`. Hardcoded development settings remain intentional; console email does not deliver password-reset mail externally (`coral_app/settings.py`).
+- **Settings/env drift (updated October 24):** database variables now load from `.env`; other example variables do not automatically configure the application. Hardcoded development settings remain intentional; console email does not deliver password-reset mail externally (`coral_app/settings.py`).
 - **Django version metadata:** the initial migration header names Django 6.0.3 while requirements pin 5.2.6. A header alone does not establish an incompatibility.
 - **Environment unknowns:** installed versions, live OAuth configuration, applied database migrations, and notebook training results are not established by source inspection. No direct application imports of several pinned libraries were found in the initial audit; that does not prove they are unnecessary transitively.
 
@@ -211,3 +211,9 @@ The area demonstration is a standalone sample at `examples/area-analysis/index.h
 Approval is demonstration-only and is invalidated by geometry/marker edits. Photographs are chosen locally and can be switched through the sample's image selector; edits are retained in browser memory during the session. The sample has no network upload or application integration. The upload page's original point-intercept workflow has been restored, and historical model calculations and database fields are unchanged. Saving raw area estimates requires a separate versioned backend implementation.
 
 Run `node --test tests/js/upload_area_demo.test.cjs` for geometry and preview-lifecycle regression checks, in addition to the Django checks. These Node tests do not establish browser rendering or actual AI accuracy.
+
+## 11. Verified local PostgreSQL transfer (2026-10-24)
+
+Branch `chore/postgresql-local-setup` prepares local PostgreSQL with Psycopg 3.3.6, database-only environment settings, and SQLite fallback. `accounts/signals.py` skips raw fixture loads to prevent duplicate registration notifications. `manage.py database_audit` writes or compares row-count, serialized-content, and canonical HCC fingerprints without printing record contents. Fixture exports exclude generated content types/permissions and sessions. SQLite/media backups, exports, audit files, and credential recovery records live under ignored `backups/`. Model/table renaming is explicitly deferred. Check the local setup guide and active backend for the completed transfer status.
+
+PostgreSQL 17.11 now runs as `postgresql-x64-17` on localhost:5432. The ignored local `.env` activates `coralsense_local` with a restricted application role. All 101 exported records match SQLite across 14 model types, including full timestamp precision and canonical HCC results. Seven regression tests passed on PostgreSQL, along with system/migration checks and transactional application smoke checks. A custom PostgreSQL backup was restored and audited in a disposable database successfully. See `docs/postgresql-local-setup.md` for exact counts, verified workflows, test-role usage, backup location, restart instructions, and rollback limits. This verifies local database preparation, not hosted deployment.
