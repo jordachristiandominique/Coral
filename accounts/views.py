@@ -23,7 +23,7 @@ from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
 from .models import (
-    User, ImageBatch, BatchImage, Transect, Report, Notification, CPCE_CODES,
+    User, DataRepository, SurveyImage, Transect, Report, Notification, CPCE_CODES,
     NATIONAL_HCC_AVERAGE, compute_coverage, classify_hcc, compute_site_hcc,
 )
 from .report_generator import ReportGenerator
@@ -190,7 +190,7 @@ def researcher_dashboard(request):
         return redirect('admin:index')
 
     # All users (admin and researchers) see all survey data
-    batches = ImageBatch.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
+    batches = DataRepository.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
 
     # Recalculate coverage from point_classes for each batch (HC+SC only),
     # and aggregate the 7 benthic classes across every survey for the
@@ -215,7 +215,7 @@ def researcher_dashboard(request):
         batches_with_coverage.append(batch)
 
     # Get total images count (all data)
-    total_images = BatchImage.objects.count()
+    total_images = SurveyImage.objects.count()
 
     # Calculate overall average coverage
     all_coverages = [b.avg_coverage for b in batches_with_coverage if b.avg_coverage is not None]
@@ -339,7 +339,7 @@ def _parse_decimal(value):
 
 def _get_analysis_queryset(user):
     # All users (admin and researchers) see all survey data
-    return ImageBatch.objects.all()
+    return DataRepository.objects.all()
 
 
 def _coverage_class(coverage_value):
@@ -780,9 +780,9 @@ def batch_export_excel(request, batch_id):
     # Admins can export any batch; researchers only their own (same rule as
     # batch_detail).
     if request.user.is_admin():
-        batch = get_object_or_404(ImageBatch, id=batch_id)
+        batch = get_object_or_404(DataRepository, id=batch_id)
     else:
-        batch = get_object_or_404(ImageBatch, id=batch_id, user=request.user)
+        batch = get_object_or_404(DataRepository, id=batch_id, user=request.user)
 
     from .excel_export import build_batch_coverage_workbook, _safe_filename
 
@@ -1039,7 +1039,7 @@ def upload_batch(request):
             append_filter = {'id': existing_batch_id}
             if not request.user.is_admin():
                 append_filter['user'] = request.user
-            existing_batch = ImageBatch.objects.filter(**append_filter).first()
+            existing_batch = DataRepository.objects.filter(**append_filter).first()
             if existing_batch is None:
                 messages.error(request, 'That site was not found. Please start a new site.')
                 return redirect('upload_batch')
@@ -1123,7 +1123,7 @@ def upload_batch(request):
             if existing_batch is not None:
                 batch = existing_batch
             else:
-                batch = ImageBatch.objects.create(
+                batch = DataRepository.objects.create(
                     user=request.user,
                     name=batch_name,
                     survey_date=survey_date,
@@ -1153,7 +1153,7 @@ def upload_batch(request):
                 coverage_percent = (Decimal(coral_count) * Decimal('100') / Decimal(total_points)).quantize(Decimal('0.01'))
                 coverage_class = classify_hcc(coverage_percent)
 
-                BatchImage.objects.create(
+                SurveyImage.objects.create(
                     batch=batch,
                     transect=transect,
                     image=image,
@@ -1162,7 +1162,7 @@ def upload_batch(request):
                     quadrat_points=payload.get('points'),
                     point_classes=point_classes,
                     coverage_percent=coverage_percent,
-                    coverage_class=coverage_class,
+                    coverage_category=coverage_class,
                 )
 
             # Cache this transect's mean HCC (mean of its images) + category.
@@ -1170,8 +1170,8 @@ def upload_batch(request):
             data = next((t for t in site['transects'] if t['number'] == number), None)
             if data and data['percent'] is not None:
                 transect.coverage_percent = Decimal(str(data['percent']))
-                transect.coverage_class = data['coverage_class'] or ''
-                transect.save(update_fields=['coverage_percent', 'coverage_class'])
+                transect.coverage_category = data['coverage_class'] or ''
+                transect.save(update_fields=['coverage_percent', 'coverage_category'])
 
         messages.success(
             request,
@@ -1186,7 +1186,7 @@ def upload_batch(request):
         active_filter = {'id': site_id}
         if not request.user.is_admin():
             active_filter['user'] = request.user
-        site = ImageBatch.objects.filter(**active_filter).first()
+        site = DataRepository.objects.filter(**active_filter).first()
         if site:
             next_number = (site.transects.aggregate(m=Max('number'))['m'] or 0) + 1
             # All transects share the site's single location, so the coordinates
@@ -1210,7 +1210,7 @@ def upload_batch(request):
         'today': timezone.localdate(),
         'user_full_name': request.user.get_full_name() or request.user.username,
         'survey_points': list(
-            ImageBatch.objects.values(
+            DataRepository.objects.values(
                 'name',
                 'latitude',
                 'longitude',
@@ -1233,7 +1233,7 @@ def batches(request):
         return redirect('pending_approval')
 
     # Always show only the logged-in user's batches
-    batches_qs = ImageBatch.objects.filter(user=request.user)
+    batches_qs = DataRepository.objects.filter(user=request.user)
     
     batches_qs = batches_qs.annotate(
         image_count=Count('images')
@@ -1267,7 +1267,7 @@ def all_batches(request):
         messages.error(request, 'You do not have permission to view all data repositories.')
         return redirect('batches')
     
-    batches_qs = ImageBatch.objects.all()
+    batches_qs = DataRepository.objects.all()
     
     batches_qs = batches_qs.annotate(
         image_count=Count('images')
@@ -1297,7 +1297,7 @@ def map_view(request):
         return redirect('pending_approval')
 
     # All users (admin and researchers) see all survey data
-    batches_qs = ImageBatch.objects.all()
+    batches_qs = DataRepository.objects.all()
     
     batches_qs = batches_qs.annotate(image_count=Count('images'))
 
@@ -1400,9 +1400,9 @@ def batch_image_annotated(request, image_id):
         return HttpResponse('Account pending approval.', status=403)
 
     if request.user.is_admin():
-        image = get_object_or_404(BatchImage, id=image_id)
+        image = get_object_or_404(SurveyImage, id=image_id)
     else:
-        image = get_object_or_404(BatchImage, id=image_id, batch__user=request.user)
+        image = get_object_or_404(SurveyImage, id=image_id, batch__user=request.user)
 
     # ?w=<px> serves a downscaled render (thumbnails); ?plain=1 omits markers
     try:
@@ -1434,9 +1434,9 @@ def batch_detail(request, batch_id):
         return redirect('pending_approval')
 
     if request.user.is_admin():
-        batch = get_object_or_404(ImageBatch, id=batch_id)
+        batch = get_object_or_404(DataRepository, id=batch_id)
     else:
-        batch = get_object_or_404(ImageBatch, id=batch_id, user=request.user)
+        batch = get_object_or_404(DataRepository, id=batch_id, user=request.user)
     images = batch.images.all()
 
     if request.method == 'POST':
@@ -1564,9 +1564,9 @@ def reports(request):
         return redirect('pending_approval')
 
     if request.user.is_admin():
-        batches_qs = ImageBatch.objects.all()
+        batches_qs = DataRepository.objects.all()
     else:
-        batches_qs = ImageBatch.objects.filter(user=request.user)
+        batches_qs = DataRepository.objects.filter(user=request.user)
     
     batches_list = list(batches_qs.annotate(
         image_count=Count('images')

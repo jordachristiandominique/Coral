@@ -10,7 +10,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from accounts.models import ImageBatch, compute_site_hcc
+from accounts.models import DataRepository, compute_site_hcc
 
 
 class FullPrecisionJSONEncoder(DjangoJSONEncoder):
@@ -49,7 +49,7 @@ class Command(BaseCommand):
                 'sha256': hashlib.sha256(canonical.encode()).hexdigest(),
             }
         # One-off migration verification, not a request-time aggregate.
-        site_results = [(batch.pk, compute_site_hcc(batch)) for batch in ImageBatch.objects.order_by('pk')]
+        site_results = [(batch.pk, compute_site_hcc(batch)) for batch in DataRepository.objects.order_by('pk')]
         hcc = hashlib.sha256(json.dumps(site_results, default=str, sort_keys=True).encode()).hexdigest()
         result = {'records': records, 'site_hcc_sha256': hcc}
         if options['compare']:

@@ -195,7 +195,7 @@ class User(AbstractUser):
         return self.role == 'superadmin'
 
 
-class ImageBatch(models.Model):
+class DataRepository(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='image_batches')
     name = models.CharField(max_length=160)
     survey_date = models.DateField()
@@ -207,6 +207,8 @@ class ImageBatch(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Data repository'
+        verbose_name_plural = 'Data repositories'
 
     def __str__(self):
         return f"{self.name} ({self.survey_date})"
@@ -215,18 +217,18 @@ class ImageBatch(models.Model):
         """Return count of images in each coverage class (A, B, C, D)"""
         classes = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
         for img in self.images.all():
-            if img.coverage_class in classes:
-                classes[img.coverage_class] += 1
+            if img.coverage_category in classes:
+                classes[img.coverage_category] += 1
         return classes
 
 
 class Transect(models.Model):
-    """One transect (sampling replicate) within a site/survey (ImageBatch).
+    """One transect (sampling replicate) within a site/survey (DataRepository).
 
     A site is surveyed with (typically 3) transects, each analyzed from ~50
     images. HCC statistics treat the transect as the replicate unit.
     """
-    batch = models.ForeignKey(ImageBatch, on_delete=models.CASCADE, related_name='transects')
+    batch = models.ForeignKey(DataRepository, on_delete=models.CASCADE, related_name='transects')
     number = models.PositiveSmallIntegerField(default=1)
     label = models.CharField(max_length=120, blank=True, default='')
     # Each transect can sit at its own GPS location (falls back to the site's).
@@ -234,7 +236,7 @@ class Transect(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     # Cached transect-level HCC (mean of its images) for quick list displays.
     coverage_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    coverage_class = models.CharField(max_length=1, blank=True, default='')
+    coverage_category = models.CharField(max_length=1, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -244,8 +246,8 @@ class Transect(models.Model):
         return f"{self.batch.name} - {self.label or f'Transect {self.number}'}"
 
 
-class BatchImage(models.Model):
-    batch = models.ForeignKey(ImageBatch, on_delete=models.CASCADE, related_name='images')
+class SurveyImage(models.Model):
+    batch = models.ForeignKey(DataRepository, on_delete=models.CASCADE, related_name='images')
     transect = models.ForeignKey(
         Transect, on_delete=models.CASCADE, related_name='images', null=True, blank=True
     )
@@ -255,7 +257,7 @@ class BatchImage(models.Model):
     quadrat_points = models.JSONField()
     point_classes = models.JSONField(default=list, blank=True)
     coverage_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    coverage_class = models.CharField(max_length=1, blank=True, default='')
+    coverage_category = models.CharField(max_length=1, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

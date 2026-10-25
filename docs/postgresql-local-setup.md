@@ -1,6 +1,6 @@
 # CoralSense Local PostgreSQL Setup
 
-This change connects the existing Django application to PostgreSQL without renaming models or changing HCC calculations. `ImageBatch` and `BatchImage` remain unchanged until a separate naming migration.
+The initial transfer connected the existing Django application to PostgreSQL without changing HCC calculations. A subsequent naming migration now uses `DataRepository` and `SurveyImage`; see the naming section below.
 
 ## Configuration
 
@@ -63,13 +63,21 @@ try {
 }
 ```
 
-To return to the preserved SQLite database, set `DB_ENGINE=sqlite` in `.env` and restart the server. PostgreSQL writes made after cutover will not automatically exist in SQLite; do not switch back after collecting new data without a reconciliation plan.
+To use the preserved SQLite database with the current code, set `DB_ENGINE=sqlite` in `.env`, run `manage.py migrate` to apply the naming migration to that database, and restart the server. PostgreSQL writes made after cutover will not automatically exist in SQLite; do not switch back after collecting new data without a reconciliation plan. The original SQLite file has not been migrated by the PostgreSQL naming change.
 
 Use PostgreSQL's `pg_dump --format=custom` for database backups after migration and verify a restore into a separate scratch database. Back up media separately. Local setup does not configure hosted deployment, production TLS, or production application settings.
 
-## Naming cleanup: separate follow-up
+## Naming cleanup: completed October 25, 2026
 
-The proposed terminology is `ImageBatch` → `DataRepository` and `BatchImage` → `SurveyImage`, retaining `Transect`. Review `RenameModel`, `RenameField`, and explicit table-name migrations separately after the backend transfer is verified. Do not delete old migrations or recreate populated tables to rename them.
+Migration `0016_repository_image_category_names` applies `ImageBatch` → `DataRepository` and `BatchImage` → `SurveyImage`, retaining `Transect`. PostgreSQL tables are now `accounts_datarepository` and `accounts_surveyimage`. The stored image and transect `coverage_class` columns are now `coverage_category`. Refresh **Tables** in pgAdmin to see the new names.
+
+The migration preserves IDs, relationships, JSON annotations, image paths, cached category values, and HCC calculations. Permission codenames are renamed in place so existing grants retain their IDs and assignments. Old migrations remain unchanged. Existing `batch` foreign keys, URLs, upload payloads, helper result dictionaries (`coverage_class`), and frontend filters retain their contracts.
+
+Before applying it, a fresh backup was saved as `backups/before-repository-category-rename.dump`; records and permissions were also snapshotted in ignored `backups/rename-*` files. Verification compared all record contents with an explicit mapping of the renamed models, fields, permission natural keys, and content types. Seven repositories, ten transects, and 51 survey images were preserved, including uploads made after the initial PostgreSQL transfer. Canonical site HCC fingerprints matched exactly; permission IDs and grants also matched.
+
+Ten regression tests passed on PostgreSQL and on an in-memory SQLite test database, including forward/reverse migration preservation and upload/append, category, page, role-guard, export, and admin workflows. The system check passed and `makemigrations --check` reported no changes. Browser interaction was not verified in this naming change.
+
+To reverse only this naming migration, first stop the Django server, run `manage.py migrate accounts 0015`, then restore the matching pre-rename application code before restarting. Reversing the database without reverting the code leaves the two incompatible. Old fixture/audit files contain historical model and field names; do not import them directly into the renamed schema. Do not delete migrations or recreate populated tables to rename them.
 
 ## Completed local verification — October 24, 2026
 
@@ -81,4 +89,4 @@ The proposed terminology is `ImageBatch` → `DataRepository` and `BatchImage` �
 - Created a PostgreSQL custom-format backup and successfully restored it into a scratch database, comparing the restored data against the SQLite baseline. The scratch database was removed afterward.
 - SQLite snapshot, media copy, fixture, audit baseline, and `postgresql.dump` are under `backups/postgresql-migration-20261024-232741/`. Original `db.sqlite3` and `media/` remain available.
 
-Restart any running Django development server to load the new database configuration, and sign in again. This completes local database preparation; hosted deployment and model/table renaming remain separate work. Commands still emit the existing `requests` dependency compatibility warning; it did not prevent these checks.
+Restart any running Django development server to load the new database configuration, and sign in again. Hosted deployment remains separate work; the naming migration was subsequently completed as described above. Commands still emit the existing `requests` dependency compatibility warning; it did not prevent these checks.

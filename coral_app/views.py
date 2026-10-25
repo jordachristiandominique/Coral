@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.db.models import Avg
 
-from accounts.models import ImageBatch, classify_hcc, compute_site_hcc
+from accounts.models import DataRepository, classify_hcc, compute_site_hcc
 
 def landing_page(request):
     """Render the landing page"""
@@ -10,7 +10,7 @@ def landing_page(request):
 
 def public_dashboard(request):
     """Render the public dashboard page."""
-    batches = ImageBatch.objects.select_related('user').order_by('-survey_date')
+    batches = DataRepository.objects.select_related('user').order_by('-survey_date')
 
     surveys = []
     for batch in batches:

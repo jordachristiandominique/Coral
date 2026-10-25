@@ -104,9 +104,9 @@ App (`accounts/urls.py`) — all under `accounts/`:
 | Model | Lines | Purpose / key fields | Relations |
 |---|---|---|---|
 | `User(AbstractUser)` | :155 | `role` ∈ {superadmin, admin, researcher, pending} (default pending), `profile_photo` (ImageField), `created_at`/`updated_at`; helpers `is_pending/is_researcher/is_admin/is_superadmin` | referenced as `settings.AUTH_USER_MODEL`; `AUTH_USER_MODEL = 'accounts.User'` in settings |
-| `ImageBatch` | :198 | One site survey: `name`, `survey_date`, `surveyor_names`, `area_name`, `latitude`/`longitude` (Decimal 9,6), `user` FK | `user` → User (CASCADE, `related_name='image_batches'`); `Meta.ordering = ['-created_at']` |
-| `Transect` | :223 | Sampling replicate within a batch: `number` (PositiveSmallInt), `label`, optional own lat/lng, **cached** `coverage_percent`/`coverage_class` | `batch` → ImageBatch (CASCADE, `related_name='transects'`) |
-| `BatchImage` | :247 | One underwater photo: `image` (FileField → `batch_images/`), `description`, JSONFields `quadrat_rect`, `quadrat_points`, `point_classes` (list of benthic-class names), cached `coverage_percent`/`coverage_class` | `batch` → ImageBatch (CASCADE, `related_name='images'`); `transect` → Transect (nullable, `related_name='images'`) |
+| `DataRepository` | :198 | One site survey: `name`, `survey_date`, `surveyor_names`, `area_name`, `latitude`/`longitude` (Decimal 9,6), `user` FK | `user` → User (CASCADE, `related_name='image_batches'`); `Meta.ordering = ['-created_at']` |
+| `Transect` | :223 | Sampling replicate within a batch: `number` (PositiveSmallInt), `label`, optional own lat/lng, **cached** `coverage_percent`/`coverage_category` | `batch` → DataRepository (CASCADE, `related_name='transects'`) |
+| `SurveyImage` | :247 | One underwater photo: `image` (FileField → `batch_images/`), `description`, JSONFields `quadrat_rect`, `quadrat_points`, `point_classes` (list of benthic-class names), cached `coverage_percent`/`coverage_category` | `batch` → DataRepository (CASCADE, `related_name='images'`); `transect` → Transect (nullable, `related_name='images'`) |
 | `Report` | :268 | Generated report: `report_type` (6 choices), `export_format` (pdf/docx/xlsx/csv/html), `file` (FileField → `reports/`), `config` (JSON — full form snapshot), `status` (pending/processing/completed/failed), `error_message` | `user` → User (CASCADE, `related_name='reports'`) |
 | `Notification` | :331 | In-app bell message: `verb` ∈ {registration_pending, account_approved}, `message`, `url`, `is_read` | `recipient` → User (CASCADE, `related_name='notifications'`) |
 
@@ -118,7 +118,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 
 ### Migrations
 
-15 migrations, `accounts/migrations/0001_initial.py` → `0015_notification.py`:
+16 migrations, `accounts/migrations/0001_initial.py` → `0016_repository_image_category_names.py`:
 - `0002_add_admin_role` — adds `admin` to role choices.
 - `0003_image_batches` → `0007` — survey/image schema, `surveyor_names` rename.
 - `0008_report` — Report model.
@@ -126,6 +126,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 - `0010_recompute_hcc_coverage` — **data migration** recomputing cached coverage under the hard-coral-only HCC rule.
 - `0011_transect_batchimage_transect` + `0012_backfill_transects` (**data migration** grouping existing images into transects) + `0013/0014` transect coords + backfill.
 - `0015_notification` — Notification model.
+- `0016_repository_image_category_names` — reversible model/table and stored category-field renames; preserves permission grants.
 
 ### ORM patterns in use
 
@@ -135,7 +136,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 - `transaction.atomic()` around multi-row batch creation and batch edits (`accounts/views.py:1140`, `batch_detail` POST path).
 - `bulk_create` for admin notifications (`accounts/signals.py:27`).
 - `update_fields=[...]` targeted saves; `update_session_auth_hash` after password change (`account_settings`).
-- **Recurring hot-spot:** coverage statistics are recomputed in Python from `point_classes` JSON on nearly every request (dashboards, lists, analysis, reports) instead of being aggregated in SQL — several N+1 loops (`batch.images.all()` per batch). Cached fields exist (`Transect.coverage_percent`, `BatchImage.coverage_percent`) but views largely ignore them for site stats.
+- **Recurring hot-spot:** coverage statistics are recomputed in Python from `point_classes` JSON on nearly every request (dashboards, lists, analysis, reports) instead of being aggregated in SQL — several N+1 loops (`batch.images.all()` per batch). Cached fields exist (`Transect.coverage_percent`, `SurveyImage.coverage_percent`) but views largely ignore them for site stats.
 
 ## 6. Commands
 
@@ -147,7 +148,7 @@ All standard `manage.py` (settings module `coral_app.settings` — `manage.py`; 
 | Run dev server | `python manage.py runserver` (http://localhost:8000) |
 | System check | `python manage.py check` |
 | Apply migrations | `python manage.py migrate` (`makemigrations` when models change) |
-| Run tests | `python manage.py test` — seven targeted configuration, fixture-signal, timestamp, and database-audit regression tests; PostgreSQL requires the separate local test role (see setup guide); not full workflow coverage |
+| Run tests | `python manage.py test` — ten targeted configuration, fixture-signal, timestamp, database-audit, schema-rename and workflow regression tests; PostgreSQL requires the separate local test role (see setup guide); not full workflow coverage |
 | Collect static | `python manage.py collectstatic` → `STATIC_ROOT = BASE_DIR / 'staticfiles'` |
 | Superuser | `python manage.py createsuperuser` |
 | Shell | `python manage.py shell` |
@@ -164,7 +165,7 @@ The core write path, end to end:
 4. **Middleware** — session → CSRF → auth → allauth `AccountMiddleware` chain (`coral_app/settings.py` `MIDDLEWARE`); `@login_required` redirects anonymous users to `login`.
 5. **View guards** — `accounts/views.py:1025` `upload_batch`: pending users → `pending_approval`; append-mode lookup restricted to the user's own batch unless admin (`append_filter`).
 6. **Validation** — requires ≥1 file; on new sites requires name/date/surveyor/area/valid lat+lng; per image requires `image_quadrat_<n>` JSON with `rect`, `points`, and `point_classes` as a list whose length equals the point count, with no empty class strings.
-7. **Model/ORM** — inside `transaction.atomic()` (:1140): create `ImageBatch` (or reuse `existing_batch_id`), create `Transect` with `number = Max('number') + 1` and the site's coordinates, then one `BatchImage` per uploaded file — per-image `coverage_percent` = hard-coral points/total × 100 (Decimal, 2dp) and `coverage_class = classify_hcc(...)`; finally `compute_site_hcc(batch)` caches the transect's mean HCC onto the `Transect` row.
+7. **Model/ORM** — inside `transaction.atomic()` (:1140): create `DataRepository` (or reuse `existing_batch_id`), create `Transect` with `number = Max('number') + 1` and the site's coordinates, then one `SurveyImage` per uploaded file — per-image `coverage_percent` = hard-coral points/total × 100 (Decimal, 2dp) and `coverage_category = classify_hcc(...)`; finally `compute_site_hcc(batch)` caches the transect's mean HCC onto the `Transect` row.
 8. **Storage/DB** — image files land under `MEDIA_ROOT/batch_images/`; rows persist to the configured backend (local PostgreSQL after the October 24 transfer; SQLite remains an explicit fallback).
 9. **Response** — redirect to `upload_batch?site=<batch.id>` with a success/diagnostic `messages` toast; the toast payload is rendered server-side into `templates/base.html:20-28` and animated by `static/js/custom.js`. GET of the same URL re-renders `accounts/upload_batch.html` with `active_site` pre-fill and a `survey_points` JSON blob for the map (`accounts/views.py` GET branch).
 10. **Downstream consumers** — `point_classes` feeds the public/researcher dashboards, batch lists/detail, maps, analysis, and exports. Most headline site statistics use `compute_site_hcc`, but `ReportGenerator` averages cached image coverage, analysis monthly statistics pool points, and the upload preview pools points across images. These are confirmed differences in weighting, not equivalent uses of the canonical site function (`accounts/report_generator.py`, `accounts/views.py::analysis_results`, `static/js/upload_batch.js::computeTransectCoverage`).
@@ -217,3 +218,10 @@ Run `node --test tests/js/upload_area_demo.test.cjs` for geometry and preview-li
 Branch `chore/postgresql-local-setup` prepares local PostgreSQL with Psycopg 3.3.6, database-only environment settings, and SQLite fallback. `accounts/signals.py` skips raw fixture loads to prevent duplicate registration notifications. `manage.py database_audit` writes or compares row-count, serialized-content, and canonical HCC fingerprints without printing record contents. Fixture exports exclude generated content types/permissions and sessions. SQLite/media backups, exports, audit files, and credential recovery records live under ignored `backups/`. Model/table renaming is explicitly deferred. Check the local setup guide and active backend for the completed transfer status.
 
 PostgreSQL 17.11 now runs as `postgresql-x64-17` on localhost:5432. The ignored local `.env` activates `coralsense_local` with a restricted application role. All 101 exported records match SQLite across 14 model types, including full timestamp precision and canonical HCC results. Seven regression tests passed on PostgreSQL, along with system/migration checks and transactional application smoke checks. A custom PostgreSQL backup was restored and audited in a disposable database successfully. See `docs/postgresql-local-setup.md` for exact counts, verified workflows, test-role usage, backup location, restart instructions, and rollback limits. This verifies local database preparation, not hosted deployment.
+
+
+## 12. Repository and category naming (2026-10-25)
+
+`DataRepository` replaces `ImageBatch` and `SurveyImage` replaces `BatchImage`. Migration `0016_repository_image_category_names` uses `RenameModel` / `RenameField`; default tables become `accounts_datarepository` and `accounts_surveyimage`. `SurveyImage.coverage_category` and `Transect.coverage_category` replace their stored `coverage_class` fields. Existing primary keys, file paths, foreign keys, JSON annotations, cached values, and HCC rules are preserved. Permission codenames are renamed in place with reversible data operations to preserve existing grants. Historical migrations remain unchanged.
+
+The `batch` foreign-key name, `images` / `image_batches` reverse relations, URLs, upload keys, HCC helper dictionary keys (`coverage_class`), template context, filters, and frontend payloads retain their existing contracts. These display/calculation dictionary keys are not database column names. Repository distribution reads `SurveyImage.coverage_category`. Before a rename, export/backup existing data; old fixtures and audit snapshots use the old model/field names and require explicit normalization when comparing against the renamed schema. `accounts/test_model_renames.py` covers forward/reverse row preservation, permission identity/grants, upload/append category writes, pages, role guards, exports, and admin registrations.

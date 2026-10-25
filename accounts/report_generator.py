@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from django.core.files.base import ContentFile
 from django.db.models import Avg, Count
-from .models import Report, ImageBatch, BatchImage
+from .models import Report, DataRepository, SurveyImage
 
 
 class ReportGenerator:
@@ -64,7 +64,7 @@ class ReportGenerator:
     
     def _get_summary_data(self):
         """Get data for summary report"""
-        batches = ImageBatch.objects.filter(user=self.user)
+        batches = DataRepository.objects.filter(user=self.user)
         
         # Apply date filters if specified
         date_from = self.config.get('date_from')
@@ -96,7 +96,7 @@ class ReportGenerator:
         selected_batch_id = self.config.get('selected_batch', '').replace('batch-', '')
         
         try:
-            batch = ImageBatch.objects.get(id=selected_batch_id, user=self.user)
+            batch = DataRepository.objects.get(id=selected_batch_id, user=self.user)
             images = batch.images.all()
             
             return {
@@ -110,12 +110,12 @@ class ReportGenerator:
                 'avg_coverage': images.aggregate(avg=Avg('coverage_percent'))['avg'] or 0,
                 'class_distribution': batch.get_class_distribution(),
             }
-        except ImageBatch.DoesNotExist:
+        except DataRepository.DoesNotExist:
             raise ValueError("Selected batch not found")
     
     def _get_trend_analysis_data(self):
         """Get data for trend analysis report"""
-        batches = ImageBatch.objects.filter(user=self.user).order_by('survey_date')
+        batches = DataRepository.objects.filter(user=self.user).order_by('survey_date')
         
         # Apply date filters if specified
         date_from = self.config.get('date_from')
@@ -142,7 +142,7 @@ class ReportGenerator:
     
     def _get_location_comparison_data(self):
         """Get data for location comparison report"""
-        batches = ImageBatch.objects.filter(user=self.user).order_by('area_name')
+        batches = DataRepository.objects.filter(user=self.user).order_by('area_name')
         batches = batches.annotate(
             image_count=Count('images'),
             avg_coverage=Avg('images__coverage_percent')
@@ -166,7 +166,7 @@ class ReportGenerator:
     
     def _get_biodiversity_data(self):
         """Get data for biodiversity distribution report"""
-        batches = ImageBatch.objects.filter(user=self.user)
+        batches = DataRepository.objects.filter(user=self.user)
         
         # Apply date filters if specified
         date_from = self.config.get('date_from')

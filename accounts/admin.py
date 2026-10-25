@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, ImageBatch, BatchImage, Report
+from .models import User, DataRepository, SurveyImage, Report
 
 
 @admin.register(User)
@@ -17,15 +17,15 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('username', 'email', 'first_name', 'last_name')
 
 
-@admin.register(ImageBatch)
-class ImageBatchAdmin(admin.ModelAdmin):
-    """Admin for ImageBatch model"""
+@admin.register(DataRepository)
+class DataRepositoryAdmin(admin.ModelAdmin):
+    """Admin for DataRepository model"""
     list_display = ('name', 'user', 'survey_date', 'area_name', 'created_at')
     list_filter = ('survey_date', 'created_at', 'area_name')
     search_fields = ('name', 'area_name', 'user__username')
     readonly_fields = ('created_at',)
     fieldsets = (
-        ('Batch Information', {
+        ('Repository Information', {
             'fields': ('user', 'name', 'survey_date', 'area_name', 'surveyor_names')
         }),
         ('Location', {
@@ -38,11 +38,11 @@ class ImageBatchAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(BatchImage)
-class BatchImageAdmin(admin.ModelAdmin):
-    """Admin for BatchImage model"""
-    list_display = ('batch', 'coverage_percent', 'coverage_class', 'created_at')
-    list_filter = ('coverage_class', 'created_at', 'batch')
+@admin.register(SurveyImage)
+class SurveyImageAdmin(admin.ModelAdmin):
+    """Admin for SurveyImage model"""
+    list_display = ('batch', 'coverage_percent', 'coverage_category', 'created_at')
+    list_filter = ('coverage_category', 'created_at', 'batch')
     search_fields = ('batch__name', 'description')
     readonly_fields = ('created_at',)
 
