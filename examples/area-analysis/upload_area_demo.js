@@ -189,30 +189,46 @@
         const imageSize = () => ({ width: image ? image.naturalWidth : canvas.width, height: image ? image.naturalHeight : canvas.height });
         let target = 'box:0', boxDrag = null;
         let editMode = 'boxes';
+        let draft = null;
         let pinNextSelection = false;
         let q, boxes, result, image = null, file = null, loadToken = 0, moved = {}, dragIndex = -1;
         let reviewed = false;
         let selectedMarker = 0;
         const imageStates = new Map();
-        let history = [], markerBefore = null, menuBox = null;
+        let history = [], future = [], markerBefore = null, menuBox = null;
         const contextMenu = document.getElementById('area-demo-context-menu');
         const undoButton = document.getElementById('area-demo-undo');
+        const redoButton = document.getElementById('area-demo-redo');
         const snapshot = () => JSON.parse(JSON.stringify({q,boxes,moved,target,editMode,squareLocked:squareLock.checked}));
         const geometryKey = state => JSON.stringify({q:state.q,boxes:state.boxes,moved:state.moved,squareLocked:state.squareLocked});
         const closeMenu = () => {contextMenu.hidden=true;menuBox=null;};
         function remember(before) {
             if (before && geometryKey(before)!==geometryKey(snapshot())) {
                 history.push(before);if(history.length>50)history.shift();
+                future.length=0;
             }
             undoButton.disabled=!history.length;
+            redoButton.disabled=!future.length;
+        }
+        function restore(state) {
+            q=state.q;boxes=state.boxes;target=state.target;editMode=state.editMode;squareLock.checked=state.squareLocked;
+            selectedLabel=target.startsWith('box:')?target:null;labelPreferences={};pinNextSelection=false;
+            canvas.style.cursor=editMode==='draw'?'crosshair':'default';
+            fields();refresh();moved=state.moved;draw();
         }
         function undo() {
+            if (draft) {endDrag();status.textContent='HC box drawing cancelled.';return;}
             closeMenu();endDrag();
             const before=history.pop();if(!before)return;
-            q=before.q;boxes=before.boxes;target=before.target;editMode=before.editMode;squareLock.checked=before.squareLocked;
-            selectedLabel=target.startsWith('box:')?target:null;labelPreferences={};
-            fields();refresh();moved=before.moved;draw();undoButton.disabled=!history.length;
+            future.push(snapshot());restore(before);
             status.textContent='Change undone. Review the restored result.';
+        }
+        function redo() {
+            if (draft) {endDrag();status.textContent='HC box drawing cancelled.';return;}
+            closeMenu();endDrag();
+            const next=future.pop();if(!next)return;
+            history.push(snapshot());restore(next);
+            status.textContent='Change redone. Review the restored result.';
         }
         function deleteBox(index) {
             if(index<0 || index>=boxes.length)return;
@@ -307,7 +323,9 @@
         }
         function draw() {
             undoButton.disabled=!history.length;
-            ['boxes','quadrat','markers','hand'].forEach(name=>document.getElementById('area-demo-edit-'+name).setAttribute('aria-pressed',String(editMode===name)));
+            redoButton.disabled=!future.length;
+            ['boxes','quadrat','markers','hand','draw'].forEach(name=>document.getElementById('area-demo-edit-'+name).setAttribute('aria-pressed',String(editMode===name)));
+            if (editMode === 'draw') canvas.style.cursor = 'crosshair';
             const width = canvas.width, height = canvas.height;
             const dimensions = quadratDimensions(q, image ? image.naturalWidth : width, image ? image.naturalHeight : height);
             const indicator = document.getElementById('area-demo-square');
@@ -382,6 +400,13 @@
                     ctx.strokeRect(c.x * width - hw / 2, c.y * height - hh / 2, hw, hh);
                 });
             }
+            if (draft) {
+                const b = draftRect();
+                ctx.save(); ctx.strokeStyle = '#e3c8ff'; ctx.lineWidth = 2; ctx.setLineDash([8, 5]);
+                ctx.fillStyle = 'rgba(139,34,255,.25)';
+                ctx.fillRect(b.x * width, b.y * height, b.w * width, b.h * height);
+                ctx.strokeRect(b.x * width, b.y * height, b.w * width, b.h * height); ctx.restore();
+            }
             updateLabels();
         }
         function refresh(geometryChanged = true) {
@@ -447,6 +472,7 @@
                 });
         }
         function preset(percent, record=true) {
+            draft=null;
             const before=record && q?snapshot():null;closeMenu();
             boxDrag = null; dragIndex = -1;
             q = { x: .1, y: .1, w: .8, h: .8 };
@@ -459,16 +485,16 @@
             closeMenu();endDrag();
             boxDrag = null; dragIndex = -1;
             labelPreferences = {}; selectedLabel = null;
-            imageStates.set(file, { q, boxes, moved, reviewed, history });
+            imageStates.set(file, { q, boxes, moved, reviewed, history, future });
             file = next; image = null; const token = ++loadToken;
             photoName.textContent = next ? next.name : 'No image selected - geometry illustration';
             const previous = imageStates.get(next);
             if (previous) {
-                q = previous.q; boxes = previous.boxes;history=previous.history || [];
+                q = previous.q; boxes = previous.boxes;history=previous.history || [];future=previous.future || [];
                 fields(); refresh(); moved = previous.moved; reviewed = previous.reviewed;
                 if (reviewed) status.textContent = 'Demo reviewed. Preview only - no result has been saved.';
                 draw();
-            } else {history=[];preset(55,false);}
+            } else {history=[];future=[];preset(55,false);}
             if (!next) {
                 canvas.width = 900; canvas.height = 600;
                 if (squareLock.checked) { q = squareRect(q, 900, 600); fields(); refresh(); } else draw();
@@ -487,14 +513,18 @@
             };
             img.src = url;
         }
-        ['boxes','quadrat','markers','hand'].forEach(name=>document.getElementById('area-demo-edit-'+name).addEventListener('click',()=>{
-            editMode=name;target=name==='hand'?'':name==='boxes'?(boxes.length?'box:0':''):name;
+        function chooseTool(name) {
+            endDrag(); closeMenu();
+            editMode=name;target=(name==='hand'||name==='draw')?'':name==='boxes'?(boxes.length?'box:0':''):name;
             pinNextSelection=false;
             selectedLabel=null;boxDrag=null;dragIndex=-1;fields();draw();
-            status.textContent=name==='hand'?'Hand tool: drag an annotation directly. Newest coral box takes priority; the quadrat stays behind coral boxes.':name==='boxes'?'Click a coral box to select and drag it. Smallest boxes take priority in overlaps.':
+            canvas.style.cursor=name==='draw'?'crosshair':'default';
+            status.textContent=name==='draw'?'HC Box: click and drag inside the quadrat. Release to add; Escape cancels.':name==='hand'?'Hand tool: drag an annotation directly. Newest coral box takes priority; the quadrat stays behind coral boxes.':name==='boxes'?'Click a coral box to select and drag it. Smallest boxes take priority in overlaps.':
                 name==='quadrat'?'Quadrat editing: drag inside the quadrat or resize its corners.':'Marker editing: drag a + within its matching region.';
-        }));
+        }
+        ['boxes','quadrat','markers','hand','draw'].forEach(name=>document.getElementById('area-demo-edit-'+name).addEventListener('click',()=>chooseTool(name)));
         function makeSquare(before=snapshot()) {
+            draft=null;
             squareLock.checked=true;
             boxDrag = null; dragIndex = -1;
             const size = imageSize(); q = squareRect(q, size.width, size.height);
@@ -507,6 +537,7 @@
         });
         panel.querySelectorAll('[data-area-preset]').forEach(button => button.addEventListener('click', () => preset(Number(button.dataset.areaPreset))));
         document.getElementById('area-demo-add').addEventListener('click', () => {
+            if(draft)endDrag();
             if (boxes.length >= 20) { status.textContent = 'Demo limit: 20 boxes.'; return; }
             const before=snapshot();closeMenu();
             boxes.push({ x: q.x + q.w * .65, y: q.y + q.h * .2, w: q.w * .2, h: q.h * .2 });
@@ -522,10 +553,21 @@
             const bounds = canvas.getBoundingClientRect();
             return { x: (event.clientX - bounds.left) / bounds.width, y: (event.clientY - bounds.top) / bounds.height };
         }
+        const draftRect = () => ({x:Math.min(draft.start.x,draft.end.x),y:Math.min(draft.start.y,draft.end.y),
+            w:Math.abs(draft.end.x-draft.start.x),h:Math.abs(draft.end.y-draft.start.y)});
+        const drawingPoint = p => ({x:clamp(p.x,q.x,q.x+q.w),y:clamp(p.y,q.y,q.y+q.h)});
         canvas.addEventListener('pointerdown', event => {
             if (event.button !== undefined && event.button !== 0) return;
-            if (boxDrag || dragIndex >= 0) return;
+            if (draft || boxDrag || dragIndex >= 0) return;
             const point = position(event);
+            if (editMode === 'draw') {
+                if (boxes.length >= 20) {status.textContent='Demo limit: 20 boxes.';return;}
+                if (!contains(q,point.x,point.y)) {status.textContent='Start the HC box inside the quadrat.';return;}
+                event.preventDefault(); closeMenu();
+                draft={start:point,end:point,pointer:event.pointerId,before:snapshot()};
+                document.getElementById('area-demo-show-boxes').checked=true;
+                canvas.setPointerCapture(event.pointerId); draw(); return;
+            }
             let handle = boxHit(point);
             if(editMode==='hand' && (!handle || (handle==='move' && !pinNextSelection))) {
                 const index=document.getElementById('area-demo-show-boxes').checked && contains(q,point.x,point.y)?layerHit(point):-1;
@@ -560,6 +602,11 @@
         });
         canvas.addEventListener('pointermove', event => {
             const p = position(event);
+            if (draft) {
+                if (event.pointerId === draft.pointer) {draft.end=drawingPoint(p);draw();}
+                return;
+            }
+            if (editMode === 'draw') {canvas.style.cursor='crosshair';return;}
             if (boxDrag) {
                 if (event.pointerId !== boxDrag.pointer) return;
                 const size = imageSize();
@@ -580,7 +627,21 @@
             moved[dragIndex] = p; reviewed = false;
             status.textContent = 'Marker moved; raw coverage unchanged. Review the demonstration again.'; draw();
         });
-        function endDrag() {
+        function endDrag(event) {
+            if (draft) {
+                if (event && event.pointerId !== undefined && event.pointerId !== draft.pointer) return;
+                if (event && event.type === 'pointerup') {
+                    draft.end=drawingPoint(position(event));
+                    const rect=draftRect(), before=draft.before, bounds=canvas.getBoundingClientRect();
+                    draft=null;
+                    if (rect.w*bounds.width >= 4 && rect.h*bounds.height >= 4) {
+                        boxes.push(rect);target='box:'+(boxes.length-1);selectedLabel=target;
+                        fields();refresh();remember(before);
+                        status.textContent='HC box added. Draw another, or use Hand tool to move and resize. Review the updated result.';
+                    } else {draw();status.textContent='Box too small. Drag at least 4 pixels in each direction.';}
+                } else {draft=null;draw();}
+                return;
+            }
             const before=boxDrag?boxDrag.before:markerBefore;
             dragIndex=-1;boxDrag=null;markerBefore=null;canvas.style.cursor='default';remember(before);
         }
@@ -618,11 +679,14 @@
         document.getElementById('area-demo-context-delete').addEventListener('click',()=>deleteBox(boxes.indexOf(menuBox)));
         document.getElementById('area-demo-context-cancel').addEventListener('click',closeMenu);
         undoButton.addEventListener('click',undo);
+        redoButton.addEventListener('click',redo);
         document.addEventListener('pointerdown',event=>{if(!contextMenu.contains(event.target))closeMenu();});
         document.addEventListener('keydown',event=>{
-            if(event.key==='Escape'){closeMenu();return;}
+            if(event.key==='Escape'){closeMenu();if(draft){endDrag();status.textContent='HC box drawing cancelled.';}return;}
             const typing=event.target && (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || event.target.isContentEditable);
+            if(!typing && !event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase()==='b') {event.preventDefault();chooseTool('draw');return;}
             if(!typing && (event.ctrlKey||event.metaKey) && !event.shiftKey && event.key.toLowerCase()==='z') {event.preventDefault();undo();}
+            if(!typing && (event.ctrlKey||event.metaKey) && !event.shiftKey && event.key.toLowerCase()==='y') {event.preventDefault();redo();}
         });
         const picker = document.getElementById('area-demo-files');
         const imageSelect = document.getElementById('area-demo-image');
@@ -648,7 +712,7 @@
         });
         document.getElementById('area-demo-clear').addEventListener('click', () => {
             selectedFiles = []; picker.value = ''; imageStates.clear(); rebuildImageSelect();
-            imageStates.clear();history=[];preset(55,false);
+            imageStates.clear();history=[];future=[];preset(55,false);
         });
         root.CoralAreaDemo = { setFile };
         preset(55,false);

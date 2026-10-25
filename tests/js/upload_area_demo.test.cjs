@@ -201,6 +201,7 @@ test('selected-only editing, context deletion, transaction undo, and per-image h
     const raw=()=>node('area-demo-coverage').textContent;
     const pointer=(x,y)=>({clientX:x*900,clientY:y*600,pointerId:1,button:0,preventDefault(){}});
     const ctrlz=()=>document.listeners.keydown({key:'z',ctrlKey:true,target:canvas,preventDefault(){}});
+    const ctrly=()=>document.listeners.keydown({key:'y',ctrlKey:true,target:canvas,preventDefault(){}});
     controller.setFile(a);
     assert.equal(node('area-demo-editor').children.length,1);assert.equal(legend(),'Hard Coral box 1');
     assert.equal(raw(),'55.00%');assert.equal(node('area-demo-hcc-result').textContent,'60%');
@@ -227,6 +228,45 @@ test('selected-only editing, context deletion, transaction undo, and per-image h
     // A square action can also be undone, including its lock setting.
     node('area-demo-make-square').listeners.click();assert.equal(legend(),'Quadrat interior');assert.match(node('area-demo-square').textContent,/^Square:/);
     ctrlz();assert.equal(node('area-demo-lock-square').checked,false);
+    // Drawing works over existing boxes, in either direction, as one undo step.
+    const drawTool=()=>node('area-demo-edit-draw').listeners.click();
+    const release=(x,y)=>canvas.listeners.pointerup({...pointer(x,y),type:'pointerup'});
+    drawTool();assert.equal(node('area-demo-edit-draw').attributes['aria-pressed'],'true');
+    canvas.listeners.pointerdown(pointer(.8,.7));canvas.listeners.pointermove(pointer(.7,.5));release(.65,.4);
+    assert.equal(count(),2);assert.equal(legend(),'Hard Coral box 2');
+    assert.equal(node('area-demo-edit-draw').attributes['aria-pressed'],'true');
+    // Redo restores drawing, including computed coverage, with per-image stacks.
+    const drawnCoverage=raw();ctrlz();assert.equal(count(),1);assert.equal(node('area-demo-redo').disabled,false);
+    controller.setFile(b);ctrly();assert.equal(count(),1);assert.equal(node('area-demo-redo').disabled,true);
+    controller.setFile(a);ctrly();assert.equal(count(),2);assert.equal(raw(),drawnCoverage);assert.equal(node('area-demo-redo').disabled,true);
+    ctrlz();
+    document.listeners.keydown({key:'y',ctrlKey:true,target:{tagName:'INPUT'},preventDefault(){throw Error('Native field redo must remain available');}});
+    assert.equal(count(),1);node('area-demo-redo').listeners.click();assert.equal(count(),2);
+    ctrlz();node('area-demo-add').listeners.click();assert.equal(node('area-demo-redo').disabled,true);
+    ctrly();assert.equal(count(),2);ctrlz();ctrly();assert.equal(count(),2);
+    ctrlz();assert.equal(count(),1);assert.equal(raw(),'55.00%');
+    // Starting on an existing annotation creates a new box rather than moving it.
+    canvas.listeners.pointerdown(pointer(.2,.2));canvas.listeners.pointermove(pointer(.4,.4));release(.4,.4);
+    assert.equal(count(),2);ctrlz();assert.equal(raw(),'55.00%');
+    // Cancelled, tiny, and outside starts leave geometry untouched.
+    canvas.listeners.pointerdown(pointer(.7,.5));canvas.listeners.pointermove(pointer(.8,.6));
+    document.listeners.keydown({key:'Escape'});release(.8,.6);assert.equal(count(),1);
+    canvas.listeners.pointerdown(pointer(.7,.5));release(.701,.501);assert.equal(count(),1);
+    canvas.listeners.pointerdown(pointer(.01,.01));release(.3,.3);assert.equal(count(),1);
+    canvas.listeners.pointerdown(pointer(.7,.5));canvas.listeners.pointermove(pointer(.8,.6));
+    canvas.listeners.pointercancel({...pointer(.8,.6),type:'pointercancel'});assert.equal(count(),1);
+    // The box ends at the quadrat edge even if the pointer leaves the image.
+    canvas.listeners.pointerdown(pointer(.8,.8));release(1.2,1.2);assert.equal(count(),2);
+    const drawn=node('area-demo-editor').children[0];
+    assert.equal(drawn.children[1].children[0].value,'80.0');
+    assert.equal(drawn.children[3].children[0].value,'10.0');ctrlz();
+    // Switching tools or images discards an unfinished draft.
+    canvas.listeners.pointerdown(pointer(.7,.5));canvas.listeners.pointermove(pointer(.8,.6));
+    node('area-demo-edit-hand').listeners.click();release(.8,.6);assert.equal(count(),1);
+    drawTool();canvas.listeners.pointerdown(pointer(.7,.5));controller.setFile(b);release(.8,.6);assert.equal(count(),1);
+    controller.setFile(a);assert.equal(count(),1);
+    document.listeners.keydown({key:'b',target:canvas,preventDefault(){}});
+    assert.equal(node('area-demo-edit-draw').attributes['aria-pressed'],'true');
     const picker=node('area-demo-files');picker.files=[{name:'local.jpg',type:'image/jpeg'}];picker.listeners.change();assert.equal(node('area-demo-photo').textContent,'local.jpg');
-    node('area-demo-clear').listeners.click();assert.equal(picker.value,'');assert.match(node('area-demo-photo').textContent,/No image selected/);assert(node('area-demo-undo').disabled);
+    node('area-demo-clear').listeners.click();assert.equal(picker.value,'');assert.match(node('area-demo-photo').textContent,/No image selected/);assert(node('area-demo-undo').disabled);assert(node('area-demo-redo').disabled);
 });

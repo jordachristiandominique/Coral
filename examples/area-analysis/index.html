@@ -53,7 +53,9 @@
                         <button type="button" id="area-demo-edit-quadrat" aria-pressed="false">Edit quadrat</button>
                         <button type="button" id="area-demo-edit-markers" aria-pressed="false">Edit markers</button>
                         <button type="button" id="area-demo-edit-hand" aria-pressed="false">✋ Hand tool</button>
+                        <button type="button" id="area-demo-edit-draw" aria-pressed="false" title="Draw a Hard Coral box (B)" aria-keyshortcuts="B">▧ HC Box (B)</button>
                         <button type="button" id="area-demo-undo" disabled>Undo (Ctrl+Z)</button>
+                        <button type="button" id="area-demo-redo" disabled>Redo (Ctrl+Y)</button>
                     </div>
                     <div class="area-demo-layout">
                         <div>
@@ -75,7 +77,7 @@
                                 <label><input type="checkbox" id="area-demo-fill-boxes" checked> Coral box color fill</label>
                             </div>
                             <p id="area-demo-overlap-summary" class="area-demo-overlap-summary" aria-live="polite"></p>
-                            <p>Click a coral box to select it and drag to move; smaller boxes take priority where boxes overlap in Select coral boxes mode. Hand tool gives the newest coral box priority without a Layers panel. Drag a selected corner handle to resize. Use Edit quadrat or Edit markers for those separate modes; select a label for precise selection. Coverage and markers update immediately.
+                            <p>Use HC Box (B) to click and drag a new Hard Coral box inside the quadrat. Draw in any direction; release to add it, or press Escape to cancel. Switch to Hand tool or Select coral boxes to move and resize it. Click a coral box to select it and drag to move; smaller boxes take priority where boxes overlap in Select coral boxes mode. Hand tool gives the newest coral box priority without a Layers panel. Drag a selected corner handle to resize. Use Edit quadrat or Edit markers for those separate modes; select a label for precise selection. Coverage and markers update immediately.
                                 In marker mode, drag the crosses within their regions. Keyboard: focus the preview, use Left/Right to select a marker, then Shift+arrow to move it. Marker movement does not change raw coverage.
                                 The percentage fields remain available for precise box edits; coordinates are relative to the whole image.</p>
                             <details><summary>Marker allocation and limitations</summary>
@@ -87,7 +89,7 @@
                         </div>
                         <div>
                             <h4>Edit selected quadrat or box</h4>
-                            <p class="area-demo-legend">Only the selected shape appears here. Right-click a coral box or its label to delete it. Ctrl+Z (Cmd+Z on Mac) undoes edits; use Undo when typing in a field.</p>
+                            <p class="area-demo-legend">Only the selected shape appears here. Right-click a coral box or its label to delete it. Ctrl+Z (Cmd+Z on Mac) undoes edits; Ctrl+Y (Cmd+Y on Mac) redoes them. Use the Undo/Redo buttons when typing in a field.</p>
                             <div id="area-demo-editor"></div>
                         </div>
                     </div>
