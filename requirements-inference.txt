@@ -1,0 +1,6 @@
+# Optional local CPU inference environment. Base web dependencies stay pinned.
+--extra-index-url https://download.pytorch.org/whl/cpu
+-r requirements.txt
+torch==2.11.0+cpu
+torchvision==0.26.0+cpu
+ultralytics==8.4.199

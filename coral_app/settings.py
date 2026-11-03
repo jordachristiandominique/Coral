@@ -18,6 +18,12 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Optional local inference. Loading Django does not load Torch or the checkpoint.
+# Change the artifact directory and restart the process to select a new model.
+YOLO_ARTIFACT_DIR = BASE_DIR / 'model_artifacts' / 'yolov8s-v4-3x'
+YOLO_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+YOLO_MAX_IMAGE_PIXELS = 25_000_000
+
 # Only database settings are environment-driven here. Existing development
 # SECRET_KEY/DEBUG behavior is intentionally unchanged.
 database_env = Config(RepositoryEnv(str(BASE_DIR / '.env'))) if (BASE_DIR / '.env').is_file() else Config({})

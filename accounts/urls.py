@@ -15,6 +15,7 @@ urlpatterns = [
     path('researcher/manage-users/<int:user_id>/deactivate/', views.deactivate_user, name='deactivate_user'),
     path('researcher/manage-users/<int:user_id>/activate/', views.activate_user, name='activate_user'),
     path('researcher/upload-batch/', views.upload_batch, name='upload_batch'),
+    path('researcher/analyze-image/', views.analyze_survey_image, name='analyze_survey_image'),
     path('researcher/batches/', views.batches, name='batches'),
     path('researcher/batches/all/', views.all_batches, name='all_batches'),
     path('researcher/batches/<int:batch_id>/', views.batch_detail, name='batch_detail'),

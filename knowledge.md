@@ -61,6 +61,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 | `researcher/manage-users/<int:user_id>/deactivate/` | `deactivate_user` (POST, JSON) | `deactivate_user` |
 | `researcher/manage-users/<int:user_id>/activate/` | `activate_user` (POST, JSON) | `activate_user` |
 | `researcher/upload-batch/` | `upload_batch` | `upload_batch` |
+| `researcher/analyze-image/` | `analyze_survey_image` (POST, JSON) | `analyze_survey_image` |
 | `researcher/batches/` | `batches` | `batches` |
 | `researcher/batches/all/` | `all_batches` | `all_batches` |
 | `researcher/batches/<int:batch_id>/` | `batch_detail` | `batch_detail` |
@@ -171,6 +172,26 @@ The core write path, end to end:
 10. **Downstream consumers** — `point_classes` feeds the public/researcher dashboards, batch lists/detail, maps, analysis, and exports. Most headline site statistics use `compute_site_hcc`, but `ReportGenerator` averages cached image coverage, analysis monthly statistics pool points, and the upload preview pools points across images. These are confirmed differences in weighting, not equivalent uses of the canonical site function (`accounts/report_generator.py`, `accounts/views.py::analysis_results`, `static/js/upload_batch.js::computeTransectCoverage`).
 
 ## 8. Confirmed limitations and remaining uncertainties
+
+### Local inference artifact preparation (2026-11-03)
+
+- Private checkpoint and original metadata are kept in `model_artifacts/yolov8s-v4-3x/`.
+  Weights are ignored by Git; `artifact.json` records their SHA-256 and training-log
+  provenance. The original training package-version file has not been supplied.
+- Optional CPU inference dependencies are pinned in `requirements-inference.txt`;
+  `scripts/check_yolo_inference.py --image <photo>` verifies the artifact and writes
+  a one-image prediction plus local dependency versions under ignored `backups/`.
+  Setup and interpretation are documented in `docs/yolo-local-inference.md`.
+- `accounts/yolo_inference.py` now provides lazy, checksum-verified, process-cached
+  CPU inference. `accounts/views.py::analyze_survey_image` exposes the authenticated,
+  CSRF-protected one-image POST endpoint. It validates image bytes, applies EXIF
+  orientation, and returns normalized full-image boxes, provenance, and quadrat
+  review warnings. A per-process lock rejects overlapping inference with HTTP 503.
+  Limits and artifact selection are in `coral_app/settings.py`; API details are in
+  `docs/yolo-local-inference.md` and regression tests in `accounts/test_yolo_inference.py`.
+- The endpoint does not replace upload mocks, write survey records, classify
+  sampling points, or change HCC. Runtime verification is separate from dataset
+  accuracy evaluation. Frontend connection remains pending.
 
 Source findings checked on 2026-10-10; these do not imply runtime testing:
 

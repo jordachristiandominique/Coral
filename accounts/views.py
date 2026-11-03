@@ -1,5 +1,6 @@
 import csv
 import json
+import logging
 from decimal import Decimal, InvalidOperation
 from datetime import date
 from io import BytesIO
@@ -28,6 +29,10 @@ from .models import (
 )
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
+from . import yolo_inference
+
+
+logger = logging.getLogger(__name__)
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -1019,6 +1024,45 @@ def activate_user(request, user_id):
         return JsonResponse({'success': False, 'error': 'User not found.'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+@csrf_protect
+@require_http_methods(['POST'])
+def analyze_survey_image(request):
+    """Predict one unsaved image; all detections require researcher review."""
+    if request.user.is_pending():
+        return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+    if not (request.user.is_researcher() or request.user.is_admin()):
+        return JsonResponse({'success': False, 'code': 'forbidden', 'error': 'Access denied.'}, status=403)
+    uploads = request.FILES.getlist('image')
+    if len(uploads) != 1 or sum(len(request.FILES.getlist(key)) for key in request.FILES) != 1:
+        return JsonResponse({'success': False, 'code': 'invalid_upload',
+                             'error': 'Send exactly one image in the image field.'}, status=400)
+    try:
+        image = yolo_inference.read_image(uploads[0])
+        try:
+            return JsonResponse(yolo_inference.analyze_image(image))
+        finally:
+            image.close()
+    except yolo_inference.InvalidImage as exc:
+        return JsonResponse({'success': False, 'code': 'invalid_image', 'error': str(exc)},
+                            status=413 if exc.too_large else 400)
+    except yolo_inference.InferenceBusy:
+        response = JsonResponse({'success': False, 'code': 'inference_busy',
+                                 'error': 'Another image is being analysed. Retry shortly.'}, status=503)
+        response['Retry-After'] = '1'
+        return response
+    except yolo_inference.ModelUnavailable:
+        logger.exception('Local YOLO artifact could not be loaded.')
+        return JsonResponse({'success': False, 'code': 'model_unavailable',
+                             'error': 'Image analysis is unavailable. Contact the administrator.'}, status=503)
+    except Exception:
+        logger.exception('YOLO image analysis failed.')
+        return JsonResponse({'success': False, 'code': 'inference_failed',
+                             'error': 'Image analysis failed. Please retry.'}, status=500)
 
 
 @login_required(login_url='login')

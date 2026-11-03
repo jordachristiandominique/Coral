@@ -1,0 +1,15 @@
+{
+  "id": "yolov8s-v4-3x",
+  "checkpoint": "yolov8s_v4_3x_best.pt",
+  "metadata": "yolov8s_v4_3x_best.metadata.json",
+  "sha256": "8e9bcd363aa87a329bc6f6504fc5d7c5bf26f94f407bca6c08163e6eae167f30",
+  "augmentation_multiplier": 3,
+  "training_environment_from_colab_log": {
+    "ultralytics": "8.4.199",
+    "torch": "2.11.0+cu130",
+    "python": "3.13.16",
+    "device": "Tesla T4"
+  },
+  "original_package_versions_file_supplied": false,
+  "notes": "Training environment and 3x multiplier recorded from the supplied Colab output and user confirmation. The original metadata is preserved unchanged. This manifest does not establish model accuracy."
+}

@@ -35,3 +35,6 @@ build/
 
 # Local database backups and credentials
 /backups/
+
+# Private trained weights; retain lightweight metadata and setup instructions.
+/model_artifacts/**/*.pt

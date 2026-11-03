@@ -1,0 +1,24 @@
+{
+  "workspace": "christian-dominique-l-jorda",
+  "project": "hard-coral-detection-y1rzi",
+  "version": 4,
+  "class_names": [
+    "Hard Coral",
+    "Soft Coral",
+    "quadrat_area"
+  ],
+  "dataset_fingerprint": "d6b5ed5999cdf5bad55c6560195b3f7f8e82e682ba3bc8b365b38f284a32e0c2",
+  "seed": 42,
+  "model": "yolov8s",
+  "hardware": "Tesla T4",
+  "augmentation": "Roboflow version transformations only; additional random training augmentation disabled",
+  "training": {
+    "epochs": 100,
+    "batch": 8,
+    "imgsz": 640,
+    "patience": 20,
+    "optimizer": "SGD",
+    "pretraining": "COCO detection",
+    "lr0": 0.01
+  }
+}
