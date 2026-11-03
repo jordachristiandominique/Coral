@@ -1198,6 +1198,7 @@ def upload_batch(request):
                     quadrat_rect=payload.get('rect'),
                     quadrat_points=payload.get('points'),
                     point_classes=point_classes,
+                    analysis_review=payload.get('analysis') or {},
                     coverage_percent=coverage_percent,
                     coverage_category=coverage_class,
                 )

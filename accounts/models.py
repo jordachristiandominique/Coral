@@ -256,6 +256,7 @@ class SurveyImage(models.Model):
     quadrat_rect = models.JSONField()
     quadrat_points = models.JSONField()
     point_classes = models.JSONField(default=list, blank=True)
+    analysis_review = models.JSONField(default=dict, blank=True)
     coverage_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     coverage_category = models.CharField(max_length=1, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)

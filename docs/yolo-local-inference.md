@@ -140,20 +140,25 @@ non-coral assignment, or database migration in this endpoint step. The upload pa
 ## Connected upload page
 
 1. Select images for one transect and click **Analyze All Images**.
-2. Review the actual boxes and confidence scores. Purple is Hard Coral, teal is
-   Soft Coral, dashed blue is a detected quadrat, and orange is the editable
-   sampling boundary. The box list can highlight regions or select another
-   quadrat candidate. A visibility checkbox hides model boxes for closer review.
-3. Adjust the boundary by dragging/resizing or by editing its four percentages
-   and applying them. A missing detection requires a manual boundary; it never
-   produces a made-up centered quadrat. Confirm the sampling boundary.
+2. Review the real model boxes using the compact editor. Labels show only HC/SC
+   identifiers, with no confidence percentages, estimated areas, or overlap-area
+   indicators. The HCC percentage remains a separate reviewed-point result.
+3. Use **Select** for explicit click selection or the selected-box dropdown;
+   **Hand tool** directly selects/moves/resizes the smallest overlapping coral
+   box before considering the quadrat. **Edit quadrat** moves/resizes the boundary
+   or draws one by dragging empty space. **HC box** and **SC box**, after Hand,
+   draw missing coral regions. Only the selected box has handles and inspector
+   controls. There is no layer panel. Change a selected coral's class in its
+   inspector. Right-click a selected box for deletion, or use its Delete button.
+   Optional square locking uses image pixels and is not imposed on detections;
+   perspective can legitimately make a physical quadrat appear rectangular.
 4. Classify all ten numbered points from the actual image. Points occupy two
    evenly spaced rows of five within the quadrat and start unclassified. A box
    suggestion does not confirm coral beneath a point. Existing seven CPCE classes
    remain selectable for manual review, although the detector recognizes only
    Hard Coral, Soft Coral, and quadrat_area.
 5. Click **Confirm image review** for every image, then **Upload**. Boundary edits
-   clear point classifications. Point edits and unapplied boundary drafts block
+   clear point classifications. Point edits and accepted-box corrections block
    saving until reviewed again. Preview HCC stays pending until all images are
    confirmed. Only Hard Coral enters its numerator; the displayed aggregate is
    this transect's mean image HCC, not the existing site's total.
@@ -164,16 +169,34 @@ acknowledgement before replacing edits. Failures show errors instead of fabricat
 boxes, classes, or coverage. Original-image orientation must match the endpoint's
 upright dimensions before the overlay can be reviewed.
 
-The existing save contract stores reviewed quadrat geometry, point classes, and
-canonical coverage caches. It does not yet store raw model detections or the
-model identifier with the survey image; those are currently visible only during
-review. This connection does not implement the standalone demo's proportional
-box-area marker allocation, coral-box editing, or undo/redo tools.
+**Edit markers** moves one of the existing ten sampling points within the
+quadrat; it clears that point's class. Quadrat changes reset all ten classes.
+Undo/redo is per image, with up to 40 edit transactions; a drag is one transaction.
+Ctrl+Z and Ctrl+Y act on the editor when focus is not in a text/select field, where
+native editing is preserved. A new edit clears redo. Undo/redo requires image
+review again. Escape cancels an in-progress gesture or dismisses its context menu.
+Boxes, markers, and translucent color fill have independent visibility controls.
+
+Migration `0017_surveyimage_analysis_review` adds an optional JSON review record.
+It stores accepted corrected/manual coral boxes and the researcher-confirmed model
+reference (ID, checkpoint SHA-256, dataset version), plus the square-lock flag.
+Confidence and area estimates are not stored in that review record. Geometry and
+point classifications still feed the existing canonical HCC fields. The model
+reference is submitted with the researcher's review, not a signed independent
+attestation of inference. Old records retain an empty review object. These saved
+boxes are not yet drawn by historical-image export/detail views.
+
+The local migration was applied with a before-image snapshot in ignored
+`backups/before-review-editor-images.json`. All 51 existing images' previous fields
+were compared before/after and were unchanged. When deploying another database,
+run `manage.py migrate` before serving the new model field. Reversing this
+migration removes the new review column, so preserve those records before rollback.
+No historical point classifications or cached HCC were recalculated.
 
 Regression commands:
 
 ```powershell
-node --test tests/js/upload_batch_analysis.test.cjs tests/js/upload_area_demo.test.cjs
+node --test tests/js/upload_batch_review.test.cjs tests/js/upload_batch_analysis.test.cjs tests/js/upload_area_demo.test.cjs
 .venv/Scripts/python.exe manage.py check
 .venv/Scripts/python.exe manage.py makemigrations --check
 # Use the documented disposable-test PostgreSQL role for this command:
@@ -185,3 +208,12 @@ model request and reviewed upload succeeded. Missing-quadrat, failed response,
 and retry conditions were additionally simulated in the browser, separately
 from the real-model test. Desktop, fullscreen, and 390px mobile review were
 checked. Prediction quality is still subject to expert review.
+
+
+Editor verification: 38 JavaScript tests and 34 Django PostgreSQL tests passed.
+Browser testing with real detections and isolated survey data checked drawing,
+direct selection, movement, corner resizing, class changes, right-click deletion,
+Ctrl+Z/Ctrl+Y, square locking, marker movement, visibility controls, and saving.
+The saved test review retained its manual Soft Coral box and moved marker while
+HCC remained 50% from five Hard Coral points out of ten. Layout screenshots are
+in ignored `output/playwright/`. These checks establish behavior, not model accuracy.

@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=22">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=23">
 {% endblock %}
 
 {% block content %}
@@ -186,18 +186,21 @@
                     <h2>Image Upload & Analyze</h2>
                 </div>
 
-                <p class="upload-step-note">Add <strong>one transect at a time</strong></strong>. <strong>Drag the transect folder</strong> onto the box, or
-                    <strong>click the box</strong> to choose a folder.
+                <p class="upload-step-note">Add <strong>one transect at a time</strong>. Drag images or a transect folder onto the box,
+                    click the box to choose a folder, or use <strong>Choose images</strong> to select one or more images.
                 </p>
 
                 <div class="dropzone" id="dropzone" role="button" tabindex="0"
-                    aria-label="Drop a transect folder here or click to choose a folder">
+                    aria-label="Drop images or a transect folder here, or click to choose a folder" aria-describedby="upload-image-formats">
                     <div class="dropzone-inner">
                         <i data-lucide="folder-open"></i>
-                        <p>Drop this transect's folder here, or click to choose a folder</p>
-                        <span>Accepted: JPG, PNG, WebP | Max 20MB per file | ~50 images per transect</span>
+                        <p>Drop images or a transect folder here, or click to choose a folder</p>
+                        <span id="upload-image-formats">Images only (JPG, JPEG, PNG, WebP) · Max 20MB per image</span>
                     </div>
                 </div>
+                <p class="upload-step-note">
+                    <button type="button" class="action-outline" id="choose-images-btn" aria-describedby="upload-image-formats">Choose images</button>
+                </p>
 
                 <!-- Hidden carriers: upload-input holds the files for form submit;
                      folder-input is the directory picker opened by clicking the box. -->
@@ -263,7 +266,7 @@
                     <div class="quadrat-body">
                         <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
                             <img id="quadrat-image" alt="Selected coral image" loading="lazy">
-                            <canvas id="quadrat-canvas" aria-label="Coral detection boxes, editable quadrat, and numbered sampling points"></canvas>
+                            <canvas id="quadrat-canvas" tabindex="0" aria-label="Coral detection boxes, editable quadrat, and numbered sampling points"></canvas>
                             <button type="button" class="image-nav image-nav-prev" id="image-prev-btn"
                                 aria-label="Previous image" title="Previous image" hidden>
                                 <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
@@ -288,23 +291,37 @@
                             <section class="detection-review" id="detection-review" aria-label="Detection review" hidden>
                                 <p id="detection-model" class="detection-model"></p>
                                 <p id="detection-warning" class="detection-warning" role="status"></p>
-                                <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Show coral and quadrat detection boxes</label>
-                                <details>
-                                    <summary id="detection-count">Detected regions</summary>
-                                    <div id="detection-list" class="detection-list"></div>
-                                </details>
-                                <details id="quadrat-editor" open>
-                                    <summary>Confirm sampling boundary</summary>
-                                    <p class="panel-head-hint">Drag the orange boundary or edit its percentages. Changing it clears point review.</p>
-                                    <div class="quadrat-coordinate-grid">
-                                        <label>Left (%)<input id="review-quadrat-x" type="number" min="0" max="100" step="any"></label>
-                                        <label>Top (%)<input id="review-quadrat-y" type="number" min="0" max="100" step="any"></label>
-                                        <label>Width (%)<input id="review-quadrat-w" type="number" min="0.1" max="100" step="any"></label>
-                                        <label>Height (%)<input id="review-quadrat-h" type="number" min="0.1" max="100" step="any"></label>
-                                    </div>
-                                    <button type="button" class="action-outline" id="apply-quadrat-btn">Apply boundary</button>
-                                    <label class="review-check"><input type="checkbox" id="confirm-quadrat"> I verified the sampling boundary</label>
-                                </details>
+                                <div class="review-toolbox" role="group" aria-label="Image review tools">
+                                    <button type="button" data-review-tool="select" aria-pressed="true">Select</button>
+                                    <button type="button" data-review-tool="quadrat" aria-pressed="false">Edit quadrat</button>
+                                    <button type="button" data-review-tool="markers" aria-pressed="false">Edit markers</button>
+                                    <button type="button" data-review-tool="hand" aria-pressed="false">Hand tool</button>
+                                    <button type="button" data-review-tool="hard" aria-pressed="false">HC box</button>
+                                    <button type="button" data-review-tool="soft" aria-pressed="false">SC box</button>
+                                    <button type="button" id="review-undo" disabled>Undo</button>
+                                    <button type="button" id="review-redo" disabled>Redo</button>
+                                </div>
+                                <p id="review-tool-hint" class="panel-head-hint">Select a box on the image or use the selector below.</p>
+                                <div class="review-visibility" role="group" aria-label="Overlay visibility">
+                                    <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Boxes</label>
+                                    <label class="review-check"><input type="checkbox" id="show-review-markers" checked> Markers</label>
+                                    <label class="review-check"><input type="checkbox" id="show-review-fill"> Color fill</label>
+                                </div>
+                                <label class="selected-box-label" for="review-box-selection">Edit quadrat and accepted boxes</label>
+                                <select id="review-box-selection" aria-label="Selected box"><option value="">No box selected</option></select>
+                                <section class="selected-box-editor" id="selected-box-editor" hidden>
+                                    <strong id="selected-box-title"></strong>
+                                    <label id="selected-class-label" hidden>Coral class
+                                        <select id="selected-box-class"><option>Hard Coral</option><option>Soft Coral</option></select>
+                                    </label>
+                                    <p id="quadrat-shape" class="panel-head-hint"></p>
+                                    <label class="review-check" id="square-lock-label" hidden><input type="checkbox" id="review-square-lock"> Lock square in image pixels</label>
+                                    <button type="button" class="action-outline" id="review-delete-box">Delete selected box</button>
+                                </section>
+                                <label class="review-check" id="quadrat-candidate-label" hidden>Detected boundary
+                                    <select id="review-quadrat-candidate" aria-label="Detected quadrat candidate"></select>
+                                </label>
+                                <label class="review-check"><input type="checkbox" id="confirm-quadrat"> I verified the sampling boundary</label>
                                 <p id="review-feedback" class="detection-warning" role="status"></p>
                             </section>
                             <div class="panel-head">
@@ -340,7 +357,7 @@
                         </div>
                     </div>
 
-                    <p class="quadrat-footer">Purple: Hard Coral · Teal: Soft Coral · Blue dashed: detected quadrat · Orange: sampling boundary. Boxes may include background. No detection does not mean non-coral.</p>
+                    <p class="quadrat-footer">Purple: Hard Coral · Teal: Soft Coral · Orange: sampling boundary. Drag corner handles to resize. Right-click a box to delete. Ctrl+Z undoes; Ctrl+Y redoes.</p>
                 </div>
             </section>
 
@@ -443,14 +460,20 @@
     </div>
 </div>
 
+<div id="review-context-menu" class="review-context-menu" role="menu" aria-label="Selected box actions" hidden>
+    <button type="button" id="review-context-delete" role="menuitem">Delete selected box</button>
+    <button type="button" id="review-context-cancel" role="menuitem">Cancel</button>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch_analysis.js' %}?v=1"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=27"></script>
+<script src="{% static 'js/upload_batch_analysis.js' %}?v=2"></script>
+<script src="{% static 'js/upload_batch_review.js' %}?v=1"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=30"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

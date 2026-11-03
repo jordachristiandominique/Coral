@@ -1,6 +1,7 @@
 """Validation of the existing per-image upload contract, including AI review."""
 
 import math
+import re
 
 from .models import CPCE_CODES
 
@@ -31,4 +32,33 @@ def validate_quadrat_payload(payload):
         if (not isinstance(review, dict) or type(review.get('version')) is not int
                 or review['version'] != 1 or review.get('confirmed') is not True or len(points) != 10):
             raise ValueError('AI-assisted uploads require confirmed review of ten sampling points.')
+    if 'analysis' in payload:
+        analysis = payload['analysis']
+        if ('review' not in payload or not isinstance(analysis, dict) or type(analysis.get('version')) is not int or analysis['version'] != 1
+                or not isinstance(analysis.get('model'), dict) or not isinstance(analysis.get('boxes'), list)
+                or len(analysis['boxes']) > 200 or type(analysis.get('square_lock')) is not bool):
+            raise ValueError('The edited detection review is invalid.')
+        model = analysis['model']
+        if (not isinstance(model.get('id'), str) or not 1 <= len(model['id']) <= 100
+                or not isinstance(model.get('sha256'), str) or not re.fullmatch(r'[0-9a-f]{64}', model['sha256'])
+                or type(model.get('dataset_version')) is not int or model['dataset_version'] < 1):
+            raise ValueError('The detection model reference is incomplete.')
+        accepted, identifiers = [], set()
+        for region in analysis['boxes']:
+            if (not isinstance(region, dict) or not isinstance(region.get('id'), str)
+                    or not 1 <= len(region['id']) <= 100 or region['id'] in identifiers
+                    or region.get('class_name') not in ('Hard Coral', 'Soft Coral')
+                    or region.get('source') not in ('ai', 'manual')):
+                raise ValueError('An accepted coral box is invalid.')
+            b = region.get('box')
+            if (not isinstance(b, dict) or not all(number(b.get(k)) for k in ('x', 'y', 'w', 'h'))
+                    or b['x'] < 0 or b['y'] < 0 or b['w'] <= 0 or b['h'] <= 0
+                    or b['x'] + b['w'] > 1.000001 or b['y'] + b['h'] > 1.000001):
+                raise ValueError('Accepted coral boxes must stay inside the image.')
+            identifiers.add(region['id'])
+            accepted.append({'id': region['id'], 'class_name': region['class_name'],
+                             'box': {k: b[k] for k in ('x', 'y', 'w', 'h')}, 'source': region['source']})
+        # A researcher-confirmed model reference, not an independent inference attestation.
+        payload['analysis'] = {'version': 1, 'model': {k: model[k] for k in ('id', 'sha256', 'dataset_version')},
+                               'square_lock': analysis['square_lock'], 'boxes': accepted}
     return payload

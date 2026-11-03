@@ -192,6 +192,7 @@ const initializeUploadBatch = function () {
 
     const dropzone = document.getElementById('dropzone');
     const uploadInput = document.getElementById('upload-input');
+    const chooseImagesButton = document.getElementById('choose-images-btn');
     const thumbGrid = document.getElementById('thumb-grid');
     const initialThumbMarkup = thumbGrid ? thumbGrid.innerHTML : '';
     const quadratWrap = document.getElementById('quadrat-canvas-wrap');
@@ -220,11 +221,17 @@ const initializeUploadBatch = function () {
     const submitHint = document.getElementById('submit-hint');
     const uploadForm = document.getElementById('upload-batch-form');
     const Analysis = window.UploadBatchAnalysis;
-    if (!Analysis) throw new Error('Image review tools did not load. Reload the page.');
+    const Editor = window.UploadBatchReview;
+    let reviewTool = 'select';
+    let reviewDrag = null;
+    if (!Analysis || !Editor) throw new Error('Image review tools did not load. Reload the page.');
     const analysisErrors = {};
     const retryAnalysisBtn = document.getElementById('retry-analysis-btn');
     const detectionReview = document.getElementById('detection-review');
-    const detectionList = document.getElementById('detection-list');
+    const boxSelection = document.getElementById('review-box-selection');
+    const contextMenu = document.getElementById('review-context-menu');
+    const showMarkers = document.getElementById('show-review-markers');
+    const showFill = document.getElementById('show-review-fill');
     const confirmQuadrat = document.getElementById('confirm-quadrat');
     const confirmImageReview = document.getElementById('confirm-image-review');
     const showDetectionBoxes = document.getElementById('show-detection-boxes');
@@ -262,7 +269,6 @@ const initializeUploadBatch = function () {
     let isSubmitting = false;
     // This page builds ONE transect per submit; every selected image belongs to
     // it. The transect label (folder name) is sent via the hidden #transect-label-input.
-    const IMAGES_PER_TRANSECT = 50;
     const transectLabelInput = document.getElementById('transect-label-input');
     const setTransectLabel = function (label) {
         if (transectLabelInput && label) { transectLabelInput.value = label; }
@@ -420,6 +426,7 @@ const describeCoverageClass = function (code) {
         // Any image change clears the point zoom (instantly, so the new image
         // never inherits a lingering transform) and refreshes the stepper label.
         resetPointZoom(true);
+        closeContextMenu();
         if (!selectedFiles.length) {
             activeFileIndex = 0;
             updateQuadratPreview();
@@ -434,7 +441,7 @@ const describeCoverageClass = function (code) {
     };
 
     const isReadyToAnalyze = function () {
-        return !isAnalyzing && selectedFiles.length > 0 && selectedFiles.every(file =>
+        return !isAnalyzing && !reviewDrag && selectedFiles.length > 0 && selectedFiles.every(file =>
             Analysis.reviewed(aiResultsByFileKey[getFileKey(file)]) && !analysisErrors[getFileKey(file)]);
     };
 
@@ -473,6 +480,7 @@ const describeCoverageClass = function (code) {
             retryAnalysisBtn.disabled = isAnalyzing;
         }
         if (uploadInput) uploadInput.disabled = isAnalyzing;
+        if (chooseImagesButton) chooseImagesButton.disabled = isAnalyzing;
         if (detectionReview) detectionReview.inert = isAnalyzing;
         if (pointList) pointList.inert = isAnalyzing;
         processOpenBtn.disabled = !ready;
@@ -635,29 +643,47 @@ const describeCoverageClass = function (code) {
 
         const file = getActiveFile();
         const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        if (result && (!showDetectionBoxes || showDetectionBoxes.checked)) {
-            result.detections.forEach(function (d, index) {
+        if (result) Editor.ensure(result);
+        if (result && showFill.checked && quadratBbox) {
+            ctx.fillStyle = 'rgba(80, 161, 220, .16)';
+            ctx.fillRect(offsetX + quadratBbox.x * displayWidth, offsetY + quadratBbox.y * displayHeight,
+                quadratBbox.w * displayWidth, quadratBbox.h * displayHeight);
+        }
+        if (result && showDetectionBoxes.checked) {
+            result.detections.forEach(function (d) {
+                if (d.class_name === 'quadrat_area') return;
                 const x = offsetX + d.box.x * displayWidth, y = offsetY + d.box.y * displayHeight;
                 const w = d.box.w * displayWidth, h = d.box.h * displayHeight;
                 const color = d.class_name === 'Hard Coral' ? '#b56aff' : d.class_name === 'Soft Coral' ? '#32e0bf' : '#75baff';
                 ctx.save();
+                if (showFill.checked && d.class_name !== 'quadrat_area') {
+                    ctx.fillStyle = d.class_name === 'Hard Coral' ? 'rgba(164, 76, 255, .2)' : 'rgba(50, 224, 191, .2)';
+                    ctx.fillRect(x, y, w, h);
+                }
                 ctx.strokeStyle = color;
-                ctx.lineWidth = d.id === result.selected_detection ? 3 : 1.5;
+                ctx.lineWidth = d.id === result.editor.selected ? 3 : 1.5;
                 if (d.class_name === 'quadrat_area') ctx.setLineDash([5, 4]);
                 ctx.strokeRect(x, y, w, h);
                 ctx.setLineDash([]);
-                const code = d.class_name === 'Hard Coral' ? 'HC' : d.class_name === 'Soft Coral' ? 'SC' : 'Q';
-                const label = `${code} ${index + 1} · ${(d.confidence * 100).toFixed(0)}%`;
+                const label = d.class_name === 'quadrat_area' ? 'Q' : Editor.label(result, d.id);
                 ctx.font = 'bold 11px Inter, sans-serif';
                 const labelWidth = ctx.measureText(label).width + 8;
                 const labelX = Math.max(offsetX, Math.min(x, offsetX + displayWidth - labelWidth));
                 const labelY = Math.max(offsetY + 14, y);
-                ctx.fillStyle = '#12313c';
-                ctx.fillRect(labelX, labelY - 14, labelWidth, 16);
-                ctx.fillStyle = color;
-                ctx.fillText(label, labelX + 4, labelY - 2);
+                ctx.fillStyle = '#12313c'; ctx.fillRect(labelX, labelY - 14, labelWidth, 16);
+                ctx.fillStyle = color; ctx.fillText(label, labelX + 4, labelY - 2);
                 ctx.restore();
             });
+        }
+        const selectedRect = result ? Editor.selected(result) : null;
+        if (selectedRect && (result.editor.selected === 'quadrat' || showDetectionBoxes.checked)) {
+            const px = { x: offsetX + selectedRect.x * displayWidth, y: offsetY + selectedRect.y * displayHeight,
+                w: selectedRect.w * displayWidth, h: selectedRect.h * displayHeight };
+            ctx.save(); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1c5f6d'; ctx.lineWidth = 1.5;
+            Object.values(getHandles(px)).forEach(h => {
+                ctx.fillRect(h.x - 5, h.y - 5, 10, 10); ctx.strokeRect(h.x - 5, h.y - 5, 10, 10);
+            });
+            ctx.restore();
         }
         if (!quadratBbox) return;
 
@@ -673,20 +699,8 @@ const describeCoverageClass = function (code) {
         ctx.lineWidth = 2;
         ctx.strokeRect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
 
-        // Corner handles show the box is draggable/resizable after analysis.
-        const handles = getHandles(rectPx);
-        ctx.save();
-        ctx.fillStyle = '#ff8a3d';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        Object.values(handles).forEach(function (handle) {
-            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-        });
-        ctx.restore();
-
         // Draw CPCE-style cross markers with point numbers
-        if (points && points.length) {
+        if (showMarkers.checked && points && points.length) {
             points.forEach(function (point, index) {
                 const x = rectPx.x + point.x * rectPx.w;
                 const y = rectPx.y + point.y * rectPx.h;
@@ -1094,6 +1108,7 @@ const describeCoverageClass = function (code) {
             result.coverage_percent = Analysis.reviewed(result) ? Analysis.coverage(result) : null;
             result.coverage_class = result.coverage_percent === null ? null : getCoverageClass(result.coverage_percent);
         }
+        if (result) syncEditorControls(result);
         updatePointProgress();
         if (quadratPointsCount) quadratPointsCount.textContent = result
             ? Analysis.reviewed(result) ? 'Image reviewed' : `${result.points.filter(p => p.class).length}/10 points classified`
@@ -1104,25 +1119,47 @@ const describeCoverageClass = function (code) {
         updateSummary();
     };
 
+    const activeResult = function () {
+        const file = getActiveFile();
+        return file ? aiResultsByFileKey[getFileKey(file)] : null;
+    };
+    const closeContextMenu = function () {
+        const restoreFocus = !contextMenu.hidden && contextMenu.contains(document.activeElement);
+        contextMenu.hidden = true;
+        if (restoreFocus) quadratCanvas.focus({ preventScroll: true });
+    };
+    const syncEditorControls = function (result) {
+        if (!result) return;
+        const e = Editor.ensure(result), rect = Editor.selected(result);
+        const selected = result.detections.find(d => d.id === e.selected);
+        document.getElementById('selected-box-editor').hidden = !rect;
+        document.getElementById('selected-box-title').textContent = Editor.label(result, e.selected);
+        document.getElementById('selected-class-label').hidden = !selected || selected.class_name === 'quadrat_area';
+        if (selected && selected.class_name !== 'quadrat_area') document.getElementById('selected-box-class').value = selected.class_name;
+        document.getElementById('square-lock-label').hidden = e.selected !== 'quadrat' || !rect;
+        document.getElementById('review-square-lock').checked = e.square;
+        document.getElementById('quadrat-shape').textContent = e.selected === 'quadrat' && rect
+            ? Editor.isSquare(result) ? 'Square boundary in image pixels' : 'Rectangular boundary in image pixels' : '';
+        document.getElementById('review-undo').disabled = isAnalyzing || !e.undo.length;
+        document.getElementById('review-redo').disabled = isAnalyzing || !e.redo.length;
+    };
     const renderDetectionReview = function (result) {
         if (!detectionReview) return;
         detectionReview.hidden = !result;
-        if (!result) return;
-        document.getElementById('detection-model').textContent =
-            `Model: ${result.model.id} · ${(result.model.class_names || []).join(', ')}`;
-        const warnings = result.warnings.map(w => w.message || '').filter(Boolean);
+        if (!result) { closeContextMenu(); return; }
+        const e = Editor.ensure(result);
+        document.getElementById('detection-model').textContent = `Model: ${result.model.id}`;
+        const warnings = result.quadrat_confirmed ? [] : result.warnings.map(w => w.message || '').filter(Boolean);
         document.getElementById('detection-warning').textContent = warnings.join(' ');
-        document.getElementById('detection-count').textContent = `${result.detections.length} detected regions (confidence shown)`;
-        detectionList.innerHTML = result.detections.length ? result.detections.map(function (d, i) {
-            return `<div class="detection-row"><button type="button" data-detection-id="${escapeHtml(d.id)}"
-                aria-pressed="${result.selected_detection === d.id}">${i + 1}. ${escapeHtml(d.class_name)} · ${(d.confidence * 100).toFixed(1)}%</button>
-                ${d.class_name === 'quadrat_area' ? `<button type="button" data-use-quadrat="${escapeHtml(d.id)}">Use boundary</button>` : ''}</div>`;
-        }).join('') : '<p>No detections passed the model threshold. Review the image manually.</p>';
-        ['x', 'y', 'w', 'h'].forEach(function (key) {
-            document.getElementById('review-quadrat-' + key).value = result.quadrat_bbox
-                ? Number((result.quadrat_bbox[key] * 100).toFixed(4)) : '';
-        });
-        if (reviewFeedback) reviewFeedback.textContent = '';
+        boxSelection.innerHTML = '<option value="">No box selected</option>' +
+            (result.quadrat_bbox ? '<option value="quadrat">Quadrat</option>' : '') +
+            Editor.coral(result).map(d => `<option value="${escapeHtml(d.id)}">${Editor.label(result, d.id)}</option>`).join('');
+        boxSelection.value = e.selected || '';
+        const candidates = result.detections.filter(d => d.class_name === 'quadrat_area');
+        document.getElementById('quadrat-candidate-label').hidden = candidates.length < 2;
+        document.getElementById('review-quadrat-candidate').innerHTML = '<option value="">Choose detected boundary</option>' +
+            candidates.map((d, i) => `<option value="${escapeHtml(d.id)}">Boundary ${i + 1}</option>`).join('');
+        syncEditorControls(result);
         refreshReviewState();
     };
 
@@ -1139,7 +1176,7 @@ const describeCoverageClass = function (code) {
             return;
         }
         if (!result.quadrat_bbox) {
-            pointList.innerHTML = '<p class="thumb-empty-state">No sampling boundary selected. Enter its position and size above, then apply it to place ten sampling points.</p>';
+            pointList.innerHTML = '<p class="thumb-empty-state">No sampling boundary selected. Choose Edit quadrat and drag on the image to draw a boundary and place ten sampling points.</p>';
             refreshReviewState();
             return;
         }
@@ -1151,7 +1188,7 @@ const describeCoverageClass = function (code) {
         }).join('');
         pointList.querySelectorAll('.point-class-select').forEach(function (select) {
             select.addEventListener('change', function () {
-                Analysis.setPoint(result, Number(this.dataset.index), this.value);
+                Editor.change(result, () => Analysis.setPoint(result, Number(this.dataset.index), this.value));
                 if (reviewFeedback) reviewFeedback.textContent = 'Point changed. Confirm image review again when all points are checked.';
                 refreshReviewState();
             });
@@ -1164,7 +1201,6 @@ const describeCoverageClass = function (code) {
         if (!result || isAnalyzing) return;
         result.quadrat_confirmed = this.checked;
         result.reviewed = false;
-        if (this.checked) document.getElementById('quadrat-editor').open = false;
         refreshReviewState();
     });
     if (confirmImageReview) confirmImageReview.addEventListener('click', function () {
@@ -1174,51 +1210,89 @@ const describeCoverageClass = function (code) {
         if (reviewFeedback) reviewFeedback.textContent = 'Image review confirmed. Subsequent point or boundary edits require confirmation again.';
         refreshReviewState();
     });
-    const applyQuadrat = document.getElementById('apply-quadrat-btn');
-    ['x', 'y', 'w', 'h'].forEach(function (key) {
-        document.getElementById('review-quadrat-' + key).addEventListener('input', function () {
-            const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-            if (!result || isAnalyzing) return;
-            result.boundary_draft = true;
-            result.quadrat_confirmed = false;
-            result.reviewed = false;
-            reviewFeedback.textContent = 'Apply the edited boundary before confirming its review.';
-            refreshReviewState();
-        });
-    });
-    if (applyQuadrat) applyQuadrat.addEventListener('click', function () {
-        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        if (!result || isAnalyzing) return;
-        try {
-            const box = {};
-            ['x', 'y', 'w', 'h'].forEach(function (key) {
-                const input = document.getElementById('review-quadrat-' + key);
-                if (!input.value.trim()) throw new Error('Enter all four boundary values.');
-                box[key] = Number(input.value) / 100;
-            });
-            Analysis.setQuadrat(result, box);
-            drawQuadratAndPoints(result.quadrat_bbox, result.points);
-            renderPointList();
-        } catch (error) { reviewFeedback.textContent = error.message; }
-    });
-    if (detectionList) detectionList.addEventListener('click', function (event) {
-        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        if (!result || isAnalyzing) return;
-        const use = event.target.closest('[data-use-quadrat]');
-        const select = event.target.closest('[data-detection-id]');
-        if (use) {
-            const d = result.detections.find(d => d.id === use.dataset.useQuadrat);
-            if (d) { Analysis.setQuadrat(result, d.box); renderPointList(); }
-        } else if (select) {
-            result.selected_detection = select.dataset.detectionId;
-            detectionList.querySelectorAll('[data-detection-id]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.detectionId === result.selected_detection)));
-        }
-        drawQuadratAndPoints(result.quadrat_bbox, result.points);
-    });
-    if (showDetectionBoxes) showDetectionBoxes.addEventListener('change', function () {
-        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+    const finishEditorAction = function () {
+        closeContextMenu();
+        renderPointList();
+        const result = activeResult();
         if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
+    };
+    boxSelection.addEventListener('change', function () {
+        const result = activeResult(); if (!result || isAnalyzing) return;
+        Editor.ensure(result).selected = this.value || null;
+        if (this.value && this.value !== 'quadrat') showDetectionBoxes.checked = true;
+        resetPointZoom(true); finishEditorAction();
     });
+    document.getElementById('selected-box-class').addEventListener('change', function () {
+        const result = activeResult(); if (!result || isAnalyzing) return;
+        Editor.rename(result, this.value); finishEditorAction();
+    });
+    document.getElementById('review-square-lock').addEventListener('change', function () {
+        const result = activeResult(); if (!result || isAnalyzing || !result.quadrat_bbox) return;
+        Editor.change(result, () => {
+            Editor.ensure(result).square = this.checked;
+            if (this.checked) Analysis.setQuadrat(result, Editor.square(result.quadrat_bbox, result.image));
+        });
+        finishEditorAction();
+    });
+    document.getElementById('review-quadrat-candidate').addEventListener('change', function () {
+        const result = activeResult(); if (!result || isAnalyzing) return;
+        const candidate = result.detections.find(d => d.id === this.value && d.class_name === 'quadrat_area');
+        if (!candidate) return;
+        Editor.change(result, () => { Analysis.setQuadrat(result, candidate.box); Editor.ensure(result).selected = 'quadrat'; Editor.ensure(result).square = false; });
+        finishEditorAction();
+    });
+    const deleteSelectedBox = function () {
+        const result = activeResult(); if (!result || isAnalyzing) return;
+        Editor.remove(result); finishEditorAction();
+    };
+    document.getElementById('review-delete-box').addEventListener('click', deleteSelectedBox);
+    document.getElementById('review-context-delete').addEventListener('click', deleteSelectedBox);
+    document.getElementById('review-context-cancel').addEventListener('click', closeContextMenu);
+    document.addEventListener('pointerdown', event => { if (!contextMenu.contains(event.target)) closeContextMenu(); });
+    const historyAction = function (redo) {
+        const result = activeResult(); if (!result || isAnalyzing || reviewDrag) return;
+        if (analyzeModal.classList.contains('is-visible') || analyzeConfirmModal.classList.contains('is-visible')) return;
+        (redo ? Editor.redo : Editor.undo)(result); resetPointZoom(true); finishEditorAction();
+    };
+    document.getElementById('review-undo').addEventListener('click', () => historyAction(false));
+    document.getElementById('review-redo').addEventListener('click', () => historyAction(true));
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && reviewDrag) {
+            const drag = reviewDrag;
+            reviewDrag = null; isDraggingQuadrat = false;
+            Editor.restore(drag.result, drag.before, false);
+            if (quadratCanvas.hasPointerCapture(drag.pointer)) quadratCanvas.releasePointerCapture(drag.pointer);
+            finishEditorAction(); event.preventDefault(); event.stopImmediatePropagation(); return;
+        }
+        if (event.key === 'Escape' && !contextMenu.hidden) { event.preventDefault(); event.stopImmediatePropagation(); closeContextMenu(); return; }
+        if (event.target.closest('input,textarea,select,[contenteditable="true"]') || isAnalyzing || reviewDrag) return;
+        const key = event.key.toLowerCase();
+        if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
+            event.preventDefault(); historyAction(key === 'y' || event.shiftKey);
+        }
+    });
+    document.querySelectorAll('[data-review-tool]').forEach(button => button.addEventListener('click', function () {
+        if (isAnalyzing || reviewDrag) return;
+        reviewTool = this.dataset.reviewTool;
+        resetPointZoom(true); closeContextMenu();
+        document.querySelectorAll('[data-review-tool]').forEach(b => b.setAttribute('aria-pressed', String(b === this)));
+        const hints = {
+            select: 'Click a box to select it, or use the selector. Hand tool moves and resizes.',
+            quadrat: 'Drag the quadrat or its corners. Drag empty space to draw a replacement boundary.',
+            markers: 'Drag a numbered marker within the quadrat. Its class will need review again.',
+            hand: 'Select, move, or resize boxes directly. Smaller coral boxes take priority in overlaps.',
+            hard: 'Drag on the image to draw a Hard Coral box.', soft: 'Drag on the image to draw a Soft Coral box.'
+        };
+        document.getElementById('review-tool-hint').textContent = hints[reviewTool];
+        if (['hard', 'soft'].includes(reviewTool)) showDetectionBoxes.checked = true;
+        if (reviewTool === 'markers') showMarkers.checked = true;
+        const result = activeResult();
+        if (result && reviewTool === 'quadrat') Editor.ensure(result).selected = 'quadrat';
+        finishEditorAction();
+    }));
+    [showDetectionBoxes, showMarkers, showFill].forEach(control => control.addEventListener('change', function () {
+        const result = activeResult(); if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
+    }));
 
     const updateImageNav = function () {
         const total = selectedFiles.length;
@@ -1497,7 +1571,7 @@ const describeCoverageClass = function (code) {
             ctx.lineWidth = 2;
             ctx.strokeRect(rTL.x, rTL.y, rect.w * scale, rect.h * scale);
 
-            (results.points || []).forEach(function (point, index) {
+                (showMarkers.checked ? results.points || [] : []).forEach(function (point, index) {
                 const p = toLoupe(rect.x + point.x * rect.w, rect.y + point.y * rect.h);
                 if (p.x < -20 || p.y < -20 || p.x > LOUPE_SIZE + 20 || p.y > LOUPE_SIZE + 20) {
                     return; // outside the magnified view
@@ -1641,7 +1715,7 @@ const describeCoverageClass = function (code) {
         updateThumbPointsStatus();
     };
 
-    // Single count line for this transect; warns when it isn't ~50 images.
+    // Show the number of selected images in this transect.
     function renderImageCount() {
         const el = document.getElementById('transect-legend');
         if (!el) { return; }
@@ -1651,11 +1725,10 @@ const describeCoverageClass = function (code) {
             el.innerHTML = '';
             return;
         }
-        const off = count !== IMAGES_PER_TRANSECT;
         el.hidden = false;
-        el.innerHTML = `<span class="transect-chip${off ? ' is-warn' : ''}">`
+        el.innerHTML = '<span class="transect-chip">'
             + `<strong>${count} image${count === 1 ? '' : 's'}</strong> in this transect`
-            + `${off ? ` <em>(expected ~${IMAGES_PER_TRANSECT})</em>` : ''}</span>`;
+            + '</span>';
     }
 
     // ---- Drag-and-drop folder support ----
@@ -1823,10 +1896,18 @@ const describeCoverageClass = function (code) {
         });
     }
 
+    if (chooseImagesButton && uploadInput) {
+        chooseImagesButton.addEventListener('click', function () {
+            if (isAnalyzing) return;
+            uploadInput.click();
+        });
+    }
+
     if (uploadInput) {
         uploadInput.addEventListener('change', function () {
             const picked = uploadInput.files ? Array.from(uploadInput.files).filter(isAcceptedImage) : [];
             if (!picked.length) {
+                syncUploadInputFromSelected();
                 return; // Cancelled dialog — keep the current selection.
             }
             appendImages(picked);
@@ -1954,128 +2035,125 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('mouseleave', hideLoupe);
     }
 
-    // ---- Quadrat editing: drag a corner to resize, drag inside to move ----
-    // Works on the analysed results (aiResultsByFileKey). Points are stored
-    // relative to the box, so they follow it; the new box persists through
-    // syncQuadratInputs() on submit.
+    // One pointer gesture is one undo transaction. Coordinates stay image-relative.
     if (quadratCanvas) {
-        // Pixel rect of the active image's quadrat within the canvas, using the
-        // same letterbox geometry as drawQuadratAndPoints.
-        const getActiveRectPx = function () {
-            const activeFile = getActiveFile();
-            const results = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
-            const geo = getImageDisplayGeometry();
-            if (!results || !results.quadrat_bbox || !geo) {
-                return null;
-            }
-            const b = results.quadrat_bbox;
-            return {
-                x: geo.offsetX + b.x * geo.displayWidth,
-                y: geo.offsetY + b.y * geo.displayHeight,
-                w: b.w * geo.displayWidth,
-                h: b.h * geo.displayHeight
-            };
+        quadratCanvas.style.touchAction = 'none';
+        const pointOnImage = function (event, clamp = false) {
+            const geo = getImageDisplayGeometry(); if (!geo) return null;
+            const p = getPointerPos(event);
+            let x = (p.x - geo.offsetX) / geo.displayWidth, y = (p.y - geo.offsetY) / geo.displayHeight;
+            if (!clamp && (x < 0 || y < 0 || x > 1 || y > 1)) return null;
+            return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
         };
-
-        const CURSOR_BY_HANDLE = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' };
-
-        // Build a new pixel rect when dragging one corner (the opposite corner
-        // stays pinned).
-        const resizeRectByHandle = function (rectPx, key, pos) {
-            const left = rectPx.x;
-            const top = rectPx.y;
-            const right = rectPx.x + rectPx.w;
-            const bottom = rectPx.y + rectPx.h;
-            let x0 = left, y0 = top, x1 = right, y1 = bottom;
-            if (key === 'nw') { x0 = pos.x; y0 = pos.y; }
-            else if (key === 'ne') { x1 = pos.x; y0 = pos.y; }
-            else if (key === 'se') { x1 = pos.x; y1 = pos.y; }
-            else if (key === 'sw') { x0 = pos.x; y1 = pos.y; }
-            return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0) };
+        const handleAt = function (result, event) {
+            const rect = Editor.selected(result), geo = getImageDisplayGeometry();
+            if (!rect || !geo || (result.editor.selected !== 'quadrat' && !showDetectionBoxes.checked)) return null;
+            return getHandleHit({ x: geo.offsetX + rect.x * geo.displayWidth, y: geo.offsetY + rect.y * geo.displayHeight,
+                w: rect.w * geo.displayWidth, h: rect.h * geo.displayHeight }, getPointerPos(event));
         };
-
-        let dragMode = null;   // 'resize' | 'move'
-        let dragHandle = null; // corner key when resizing
-        let dragStart = null;  // pointer pos + rect at mousedown
-
-        const commitRect = function (rectPx) {
-            const activeFile = getActiveFile();
-            const results = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
-            const geo = getImageDisplayGeometry();
-            if (!results || !geo) {
-                return;
-            }
-            const bounds = { x: geo.offsetX, y: geo.offsetY, w: geo.displayWidth, h: geo.displayHeight };
-            const clamped = clampRect(rectPx, bounds);
-            const nextBox = {
-                x: (clamped.x - geo.offsetX) / geo.displayWidth,
-                y: (clamped.y - geo.offsetY) / geo.displayHeight,
-                w: clamped.w / geo.displayWidth,
-                h: clamped.h / geo.displayHeight
-            };
-            Analysis.setQuadrat(results, nextBox);
-            refreshReviewState();
-            drawQuadratAndPoints(results.quadrat_bbox, results.points);
-        };
-
-        quadratCanvas.addEventListener('mousedown', function (event) {
-            if (isAnalyzing || zoomedPointIndex >= 0 || event.button !== 0) return;
-            const rectPx = getActiveRectPx();
-            if (!rectPx) {
-                return;
-            }
-            const pos = getPointerPos(event);
-            const handle = getHandleHit(rectPx, pos);
-            if (handle) {
-                dragMode = 'resize';
-                dragHandle = handle;
-            } else if (isInsideRect(rectPx, pos)) {
-                dragMode = 'move';
+        quadratCanvas.addEventListener('pointerdown', function (event) {
+            const result = activeResult(), point = pointOnImage(event);
+            if (!result || !point || isAnalyzing || event.button !== 0 || zoomedPointIndex >= 0) return;
+            closeContextMenu();
+            const e = Editor.ensure(result), before = Editor.snapshot(result);
+            let mode = null, handle = null, marker = null;
+            if (['hard', 'soft'].includes(reviewTool)) mode = 'draw';
+            else if (reviewTool === 'markers') {
+                if (!result.quadrat_bbox || !showMarkers.checked) return;
+                const geo = getImageDisplayGeometry(), b = result.quadrat_bbox;
+                let distance = 18;
+                result.points.forEach((p, i) => {
+                    const d = Math.hypot((b.x + p.x * b.w - point.x) * geo.displayWidth,
+                        (b.y + p.y * b.h - point.y) * geo.displayHeight);
+                    if (d < distance) { distance = d; marker = i; }
+                });
+                if (marker === null) return;
+                mode = 'marker';
             } else {
-                return;
-            }
-            isDraggingQuadrat = true;
-            dragStart = { x: pos.x, y: pos.y, rect: rectPx };
-            hideLoupe();
-            event.preventDefault();
-        });
-
-        quadratCanvas.addEventListener('mousemove', function (event) {
-            const pos = getPointerPos(event);
-            if (!isDraggingQuadrat) {
-                // Hover feedback: show the right cursor over handles / inside box.
-                const rectPx = getActiveRectPx();
-                if (rectPx) {
-                    const handle = getHandleHit(rectPx, pos);
-                    quadratCanvas.style.cursor = handle
-                        ? CURSOR_BY_HANDLE[handle]
-                        : (isInsideRect(rectPx, pos) ? 'move' : 'default');
+                if (reviewTool === 'quadrat') e.selected = result.quadrat_bbox ? 'quadrat' : null;
+                handle = handleAt(result, event);
+                if (handle) mode = 'resize';
+                else if (reviewTool === 'quadrat') mode = Editor.contains(result.quadrat_bbox, point) ? 'move' : 'draw';
+                else {
+                    const id = showDetectionBoxes.checked ? Editor.hit(result, point) : Editor.contains(result.quadrat_bbox, point) ? 'quadrat' : null;
+                    e.selected = id;
+                    if (reviewTool === 'hand' && id) mode = 'move';
                 }
-                return;
             }
-            let next;
-            if (dragMode === 'resize') {
-                next = resizeRectByHandle(dragStart.rect, dragHandle, pos);
-            } else {
-                const dx = pos.x - dragStart.x;
-                const dy = pos.y - dragStart.y;
-                next = { x: dragStart.rect.x + dx, y: dragStart.rect.y + dy, w: dragStart.rect.w, h: dragStart.rect.h };
-            }
-            commitRect(next);
+            if (!mode) { finishEditorAction(); return; }
+            reviewDrag = { result, before, start: point, mode, handle, marker, pointer: event.pointerId,
+                rect: Editor.selected(result) ? { ...Editor.selected(result) } : null, id: e.selected, moved: false };
+            isDraggingQuadrat = true; hideLoupe();
+            quadratCanvas.setPointerCapture(event.pointerId);
+            event.preventDefault();
+            renderDetectionReview(result);
+            drawQuadratAndPoints(result.quadrat_bbox, result.points);
         });
-
-        const endDrag = function () {
-            if (!isDraggingQuadrat) {
+        quadratCanvas.addEventListener('pointermove', function (event) {
+            const result = activeResult(), p = pointOnImage(event, true);
+            if (!result || !p || !reviewDrag) {
+                quadratCanvas.style.cursor = ['hard', 'soft', 'quadrat', 'markers'].includes(reviewTool) ? 'crosshair' : reviewTool === 'hand' ? 'grab' : 'default';
                 return;
             }
-            isDraggingQuadrat = false;
-            dragMode = null;
-            dragHandle = null;
-            dragStart = null;
-            renderPointList();
-            updateSummary();
+            const drag = reviewDrag, geo = getImageDisplayGeometry();
+            const dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+            if (Math.hypot(dx * geo.displayWidth, dy * geo.displayHeight) < 2 && !drag.moved) return;
+            drag.moved = true;
+            if (drag.mode === 'draw') {
+                drag.draft = { x: Math.min(drag.start.x, p.x), y: Math.min(drag.start.y, p.y), w: Math.abs(dx), h: Math.abs(dy) };
+                drawQuadratAndPoints(result.quadrat_bbox, result.points);
+                const ctx = quadratCanvas.getContext('2d'); ctx.save(); ctx.strokeStyle = reviewTool === 'quadrat' ? '#ff8a3d' : reviewTool === 'hard' ? '#b56aff' : '#32e0bf';
+                ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+                ctx.strokeRect(geo.offsetX + drag.draft.x * geo.displayWidth, geo.offsetY + drag.draft.y * geo.displayHeight,
+                    drag.draft.w * geo.displayWidth, drag.draft.h * geo.displayHeight); ctx.restore();
+                return;
+            }
+            if (drag.mode === 'marker') {
+                const b = result.quadrat_bbox;
+                Editor.marker(result, drag.marker, { x: (p.x - b.x) / b.w, y: (p.y - b.y) / b.h });
+            } else {
+                const box = drag.mode === 'resize' ? Editor.resize(drag.rect, drag.handle, dx, dy, result.image,
+                    drag.id === 'quadrat' && Editor.ensure(result).square) : Editor.move(drag.rect, dx, dy);
+                Editor.setBox(result, drag.id, box);
+            }
+            refreshReviewState(); drawQuadratAndPoints(result.quadrat_bbox, result.points);
+        });
+        const finishPointer = function (event) {
+            if (!reviewDrag) return;
+            const drag = reviewDrag, result = drag.result, geo = getImageDisplayGeometry();
+            reviewDrag = null; isDraggingQuadrat = false;
+            if (event.type === 'pointercancel') Editor.restore(result, drag.before, false);
+            else if (drag.moved && drag.mode === 'draw') {
+                const b = drag.draft;
+                if (b && geo && b.w * geo.displayWidth >= 4 && b.h * geo.displayHeight >= 4) {
+                    if (reviewTool === 'quadrat') {
+                        const next = Editor.ensure(result).square ? Editor.square(b, result.image) : b;
+                        Analysis.setQuadrat(result, next); Editor.ensure(result).selected = 'quadrat'; Editor.commit(result, drag.before);
+                    } else {
+                        try { Editor.add(result, b, reviewTool === 'hard' ? 'Hard Coral' : 'Soft Coral'); }
+                        catch (error) { reviewFeedback.textContent = error.message; }
+                    }
+                }
+            } else if (drag.moved) Editor.commit(result, drag.before);
+            if (quadratCanvas.hasPointerCapture(event.pointerId)) quadratCanvas.releasePointerCapture(event.pointerId);
+            finishEditorAction();
         };
-        window.addEventListener('mouseup', endDrag);
+        quadratCanvas.addEventListener('pointerup', finishPointer);
+        quadratCanvas.addEventListener('pointercancel', finishPointer);
+        quadratCanvas.addEventListener('contextmenu', function (event) {
+            const result = activeResult(), p = pointOnImage(event);
+            if (!result || !p || isAnalyzing || reviewDrag || zoomedPointIndex >= 0) return;
+            const id = showDetectionBoxes.checked ? Editor.hit(result, p, true) : Editor.contains(result.quadrat_bbox, p) ? 'quadrat' : null;
+            if (!id) return;
+            event.preventDefault(); Editor.ensure(result).selected = id;
+            finishEditorAction();
+            (isFullscreen() ? document.getElementById('quadrat-fs') : document.body).appendChild(contextMenu);
+            document.getElementById('review-context-delete').textContent = `Delete ${Editor.label(result, id)}`;
+            contextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - 205)) + 'px';
+            contextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - 100)) + 'px';
+            contextMenu.hidden = false;
+            document.getElementById('review-context-delete').focus();
+        });
     }
 
     const reanalyzeBtn = document.getElementById('reanalyze-btn');

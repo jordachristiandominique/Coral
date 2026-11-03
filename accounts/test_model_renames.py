@@ -131,4 +131,5 @@ class RepositoryRenameMigrationTests(TransactionTestCase):
             self.assertEqual(restored.coverage_class, 'B')
             self.assertEqual(restored.point_classes, original['point_classes'])
         finally:
-            MigrationExecutor(connection).migrate(new_target)
+            executor = MigrationExecutor(connection)
+            executor.migrate(executor.loader.graph.leaf_nodes())

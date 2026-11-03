@@ -70,8 +70,15 @@
 
     function payload(result) {
         if (!reviewed(result)) throw new Error('Confirm the quadrat, classify all ten points, and confirm image review.');
-        return { rect: { ...result.quadrat_bbox }, points: result.points.map(p => ({ x: p.x, y: p.y })),
+        const submitted = { rect: { ...result.quadrat_bbox }, points: result.points.map(p => ({ x: p.x, y: p.y })),
             point_classes: result.points.map(p => p.class), review: { version: 1, confirmed: true } };
+        if (result.editor) submitted.analysis = {
+            version: 1, model: { ...result.model }, square_lock: result.editor.square,
+            boxes: result.detections.filter(d => d.class_name !== 'quadrat_area').map(d => ({
+                id: d.id, class_name: d.class_name, box: { ...d.box }, source: d.source === 'manual' ? 'manual' : 'ai'
+            }))
+        };
+        return submitted;
     }
 
     async function request(file, url, csrf, options = {}) {

@@ -119,7 +119,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 
 ### Migrations
 
-16 migrations, `accounts/migrations/0001_initial.py` → `0016_repository_image_category_names.py`:
+17 migrations, `accounts/migrations/0001_initial.py` → `0017_surveyimage_analysis_review.py`:
 - `0002_add_admin_role` — adds `admin` to role choices.
 - `0003_image_batches` → `0007` — survey/image schema, `surveyor_names` rename.
 - `0008_report` — Report model.
@@ -128,6 +128,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 - `0011_transect_batchimage_transect` + `0012_backfill_transects` (**data migration** grouping existing images into transects) + `0013/0014` transect coords + backfill.
 - `0015_notification` — Notification model.
 - `0016_repository_image_category_names` — reversible model/table and stored category-field renames; preserves permission grants.
+- `0017_surveyimage_analysis_review` — adds optional JSON for accepted coral boxes and a researcher-confirmed model reference; existing records default to an empty object.
 
 ### ORM patterns in use
 
@@ -197,7 +198,7 @@ The core write path, end to end:
 
 Source findings checked on 2026-10-10; these do not imply runtime testing:
 
-- **AI review integration (updated 2026-11-03):** upload analysis now uses the local YOLO endpoint, without fabricated fallback boxes or classes. All ten points require manual classification and image review. Training/comparison notebooks remain separate from inference. Raw detections and provenance are displayed in browser memory; the existing image fields persist reviewed geometry and classes only.
+- **AI review integration (updated 2026-11-03):** upload analysis now uses the local YOLO endpoint, without fabricated fallback boxes or classes. All ten points require manual classification and image review. Training/comparison notebooks remain separate from inference. Raw detector confidence remains session-only; accepted edited boxes and a researcher-confirmed model reference are saved in the optional analysis_review JSON alongside existing reviewed geometry and classes.
 - **Authentication exception:** `accounts/views.py::batch_detail` lacks `login_required` and directly calls role methods on `request.user`. The duplicated login decorators immediately before `batch_image_annotated` protect that view only. Anonymous batch-detail access is not guarded by the documented pattern.
 - **Report formats:** `accounts/report_generator.py::generate_docx`, `generate_xlsx`, and `generate_html` mark reports completed with fixed sizes without writing files. Its PDF renders metadata rather than survey results. The separate `accounts/excel_export.py` batch workbook is implemented.
 - **Report errors:** `accounts/views.py::generate_report` records generation failures but returns a success response with "Report generation started"; processing is synchronous and no worker is launched.
@@ -261,7 +262,7 @@ reviews. Re-analysis replaces old results, never restoring fake fallback data.
 The canvas shows normalized full-image Hard/Soft Coral and quadrat detections
 with confidence labels. The highest-confidence quadrat is a suggested sampling
 boundary, not a forced square. Researchers can choose another detected quadrat,
-edit its numeric percentages, or drag/resize it. If none is detected, no centered
+select it in the compact inspector or drag/resize it with the review tools. If none is detected, no centered
 boundary or classified points are invented. A manually applied boundary is needed.
 
 Ten deterministic points are placed in two rows of five, relative to the chosen
@@ -272,18 +273,17 @@ never assigns Non-coral or another class. These are point-intercept samples,
 not the standalone demo's area-proportional representative markers.
 
 Saving is enabled only after every image's boundary, ten point classes, and image
-review are confirmed. Geometry edits reset point classifications; point edits and
-unapplied boundary drafts invalidate approval. The multipart contract remains
+review are confirmed. Geometry edits reset point classifications; point and accepted-box edits invalidate approval. The multipart contract remains
 `image_quadrat_1..n` with rect, quadrat-relative points, and full point_classes;
 new UI payloads also carry `review: {version: 1, confirmed: true}`. Server-side
 validation checks this versioned review contract and canonical HCC is computed
 through `compute_coverage`. Legacy manual payloads without the review extension
 remain supported. No historical records or database schema were changed.
 
-Only reviewed geometry, point classes, and canonical cached statistics are saved
-in the existing fields. Raw boxes, confidence, and model provenance are not yet
-persisted with a SurveyImage; they are review-session data. Durable inference
-provenance and editable accepted coral boxes remain separate future work.
+Reviewed geometry, point classes, and canonical cached statistics remain in their
+existing fields. The new optional analysis_review JSON saves accepted edited coral
+boxes and a researcher-confirmed model reference. Raw confidence remains session-only.
+See section 14 for the compact editor and persistence rules.
 
 The preview reports this new transect, not an already-existing site's total HCC.
 Its equal ten-point image mean uses two-place ties-to-even rounding to match the
@@ -293,3 +293,40 @@ behaviour. Chrome verification used a separate ignored SQLite database/media
 folder for real inference, reviewed upload, navigation, missing-quadrat recovery,
 failure/retry, fullscreen and mobile layout, leaving the live PostgreSQL surveys
 untouched. Captures are ignored under `output/playwright/`.
+
+
+## 14. Compact review editor
+
+`static/js/upload_batch_review.js` contains pure geometry/history operations, loaded
+between the analysis adapter and page controller. The upload template now offers
+Select, Edit quadrat, Edit markers, Hand tool, HC box, SC box, Undo, and Redo.
+There is no layer panel; the selector and inspector show only the chosen object.
+Hand selection prefers the smallest overlapping coral box; the quadrat remains
+explicitly selectable. Pointer gestures support box drawing, moving, corner
+resizing, and marker repositioning. Right-click opens deletion actions. Labels
+are HC/SC identifiers only, with no box area, overlap estimates, or confidence
+percentages. The official HCC percentage/category remain based on reviewed points.
+
+History is stored per image, capped at 40 transactions, with one transaction per
+drag and redo cleared by new edits. Ctrl+Z/Ctrl+Y preserve native text-field undo.
+Undo/redo invalidates review approval. A moved marker loses only its own class;
+quadrat edits reset all points and boundary confirmation. Optional square locking
+uses image pixels, not equal normalized width/height; it never silently modifies
+an AI quadrat. Marker/box/fill visibility controls do not alter measurements.
+
+`SurveyImage.analysis_review` (migration 0017) stores accepted corrected/manual
+coral boxes, square-lock status, and a researcher-confirmed model ID/SHA/version.
+`accounts/survey_validation.py` validates and normalizes this optional extension,
+without changing HCC formulas. The reference is user-reviewed metadata, not a
+signed inference attestation. Existing records use {}; historical exports still
+render the previously saved quadrat/points rather than the new coral boxes.
+The local migration preserved all prior fields of 51 images, verified against an
+ignored before-migration JSON snapshot. Migration tests cover legacy preservation.
+`RepositoryRenameMigrationTests` now restores the current leaf schema after its
+older rename test so later tests do not run against an outdated schema.
+
+The standalone area-estimation demo is unchanged. Its box-area/overlap percentage
+calculations and area-proportional marker allocation are not imported into this
+point-intercept editor. Test commands additionally include
+`node --test tests/js/upload_batch_review.test.cjs`. Django/Node tests and browser
+checks are recorded in `docs/yolo-local-inference.md`.
