@@ -219,6 +219,16 @@ const initializeUploadBatch = function () {
     const analyzeConfirmAccept = document.getElementById('analyze-confirm-accept');
     const submitHint = document.getElementById('submit-hint');
     const uploadForm = document.getElementById('upload-batch-form');
+    const Analysis = window.UploadBatchAnalysis;
+    if (!Analysis) throw new Error('Image review tools did not load. Reload the page.');
+    const analysisErrors = {};
+    const retryAnalysisBtn = document.getElementById('retry-analysis-btn');
+    const detectionReview = document.getElementById('detection-review');
+    const detectionList = document.getElementById('detection-list');
+    const confirmQuadrat = document.getElementById('confirm-quadrat');
+    const confirmImageReview = document.getElementById('confirm-image-review');
+    const showDetectionBoxes = document.getElementById('show-detection-boxes');
+    const reviewFeedback = document.getElementById('review-feedback');
     const quadratInputs = document.getElementById('quadrat-inputs');
     const pointList = document.getElementById('point-list');
     const pointProgress = document.getElementById('point-progress');
@@ -246,7 +256,6 @@ const initializeUploadBatch = function () {
     };
 
     const selectedFiles = [];
-    const quadratStateByKey = {};
     const thumbUrlByKey = {};
     // True once the form is actually being saved, so the beforeunload guard
     // doesn't prompt on the normal post-save redirect.
@@ -259,7 +268,6 @@ const initializeUploadBatch = function () {
         if (transectLabelInput && label) { transectLabelInput.value = label; }
     };
     const MIN_POINTS = 10;
-    const DEFAULT_RECT_SCALE = 0.5;
     // Quadrat edit affordances: corner grab tolerance (px) and smallest box.
     const HANDLE_SIZE = 10;
     const MIN_RECT_SIZE = 24;
@@ -296,16 +304,12 @@ const describeCoverageClass = function (code) {
     };
     // Build <option> markup for a point-class dropdown, marking `selected` current.
     const buildClassOptions = function (selectedClass) {
-        return POINT_CLASSES.map(function (cls) {
+        return '<option value="">Review and choose...</option>' + POINT_CLASSES.map(function (cls) {
             const code = CPCE_CODES[cls] || '';
             const isSel = cls === selectedClass ? ' selected' : '';
             return `<option value="${cls}"${isSel}>${code} – ${cls}</option>`;
         }).join('');
     };
-    const MAX_ANALYZE_SIZE = 1200;
-    const ANALYZE_PATCH_RADIUS = 6;
-    const ANALYZE_SAT_MIN = 0.22;
-    const ANALYZE_VAL_MIN = 0.18;
     let activeFileIndex = 0;
     let activeImageUrl = null;
     // Index of the point currently zoomed/highlighted in the fullscreen view
@@ -356,27 +360,18 @@ const describeCoverageClass = function (code) {
             }
         }
 
-        // Batch-level coral coverage: aggregate every classified point across
-        // all analyzed images (same HC+SC ÷ total formula as per-image).
+        // Equal ten-point reviewed images yield the same mean image HCC as the server.
         if (summaryCoverage && summaryClass) {
-            const classes = [];
-            selectedFiles.forEach(function (file) {
-                const res = aiResultsByFileKey[getFileKey(file)];
-                if (res && res.points) {
-                    res.points.forEach(function (p) { classes.push(p.class); });
-                }
-            });
-            const total = classes.length;
-            if (!total) {
+            const t = computeTransectCoverage();
+            const reviewCount = t.imgCount;
+            const summaryReview = document.getElementById('summary-review');
+            if (summaryReview) summaryReview.textContent = `${reviewCount}/${selectedFiles.length} images reviewed`;
+            if (!t.total || reviewCount !== selectedFiles.length) {
                 summaryCoverage.textContent = '--';
                 summaryClass.textContent = 'Pending';
                 summaryClass.className = 'summary-class-badge class-pending';
             } else {
-                const coral = classes.filter(function (c) {
-                    return c === 'Hard Coral';
-                }).length;
-                const pct = Math.round((coral / total) * 100);
-                const code = getCoverageClass(pct);
+                const coral = t.hc, total = t.total, pct = t.pct, code = t.code;
                 summaryCoverage.textContent = `${pct}% (${coral} of ${total} hard coral points)`;
                 summaryClass.textContent = `Category ${code}`;
                 summaryClass.className = `summary-class-badge class-${code.toLowerCase()}`;
@@ -395,16 +390,6 @@ const describeCoverageClass = function (code) {
 
     const getFileKey = function (file) {
         return `${file.name}-${file.size}-${file.lastModified}`;
-    };
-
-    const ensureQuadratState = function (fileKey) {
-        if (!quadratStateByKey[fileKey]) {
-            quadratStateByKey[fileKey] = {
-                rect: null,
-                points: []
-            };
-        }
-        return quadratStateByKey[fileKey];
     };
 
     const getThumbUrl = function (fileKey, file) {
@@ -449,22 +434,8 @@ const describeCoverageClass = function (code) {
     };
 
     const isReadyToAnalyze = function () {
-        if (!selectedFiles.length) {
-            return false;
-        }
-
-        // Ready when all files have completed AI analysis with valid data
-        return selectedFiles.every(function (file) {
-            const fileKey = getFileKey(file);
-            const results = aiResultsByFileKey[fileKey];
-            // Must have points, quadrat_bbox, and coverage data (all required for backend)
-            return results && 
-                   results.points && 
-                   results.points.length > 0 && 
-                   results.quadrat_bbox && 
-                   results.coverage_class &&
-                   results.coverage_percent !== undefined;
-        });
+        return !isAnalyzing && selectedFiles.length > 0 && selectedFiles.every(file =>
+            Analysis.reviewed(aiResultsByFileKey[getFileKey(file)]) && !analysisErrors[getFileKey(file)]);
     };
 
     const isReadyForAutoAnalyze = function () {
@@ -484,7 +455,7 @@ const describeCoverageClass = function (code) {
 
         if (analyzeHint) {
             analyzeHint.textContent = ready
-                ? 'Ready to run AI analysis. Click below to automatically detect coral species.'
+                ? 'Run detection, then verify the quadrat and classify all ten sampling points.'
                 : 'Upload at least one image to enable AI analysis.';
         }
     };
@@ -495,6 +466,15 @@ const describeCoverageClass = function (code) {
         }
 
         const ready = isReadyToAnalyze();
+        const reanalyze = document.getElementById('reanalyze-btn');
+        if (reanalyze) reanalyze.disabled = isAnalyzing || !selectedFiles.length;
+        if (retryAnalysisBtn) {
+            retryAnalysisBtn.hidden = !selectedFiles.some(file => analysisErrors[getFileKey(file)]);
+            retryAnalysisBtn.disabled = isAnalyzing;
+        }
+        if (uploadInput) uploadInput.disabled = isAnalyzing;
+        if (detectionReview) detectionReview.inert = isAnalyzing;
+        if (pointList) pointList.inert = isAnalyzing;
         processOpenBtn.disabled = !ready;
         processOpenBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
 
@@ -502,60 +482,31 @@ const describeCoverageClass = function (code) {
 
         if (submitHint) {
             if (ready) {
-                submitHint.textContent = 'Image analysis complete! Review coverage data and click Upload to save the data repository.';
+                submitHint.textContent = 'All images reviewed. Upload to save this transect and its point-based HCC.';
                 submitHint.style.color = '#2a8793';
             } else {
-                submitHint.textContent = 'Upload images and run AI analysis to detect coral coverage.';
+                submitHint.textContent = 'Run detection, confirm each quadrat, classify ten points, and confirm every image review.';
                 submitHint.style.color = '';
             }
         }
     };
 
     const syncQuadratInputs = function () {
-        if (!quadratInputs) {
-            return true; // No quadrat inputs field, so skip
-        }
-
+        if (!quadratInputs || !isReadyToAnalyze()) return false;
         quadratInputs.innerHTML = '';
-        let hasErrors = false;
-
-        selectedFiles.forEach(function (file, index) {
-            const fileKey = getFileKey(file);
-            const results = aiResultsByFileKey[fileKey];
-
-            // Validate that results exist and have all required fields
-            if (!results || !results.quadrat_bbox || !results.points || !results.coverage_class) {
-                hasErrors = true;
-                console.error(`Missing AI results for image ${index + 1}: ${file.name}`);
-                return;
-            }
-
-            // Backend expects: rect, points, point_classes (all 7 coral classes preserved)
-            const payload = {
-                rect: results.quadrat_bbox,  // quadrat_bbox -> rect
-                points: results.points,
-                point_classes: results.points.map(function (p) {
-                    // Keep all 7 coral class names exactly as generated by AI
-                    // Don't simplify to "Live coral"/"Non-coral" - preserve detail!
-                    return p.class;
-                })
-            };
-
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = `image_quadrat_${index + 1}`;  // Match backend: image_quadrat_1, image_quadrat_2, etc.
-            input.value = JSON.stringify(payload);
-            quadratInputs.appendChild(input);
-
-            console.log(`✓ Serialized AI data for image ${index + 1}:`, payload);
-        });
-
-        if (hasErrors) {
-            console.error('Cannot submit: AI analysis incomplete for one or more images');
+        try {
+            selectedFiles.forEach(function (file, index) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `image_quadrat_${index + 1}`;
+                input.value = JSON.stringify(Analysis.payload(aiResultsByFileKey[getFileKey(file)]));
+                quadratInputs.appendChild(input);
+            });
+            return true;
+        } catch (error) {
+            quadratInputs.innerHTML = '';
             return false;
         }
-
-        return true;
     };
 
     const updateThumbActiveState = function () {
@@ -682,6 +633,34 @@ const describeCoverageClass = function (code) {
             offsetY = 0;
         }
 
+        const file = getActiveFile();
+        const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (result && (!showDetectionBoxes || showDetectionBoxes.checked)) {
+            result.detections.forEach(function (d, index) {
+                const x = offsetX + d.box.x * displayWidth, y = offsetY + d.box.y * displayHeight;
+                const w = d.box.w * displayWidth, h = d.box.h * displayHeight;
+                const color = d.class_name === 'Hard Coral' ? '#b56aff' : d.class_name === 'Soft Coral' ? '#32e0bf' : '#75baff';
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = d.id === result.selected_detection ? 3 : 1.5;
+                if (d.class_name === 'quadrat_area') ctx.setLineDash([5, 4]);
+                ctx.strokeRect(x, y, w, h);
+                ctx.setLineDash([]);
+                const code = d.class_name === 'Hard Coral' ? 'HC' : d.class_name === 'Soft Coral' ? 'SC' : 'Q';
+                const label = `${code} ${index + 1} · ${(d.confidence * 100).toFixed(0)}%`;
+                ctx.font = 'bold 11px Inter, sans-serif';
+                const labelWidth = ctx.measureText(label).width + 8;
+                const labelX = Math.max(offsetX, Math.min(x, offsetX + displayWidth - labelWidth));
+                const labelY = Math.max(offsetY + 14, y);
+                ctx.fillStyle = '#12313c';
+                ctx.fillRect(labelX, labelY - 14, labelWidth, 16);
+                ctx.fillStyle = color;
+                ctx.fillText(label, labelX + 4, labelY - 2);
+                ctx.restore();
+            });
+        }
+        if (!quadratBbox) return;
+
         // Scale quadrat from natural image coordinates to display coordinates
         const rectPx = {
             x: offsetX + quadratBbox.x * displayWidth,
@@ -766,8 +745,8 @@ const describeCoverageClass = function (code) {
             h = Math.abs(h);
         }
 
-        w = Math.max(w, MIN_RECT_SIZE);
-        h = Math.max(h, MIN_RECT_SIZE);
+        w = Math.min(bounds.w, Math.max(w, MIN_RECT_SIZE));
+        h = Math.min(bounds.h, Math.max(h, MIN_RECT_SIZE));
 
         const minX = bounds.x;
         const minY = bounds.y;
@@ -834,361 +813,53 @@ const describeCoverageClass = function (code) {
         return pos.x >= rectPx.x && pos.x <= rectPx.x + rectPx.w && pos.y >= rectPx.y && pos.y <= rectPx.y + rectPx.h;
     };
 
-    const generateRandomPoints = function (count) {
-        const points = [];
-        for (let i = 0; i < count; i += 1) {
-            points.push({ x: Math.random(), y: Math.random() });
-        }
-        return points;
-    };
-
-    const ensurePointClasses = function (state) {
-        if (!state.pointClasses || state.pointClasses.length !== state.points.length) {
-            const next = Array(state.points.length).fill('');
-            if (state.pointClasses && state.pointClasses.length) {
-                state.pointClasses.slice(0, next.length).forEach(function (value, index) {
-                    next[index] = value;
-                });
-            }
-            state.pointClasses = next;
-        }
-    };
-
-    const getImageBoundsForSize = function (naturalWidth, naturalHeight, canvasWidth, canvasHeight) {
-        if (!naturalWidth || !naturalHeight || !canvasWidth || !canvasHeight) {
-            return { x: 0, y: 0, w: canvasWidth, h: canvasHeight };
-        }
-
-        const scale = Math.min(canvasWidth / naturalWidth, canvasHeight / naturalHeight);
-        const displayWidth = naturalWidth * scale;
-        const displayHeight = naturalHeight * scale;
-        const offsetX = (canvasWidth - displayWidth) / 2;
-        const offsetY = (canvasHeight - displayHeight) / 2;
-
-        return { x: offsetX, y: offsetY, w: displayWidth, h: displayHeight };
-    };
-
-    const rgbToHsv = function (r, g, b) {
-        const rr = r / 255;
-        const gg = g / 255;
-        const bb = b / 255;
-        const max = Math.max(rr, gg, bb);
-        const min = Math.min(rr, gg, bb);
-        const delta = max - min;
-        let h = 0;
-        if (delta) {
-            if (max === rr) {
-                h = ((gg - bb) / delta) % 6;
-            } else if (max === gg) {
-                h = (bb - rr) / delta + 2;
-            } else {
-                h = (rr - gg) / delta + 4;
-            }
-            h *= 60;
-            if (h < 0) {
-                h += 360;
-            }
-        }
-        const s = max === 0 ? 0 : delta / max;
-        const v = max;
-        return { h: h, s: s, v: v };
-    };
-
-    const samplePatchAverage = function (imageData, x, y, radius) {
-        const data = imageData.data;
-        const width = imageData.width;
-        const height = imageData.height;
-        const startX = Math.max(0, Math.floor(x - radius));
-        const endX = Math.min(width - 1, Math.floor(x + radius));
-        const startY = Math.max(0, Math.floor(y - radius));
-        const endY = Math.min(height - 1, Math.floor(y + radius));
-        let totalH = 0;
-        let totalS = 0;
-        let totalV = 0;
-        let count = 0;
-
-        for (let yy = startY; yy <= endY; yy += 2) {
-            for (let xx = startX; xx <= endX; xx += 2) {
-                const idx = (yy * width + xx) * 4;
-                const rgb = rgbToHsv(data[idx], data[idx + 1], data[idx + 2]);
-                totalH += rgb.h;
-                totalS += rgb.s;
-                totalV += rgb.v;
-                count += 1;
-            }
-        }
-
-        if (!count) {
-            return { h: 0, s: 0, v: 0 };
-        }
-
-        return {
-            h: totalH / count,
-            s: totalS / count,
-            v: totalV / count
-        };
-    };
-
-    const classifyLiveCoral = function (hsv) {
-        const warmHue = (hsv.h >= 10 && hsv.h <= 70) || hsv.h >= 330 || hsv.h <= 10;
-        if (hsv.s >= ANALYZE_SAT_MIN && hsv.v >= ANALYZE_VAL_MIN && warmHue) {
-            return 'Live coral';
-        }
-        return 'Non-coral';
-    };
-
-    const loadImageFromFile = function (file) {
-        return new Promise(function (resolve, reject) {
-            const img = new Image();
-            const url = URL.createObjectURL(file);
-            img.onload = function () {
-                URL.revokeObjectURL(url);
-                resolve(img);
-            };
-            img.onerror = function () {
-                URL.revokeObjectURL(url);
-                reject(new Error('Failed to load image.'));
-            };
-            img.src = url;
-        });
-    };
-
-    const drawImageToCanvas = function (image) {
-        const maxSide = Math.max(image.naturalWidth || 0, image.naturalHeight || 0);
-        const scale = maxSide > MAX_ANALYZE_SIZE ? MAX_ANALYZE_SIZE / maxSide : 1;
-        const width = Math.max(1, Math.round((image.naturalWidth || 1) * scale));
-        const height = Math.max(1, Math.round((image.naturalHeight || 1) * scale));
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(image, 0, 0, width, height);
-        return { ctx: ctx, width: width, height: height, scale: scale };
-    };
-
-    const getAnalyzeCanvasSize = function () {
-        const size = getCanvasSize();
-        if (size.width && size.height) {
-            return size;
-        }
-        if (quadratWrap) {
-            const rect = quadratWrap.getBoundingClientRect();
-            return { width: rect.width || 1, height: rect.height || 1 };
-        }
-        return { width: 1, height: 1 };
-    };
-
-    const analyzeFilePoints = async function (file) {
-        const state = ensureQuadratState(getFileKey(file));
-        if (!state.rect || !state.points.length) {
-            return;
-        }
-
-        const image = await loadImageFromFile(file);
-        const canvasSize = getAnalyzeCanvasSize();
-        const bounds = getImageBoundsForSize(image.naturalWidth, image.naturalHeight, canvasSize.width, canvasSize.height);
-        const rectPx = toPixelRect(state.rect, canvasSize.width, canvasSize.height);
-
-        const renderInfo = drawImageToCanvas(image);
-        const imageData = renderInfo.ctx.getImageData(0, 0, renderInfo.width, renderInfo.height);
-
-        state.pointClasses = state.points.map(function (point) {
-            const px = rectPx.x + point.x * rectPx.w;
-            const py = rectPx.y + point.y * rectPx.h;
-            const nx = bounds.w ? (px - bounds.x) / bounds.w : 0;
-            const ny = bounds.h ? (py - bounds.y) / bounds.h : 0;
-            if (nx < 0 || nx > 1 || ny < 0 || ny > 1) {
-                return 'Non-coral';
-            }
-
-            const imgX = nx * renderInfo.width;
-            const imgY = ny * renderInfo.height;
-            const hsv = samplePatchAverage(imageData, imgX, imgY, ANALYZE_PATCH_RADIUS);
-            return classifyLiveCoral(hsv);
-        });
-    };
-
-    const startAnalyzeAll = async function () {
-        if (!analyzeAllBtn || isAnalyzing) {
-            return;
-        }
-
-        if (!isReadyForAutoAnalyze()) {
-            updateAnalyzeState();
-            return;
-        }
-
+    const startAnalyzeAll = async function (failedOnly = false) {
+        if (!analyzeAllBtn || isAnalyzing || !selectedFiles.length) return;
+        const files = selectedFiles.filter(file => !failedOnly || analysisErrors[getFileKey(file)]);
+        if (!files.length) return;
         isAnalyzing = true;
-        analyzeAllBtn.textContent = 'Analyzing...';
-        updateAnalyzeState();
-
-        resetAnalyzeProgress();
-        initAnalyzeProgressList();
-        openAnalyzeModal();
-
-        for (let i = 0; i < selectedFiles.length; i += 1) {
-            const file = selectedFiles[i];
-            const fileKey = getFileKey(file);
-            
-            setAnalyzeProgress(i, selectedFiles.length, file.name);
-            
-            try {
-                // TODO: Replace with actual YOLO API call
-                // For now, generate mock AI results
-                const mockResults = await generateMockAIResults(file);
-                aiResultsByFileKey[fileKey] = mockResults;
-                markAnalyzeItemDone(fileKey);
-            } catch (error) {
-                console.error('Error analyzing file:', error);
-                // Continue with next file
-            }
-        }
-
-        isAnalyzing = false;
-        if (analyzeAllBtn) {
-            analyzeAllBtn.textContent = 'Re-analyze images';
-        }
-
-        if (analyzeStatus) {
-            analyzeStatus.textContent = 'Analysis complete. Review the classified points below.';
-        }
-        if (analyzeModal) {
-            analyzeModal.classList.add('is-complete');
-        }
-        var analyzeTitleDone = document.getElementById('analyze-title');
-        if (analyzeTitleDone) {
-            analyzeTitleDone.textContent = 'Analysis Complete';
-        }
-        if (analyzeCloseBtn) {
-            analyzeCloseBtn.disabled = false;
-            analyzeCloseBtn.setAttribute('aria-disabled', 'false');
-        }
-
-        setActiveFileIndex(0);
-        renderPointList();
-        updateThumbPointsStatus();
+        resetPointZoom(true);
+        analyzeAllBtn.textContent = 'Detecting...';
         updateSubmitState();
-        updateSummary();   // refresh the batch-level coverage/class in Step 3
-    };
-
-    const generateMockAIResults = function (file) {
-        return new Promise(function (resolve) {
-            // Load image for color-based classification (for demo purposes)
-            const img = new Image();
-            const fileKey = getFileKey(file);
-            const startTime = Date.now();
-            const timeout = 3000; // 3 second timeout
-
-            const processImage = function (image) {
+        resetAnalyzeProgress();
+        initAnalyzeProgressList(files);
+        openAnalyzeModal();
+        let failed = 0;
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i], key = getFileKey(file);
+                // A failed re-analysis must never leave old classifications saveable.
+                delete aiResultsByFileKey[key];
+                delete analysisErrors[key];
+                setAnalyzeProgress(i, files.length, file.name, false);
                 try {
-                    // ALWAYS use centered quadrat (60% width, 70% height)
-                    // This ensures quadrat_bbox is NEVER null
-                    const quadratBbox = {
-                        x: 0.05,      // 5% from left
-                        y: 0.15,      // 15% from top
-                        w: 0.9,       // 90% width
-                        h: 0.7        // 70% height
-                    };
-
-                    // 7 coral classification classes
-                    const allClasses = [
-                        'Hard Coral',
-                        'Soft Coral',
-                        'Macroalgae',
-                        'Halimeda',
-                        'Algae Assemblage',
-                        'Abiotic',
-                        'Other Biota'
-                    ];
-
-                    // Simple classification: Ensure all 7 classes appear
-                    // Use deterministic cycling to guarantee variety
-                    const points = [];
-                    for (let i = 0; i < 10; i++) {
-                        // Deterministic: cycle through all 7 classes, repeating as needed
-                        const classIdx = i % 7;
-
-                        points.push({
-                            x: Math.random(),
-                            y: Math.random(),
-                            class: allClasses[classIdx]
-                        });
-                    }
-
-                    // Hard Coral Cover (HCC) = Hard Coral points only (must match
-                    // getCoralCoveragePercent() and the backend calculation).
-                    const coveragePercent = getCoralCoveragePercent(points);
-
-                    const results = {
-                        quadrat_bbox: quadratBbox,  // GUARANTEED to be set
-                        points: points,              // GUARANTEED to have 10 items
-                        coverage_percent: coveragePercent,
-                        coverage_class: getCoverageClass(coveragePercent)
-                    };
-
-                    console.log(`✓ AI Results for ${file.name}:`, results);
-                    
-                    // Simulate processing delay
-                    setTimeout(function () {
-                        resolve(results);
-                    }, 200);
-
+                    const csrf = uploadForm.querySelector('[name=csrfmiddlewaretoken]').value;
+                    aiResultsByFileKey[key] = await Analysis.request(file, uploadForm.dataset.analyzeUrl, csrf);
+                    markAnalyzeItemDone(key);
                 } catch (error) {
-                    console.error(`Error processing image ${file.name}:`, error);
-                    // Fallback: guaranteed valid data
-                    resolve(createFallbackResults());
+                    failed++;
+                    analysisErrors[key] = error.message;
+                    markAnalyzeItemDone(key, error.message);
                 }
-            };
-
-            const createFallbackResults = function () {
-                return {
-                    quadrat_bbox: {
-                        x: 0.05,
-                        y: 0.15,
-                        w: 0.9,
-                        h: 0.7
-                    },
-                    points: [
-                        { x: Math.random(), y: Math.random(), class: 'Hard Coral' },
-                        { x: Math.random(), y: Math.random(), class: 'Soft Coral' },
-                        { x: Math.random(), y: Math.random(), class: 'Macroalgae' },
-                        { x: Math.random(), y: Math.random(), class: 'Halimeda' },
-                        { x: Math.random(), y: Math.random(), class: 'Algae Assemblage' },
-                        { x: Math.random(), y: Math.random(), class: 'Abiotic' },
-                        { x: Math.random(), y: Math.random(), class: 'Other Biota' },
-                        { x: Math.random(), y: Math.random(), class: 'Hard Coral' },
-                        { x: Math.random(), y: Math.random(), class: 'Soft Coral' },
-                        { x: Math.random(), y: Math.random(), class: 'Macroalgae' }
-                    ],
-                    coverage_percent: 60,
-                    coverage_class: 'A'
-                };
-            };
-
-            // Try to load image
-            img.onload = function () {
-                processImage(img);
-            };
-
-            img.onerror = function () {
-                console.warn(`Image load failed for ${file.name}, using fallback data`);
-                // Use fallback after delay
-                setTimeout(function () {
-                    resolve(createFallbackResults());
-                }, 200);
-            };
-
-            // Timeout protection: if image takes too long, use fallback
-            setTimeout(function () {
-                if (Date.now() - startTime > timeout) {
-                    console.warn(`Image load timeout for ${file.name}, using fallback data`);
-                    resolve(createFallbackResults());
-                }
-            }, timeout);
-
-            // Set image source to trigger load
-            img.src = URL.createObjectURL(file);
-        });
+                setAnalyzeProgress(i, files.length, '', true);
+            }
+        } finally {
+            isAnalyzing = false;
+            analyzeAllBtn.textContent = 'Re-analyze all images';
+            if (analyzeStatus) analyzeStatus.textContent = failed
+                ? `${failed} image(s) failed. Review successful results and retry failed images.`
+                : 'Detection finished. Confirm boundaries and review all sampling points.';
+            if (analyzeModal) {
+                analyzeModal.classList.toggle('is-complete', failed === 0);
+                analyzeModal.classList.toggle('is-error', failed > 0);
+            }
+            document.getElementById('analyze-title').textContent = failed ? 'Detection needs attention' : 'Ready for review';
+            if (analyzeCloseBtn) { analyzeCloseBtn.disabled = false; analyzeCloseBtn.setAttribute('aria-disabled', 'false'); }
+            setActiveFileIndex(0);
+            updateThumbPointsStatus();
+            updateSubmitState();
+            updateSummary();
+        }
     };
 
     const runAnalyzeAll = function () {
@@ -1209,64 +880,26 @@ const describeCoverageClass = function (code) {
         startAnalyzeAll();
     };
 
-    const getPointStatus = function (state) {
-        const total = state.points && state.points.length ? state.points.length : MIN_POINTS;
-        const filled = (state.pointClasses || []).filter(Boolean).length;
-        return { filled: filled, total: total };
-    };
-
     const updatePointProgress = function () {
-        if (!pointProgress) {
-            return;
-        }
-
-        const activeFile = getActiveFile();
-        if (!activeFile) {
-            pointProgress.textContent = `0/${MIN_POINTS} classified`;
-            return;
-        }
-
-        const state = ensureQuadratState(getFileKey(activeFile));
-        ensurePointClasses(state);
-        const status = getPointStatus(state);
-        pointProgress.textContent = `${status.filled}/${status.total} classified`;
+        const file = getActiveFile();
+        const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        const filled = result ? result.points.filter(p => POINT_CLASSES.includes(p.class)).length : 0;
+        if (pointProgress) pointProgress.textContent = `${filled}/${MIN_POINTS} classified`;
     };
 
     const updateThumbPointsStatus = function () {
-        if (!thumbGrid) {
-            return;
-        }
-
-        const cards = thumbGrid.querySelectorAll('.thumb-card[data-file-key]');
-        cards.forEach(function (card) {
-            const fileKey = card.getAttribute('data-file-key');
-            if (!fileKey) {
-                return;
-            }
-            const results = aiResultsByFileKey[fileKey];
+        if (!thumbGrid) return;
+        thumbGrid.querySelectorAll('.thumb-card[data-file-key]').forEach(function (card) {
+            const key = card.getAttribute('data-file-key'), result = aiResultsByFileKey[key];
             const target = card.querySelector('[data-point-status]');
-            if (target) {
-                if (results && results.points) {
-                    const coverage = getCoralCoveragePercent(results.points);
-                    target.textContent = `Analysis: ${coverage}% coverage`;
-                } else {
-                    target.textContent = 'Analysis: Pending';
-                }
-            }
+            if (target) target.textContent = analysisErrors[key] ? 'Detection failed - retry'
+                : Analysis.reviewed(result) ? `Reviewed: ${Analysis.coverage(result)}% HCC`
+                : result ? `Review: ${result.points.filter(p => p.class).length}/10 points` : 'Detection pending';
         });
     };
 
     const hasAnyClassifications = function () {
-        return selectedFiles.some(function (file) {
-            const state = quadratStateByKey[getFileKey(file)];
-            if (!state) {
-                return false;
-            }
-            ensurePointClasses(state);
-            return state.pointClasses.some(function (value) {
-                return Boolean(value);
-            });
-        });
+        return selectedFiles.some(file => Boolean(aiResultsByFileKey[getFileKey(file)]));
     };
 
     const openAnalyzeModal = function () {
@@ -1316,7 +949,7 @@ const describeCoverageClass = function (code) {
             analyzeStatus.textContent = 'Preparing analysis...';
         }
         if (analyzeModal) {
-            analyzeModal.classList.remove('is-complete');
+            analyzeModal.classList.remove('is-complete', 'is-error');
         }
         var analyzeTitleReset = document.getElementById('analyze-title');
         if (analyzeTitleReset) {
@@ -1331,12 +964,12 @@ const describeCoverageClass = function (code) {
         }
     };
 
-    const initAnalyzeProgressList = function () {
+    const initAnalyzeProgressList = function (files) {
         if (!analyzeProgressList) {
             return;
         }
         analyzeProgressList.innerHTML = '';
-        selectedFiles.forEach(function (file) {
+        files.forEach(function (file) {
             const item = document.createElement('li');
             item.setAttribute('data-file-key', getFileKey(file));
             item.innerHTML =
@@ -1352,20 +985,20 @@ const describeCoverageClass = function (code) {
         });
     };
 
-    const setAnalyzeProgress = function (currentIndex, total, fileName) {
-        const progress = total ? Math.round(((currentIndex + 1) / total) * 100) : 0;
+    const setAnalyzeProgress = function (currentIndex, total, fileName, completed) {
+        const progress = total ? Math.round(((currentIndex + (completed ? 1 : 0)) / total) * 100) : 0;
         if (analyzeProgressFill) {
             analyzeProgressFill.style.width = `${progress}%`;
         }
         if (analyzeProgressText) {
-            analyzeProgressText.textContent = `${progress}% (${currentIndex + 1}/${total})`;
+            analyzeProgressText.textContent = `${progress}% (${currentIndex + (completed ? 1 : 0)}/${total})`;
         }
         if (analyzeStatus) {
             analyzeStatus.textContent = fileName ? `Analyzing ${fileName}...` : 'Analyzing images...';
         }
     };
 
-    const markAnalyzeItemDone = function (fileKey) {
+    const markAnalyzeItemDone = function (fileKey, error) {
         if (!analyzeProgressList) {
             return;
         }
@@ -1376,9 +1009,10 @@ const describeCoverageClass = function (code) {
             }
             const badge = item.querySelector('.process-badge');
             if (badge) {
-                badge.textContent = 'Done';
+                badge.textContent = error ? 'Failed' : 'Detected';
+                if (error) { item.title = error; item.classList.add('is-failed'); }
                 badge.classList.remove('process-badge-pending');
-                badge.classList.add('process-badge-done');
+                badge.classList.add(error ? 'process-badge-failed' : 'process-badge-done');
             }
             item.classList.add('is-done');
         });
@@ -1409,24 +1043,10 @@ const describeCoverageClass = function (code) {
         return 'D';
     };
 
-    // HCC for the WHOLE transect: pool every analyzed image's points together
-    // (Hard Coral points / total points across all images in this transect).
+    // Mean HCC across reviewed images in this transect (ten points per image).
     const computeTransectCoverage = function () {
-        let hc = 0;
-        let total = 0;
-        let imgCount = 0;
-        selectedFiles.forEach(function (file) {
-            const r = aiResultsByFileKey[getFileKey(file)];
-            if (r && Array.isArray(r.points) && r.points.length) {
-                r.points.forEach(function (p) {
-                    total += 1;
-                    if (p.class === 'Hard Coral') { hc += 1; }
-                });
-                imgCount += 1;
-            }
-        });
-        const pct = total > 0 ? Math.round((hc / total) * 100) : 0;
-        return { hc: hc, total: total, imgCount: imgCount, pct: pct, code: getCoverageClass(pct) };
+        const result = Analysis.transect(selectedFiles.map(file => aiResultsByFileKey[getFileKey(file)]));
+        return { ...result, code: getCoverageClass(result.pct) };
     };
 
     // The Step 2 result panel shows the transect total (same for every image),
@@ -1436,13 +1056,13 @@ const describeCoverageClass = function (code) {
         const coveragePercentEl = document.getElementById('coral-coverage-percent');
         const substitutionEl = document.getElementById('coverage-substitution');
         const t = computeTransectCoverage();
-        if (!t.total) {
+        if (!t.total || t.imgCount !== selectedFiles.length) {
             if (coveragePercentEl) { coveragePercentEl.textContent = '--%'; }
             if (coverageClassEl) {
                 coverageClassEl.textContent = 'Pending';
                 coverageClassEl.className = 'coverage-metric-badge class-pending';
             }
-            if (substitutionEl) { substitutionEl.innerHTML = 'Awaiting analysis&hellip;'; }
+            if (substitutionEl) { substitutionEl.innerHTML = 'Awaiting review of every image&hellip;'; }
             return;
         }
         if (coveragePercentEl) { coveragePercentEl.textContent = `${t.pct}%`; }
@@ -1459,187 +1079,146 @@ const describeCoverageClass = function (code) {
         }
     };
 
+    const refreshReviewState = function () {
+        const file = getActiveFile();
+        const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (confirmQuadrat) {
+            confirmQuadrat.checked = Boolean(result && result.quadrat_confirmed);
+            confirmQuadrat.disabled = isAnalyzing || !result || !result.quadrat_bbox || result.boundary_draft;
+        }
+        if (confirmImageReview) {
+            confirmImageReview.disabled = isAnalyzing || !Analysis.complete(result) || Analysis.reviewed(result);
+            confirmImageReview.textContent = Analysis.reviewed(result) ? 'Image review confirmed' : 'Confirm image review';
+        }
+        if (result) {
+            result.coverage_percent = Analysis.reviewed(result) ? Analysis.coverage(result) : null;
+            result.coverage_class = result.coverage_percent === null ? null : getCoverageClass(result.coverage_percent);
+        }
+        updatePointProgress();
+        if (quadratPointsCount) quadratPointsCount.textContent = result
+            ? Analysis.reviewed(result) ? 'Image reviewed' : `${result.points.filter(p => p.class).length}/10 points classified`
+            : 'Detection pending';
+        updateThumbPointsStatus();
+        renderTransectCoverageSummary();
+        updateSubmitState();
+        updateSummary();
+    };
+
+    const renderDetectionReview = function (result) {
+        if (!detectionReview) return;
+        detectionReview.hidden = !result;
+        if (!result) return;
+        document.getElementById('detection-model').textContent =
+            `Model: ${result.model.id} · ${(result.model.class_names || []).join(', ')}`;
+        const warnings = result.warnings.map(w => w.message || '').filter(Boolean);
+        document.getElementById('detection-warning').textContent = warnings.join(' ');
+        document.getElementById('detection-count').textContent = `${result.detections.length} detected regions (confidence shown)`;
+        detectionList.innerHTML = result.detections.length ? result.detections.map(function (d, i) {
+            return `<div class="detection-row"><button type="button" data-detection-id="${escapeHtml(d.id)}"
+                aria-pressed="${result.selected_detection === d.id}">${i + 1}. ${escapeHtml(d.class_name)} · ${(d.confidence * 100).toFixed(1)}%</button>
+                ${d.class_name === 'quadrat_area' ? `<button type="button" data-use-quadrat="${escapeHtml(d.id)}">Use boundary</button>` : ''}</div>`;
+        }).join('') : '<p>No detections passed the model threshold. Review the image manually.</p>';
+        ['x', 'y', 'w', 'h'].forEach(function (key) {
+            document.getElementById('review-quadrat-' + key).value = result.quadrat_bbox
+                ? Number((result.quadrat_bbox[key] * 100).toFixed(4)) : '';
+        });
+        if (reviewFeedback) reviewFeedback.textContent = '';
+        refreshReviewState();
+    };
+
     const renderPointList = function () {
-        const pointList = document.getElementById('point-list');
-        const coverageClassEl = document.getElementById('coverage-class');
-        const coveragePercentEl = document.getElementById('coral-coverage-percent');
-        
-        const substitutionEl = document.getElementById('coverage-substitution');
-
-        if (!pointList) {
+        if (!pointList) return;
+        const file = getActiveFile(), key = file ? getFileKey(file) : null;
+        const result = key ? aiResultsByFileKey[key] : null;
+        renderDetectionReview(result);
+        if (fsBtn) fsBtn.hidden = !result;
+        if (!result) {
+            pointList.innerHTML = `<p class="thumb-empty-state">${escapeHtml(key && analysisErrors[key]
+                ? analysisErrors[key] : 'Run AI detection to begin image review.')}</p>`;
+            refreshReviewState();
             return;
         }
-
-        // The coverage summary always reflects the whole transect, even while a
-        // not-yet-analyzed image is selected.
-        const setCoveragePending = renderTransectCoverageSummary;
-
-        const activeFile = getActiveFile();
-
-        // The fullscreen/maximize button is offered only once the active image
-        // has analysis results (points), since the fullscreen view pairs the
-        // enlarged image with its point dropdowns.
-        if (fsBtn) {
-            const activeResults = activeFile ? aiResultsByFileKey[getFileKey(activeFile)] : null;
-            fsBtn.hidden = !(activeResults && activeResults.points && activeResults.points.length);
-        }
-
-        if (!activeFile) {
-            pointList.innerHTML = '<p class="thumb-empty-state">Select an image to view analysis results.</p>';
-            setCoveragePending();
+        if (!result.quadrat_bbox) {
+            pointList.innerHTML = '<p class="thumb-empty-state">No sampling boundary selected. Enter its position and size above, then apply it to place ten sampling points.</p>';
+            refreshReviewState();
             return;
         }
-
-        const results = aiResultsByFileKey[getFileKey(activeFile)];
-        if (!results || !results.points) {
-            pointList.innerHTML = '<p class="thumb-empty-state">Run AI analysis to classify points.</p>';
-            setCoveragePending();
-            return;
-        }
-
-        const points = results.points || [];
-        if (!points.length) {
-            pointList.innerHTML = '<p class="thumb-empty-state">No points detected.</p>';
-            setCoveragePending();
-            return;
-        }
-
-        // Coverage shown for the whole transect (recomputed after any edit).
-        const updateCoverageLabels = renderTransectCoverageSummary;
-
-        const rows = points.map(function (point, index) {
-            const current = point.class || '';
-            return `
-                <label class="point-row">
-                    <span class="point-row-label">Point ${index + 1}</span>
-                    <select class="point-class-select" data-index="${index}"
-                        aria-label="Class for point ${index + 1}">
-                        ${buildClassOptions(current)}
-                    </select>
-                </label>
-            `;
+        pointList.innerHTML = result.points.map(function (point, index) {
+            return `<label class="point-row"><span class="point-row-label">Point ${index + 1}</span>
+                <select class="point-class-select" data-index="${index}" aria-label="Class for point ${index + 1}">
+                ${buildClassOptions(point.class)}</select>
+                <small class="point-suggestion">${escapeHtml(Analysis.pointSuggestion(result, point))}</small></label>`;
         }).join('');
-
-        pointList.innerHTML = rows;
-
-        // Let the surveyor/expert correct any point's class. Updating the value
-        // recomputes coverage/class live and keeps the submitted data in sync.
         pointList.querySelectorAll('.point-class-select').forEach(function (select) {
             select.addEventListener('change', function () {
-                const idx = parseInt(this.getAttribute('data-index'), 10);
-                if (!isNaN(idx) && results.points[idx]) {
-                    results.points[idx].class = this.value;
-                    updateCoverageLabels();       // this image
-                    updateThumbPointsStatus();    // this image's thumbnail coverage
-                    updateSummary();              // whole-batch total in Step 3
-                    if (typeof updateSubmitState === 'function') {
-                        updateSubmitState();
-                    }
-                }
+                Analysis.setPoint(result, Number(this.dataset.index), this.value);
+                if (reviewFeedback) reviewFeedback.textContent = 'Point changed. Confirm image review again when all points are checked.';
+                refreshReviewState();
             });
         });
-
-        updateCoverageLabels();
+        refreshReviewState();
     };
 
-    const getImageBounds = function () {
-        const size = getCanvasSize();
-        if (!size.width || !size.height || !quadratImage) {
-            return { x: 0, y: 0, w: size.width, h: size.height };
-        }
-
-        const naturalWidth = quadratImage.naturalWidth || 0;
-        const naturalHeight = quadratImage.naturalHeight || 0;
-        if (!naturalWidth || !naturalHeight) {
-            return { x: 0, y: 0, w: size.width, h: size.height };
-        }
-
-        const scale = Math.min(size.width / naturalWidth, size.height / naturalHeight);
-        const displayWidth = naturalWidth * scale;
-        const displayHeight = naturalHeight * scale;
-        const offsetX = (size.width - displayWidth) / 2;
-        const offsetY = (size.height - displayHeight) / 2;
-
-        return { x: offsetX, y: offsetY, w: displayWidth, h: displayHeight };
-    };
-
-    const ensureDefaultRect = function (state, bounds) {
-        if (state.rect) {
-            return false;
-        }
-
-        const size = DEFAULT_RECT_SCALE;
-        const rectW = bounds.w * size;
-        const rectH = bounds.h * size;
-        const rectPx = {
-            x: bounds.x + (bounds.w - rectW) / 2,
-            y: bounds.y + (bounds.h - rectH) / 2,
-            w: rectW,
-            h: rectH
-        };
-        const canvasSize = getCanvasSize();
-        state.rect = toNormalizedRect(rectPx, canvasSize.width, canvasSize.height);
-        state.points = generateRandomPoints(MIN_POINTS);
-        ensurePointClasses(state);
-        return true;
-    };
-
-    const drawQuadrat = function () {
-        if (!quadratCanvas || !quadratImage) {
-            return;
-        }
-
-        const ctx = quadratCanvas.getContext('2d');
-        if (!ctx) {
-            return;
-        }
-
-        const size = getCanvasSize();
-        if (!size.width || !size.height) {
-            return;
-        }
-
-        const dpr = window.devicePixelRatio || 1;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, size.width, size.height);
-
-        const activeFile = getActiveFile();
-        if (!activeFile) {
-            return;
-        }
-
-        const state = ensureQuadratState(getFileKey(activeFile));
-        if (!state.rect) {
-            return;
-        }
-
-        ensurePointClasses(state);
-        updatePointProgress();
-
-        const rectPx = toPixelRect(state.rect, size.width, size.height);
-
-        ctx.strokeStyle = '#ff8a3d';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
-
-        const handles = getHandles(rectPx);
-        ctx.fillStyle = '#ff8a3d';
-        Object.values(handles).forEach(function (handle) {
-            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+    if (confirmQuadrat) confirmQuadrat.addEventListener('change', function () {
+        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (!result || isAnalyzing) return;
+        result.quadrat_confirmed = this.checked;
+        result.reviewed = false;
+        if (this.checked) document.getElementById('quadrat-editor').open = false;
+        refreshReviewState();
+    });
+    if (confirmImageReview) confirmImageReview.addEventListener('click', function () {
+        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (isAnalyzing || !Analysis.complete(result)) return;
+        result.reviewed = true;
+        if (reviewFeedback) reviewFeedback.textContent = 'Image review confirmed. Subsequent point or boundary edits require confirmation again.';
+        refreshReviewState();
+    });
+    const applyQuadrat = document.getElementById('apply-quadrat-btn');
+    ['x', 'y', 'w', 'h'].forEach(function (key) {
+        document.getElementById('review-quadrat-' + key).addEventListener('input', function () {
+            const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+            if (!result || isAnalyzing) return;
+            result.boundary_draft = true;
+            result.quadrat_confirmed = false;
+            result.reviewed = false;
+            reviewFeedback.textContent = 'Apply the edited boundary before confirming its review.';
+            refreshReviewState();
         });
-
-        if (state.points.length) {
-            state.points.forEach(function (point, index) {
-                const x = rectPx.x + point.x * rectPx.w;
-                const y = rectPx.y + point.y * rectPx.h;
-                drawCpcePoint(ctx, x, y, index + 1, {
-                    arm: 7,
-                    lineWidth: 1.5,
-                    font: 'bold 11px "Inter", "Segoe UI", Arial, sans-serif'
-                });
+    });
+    if (applyQuadrat) applyQuadrat.addEventListener('click', function () {
+        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (!result || isAnalyzing) return;
+        try {
+            const box = {};
+            ['x', 'y', 'w', 'h'].forEach(function (key) {
+                const input = document.getElementById('review-quadrat-' + key);
+                if (!input.value.trim()) throw new Error('Enter all four boundary values.');
+                box[key] = Number(input.value) / 100;
             });
+            Analysis.setQuadrat(result, box);
+            drawQuadratAndPoints(result.quadrat_bbox, result.points);
+            renderPointList();
+        } catch (error) { reviewFeedback.textContent = error.message; }
+    });
+    if (detectionList) detectionList.addEventListener('click', function (event) {
+        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (!result || isAnalyzing) return;
+        const use = event.target.closest('[data-use-quadrat]');
+        const select = event.target.closest('[data-detection-id]');
+        if (use) {
+            const d = result.detections.find(d => d.id === use.dataset.useQuadrat);
+            if (d) { Analysis.setQuadrat(result, d.box); renderPointList(); }
+        } else if (select) {
+            result.selected_detection = select.dataset.detectionId;
+            detectionList.querySelectorAll('[data-detection-id]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.detectionId === result.selected_detection)));
         }
-    };
+        drawQuadratAndPoints(result.quadrat_bbox, result.points);
+    });
+    if (showDetectionBoxes) showDetectionBoxes.addEventListener('change', function () {
+        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
+        if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
+    });
 
     const updateImageNav = function () {
         const total = selectedFiles.length;
@@ -1718,29 +1297,7 @@ const describeCoverageClass = function (code) {
     // image. Fullscreen and the stacked (narrow) layout manage their own sizes.
     const syncInlinePanelHeight = function () {
         const panel = document.querySelector('.quadrat-body .analysis-results-panel');
-        if (!panel) {
-            return;
-        }
-        if (isFullscreen() || !window.matchMedia('(min-width: 1101px)').matches) {
-            panel.style.height = '';
-            panel.style.maxHeight = '';
-            return;
-        }
-        const imgH = quadratWrap ? quadratWrap.offsetHeight : 0;
-        if (!imgH) {
-            return;
-        }
-        // Measure the panel's natural height, then only cap it (and scroll) when
-        // it's taller than the image — so a long point list stops leaving a wide
-        // white gap under a short image, without stretching a short list.
-        panel.style.height = '';
-        panel.style.maxHeight = 'none';
-        if (panel.scrollHeight > imgH) {
-            panel.style.height = imgH + 'px';
-            panel.style.maxHeight = imgH + 'px';
-        } else {
-            panel.style.maxHeight = '';
-        }
+        if (panel) { panel.style.height = ''; panel.style.maxHeight = ''; }
     };
 
     // Redraw the quadrat + crosses for the active image (picks up the current
@@ -1749,7 +1306,7 @@ const describeCoverageClass = function (code) {
         const activeFile = getActiveFile();
         if (!activeFile) { return; }
         const results = aiResultsByFileKey[getFileKey(activeFile)];
-        if (results && results.quadrat_bbox && results.points) {
+        if (results) {
             drawQuadratAndPoints(results.quadrat_bbox, results.points);
         }
     };
@@ -1992,8 +1549,8 @@ const describeCoverageClass = function (code) {
 
         const results = aiResultsByFileKey[getFileKey(activeFile)];
         if (quadratPointsCount) {
-            if (results && results.points) {
-                quadratPointsCount.textContent = `${results.points.length} points classified`;
+            if (results) {
+                quadratPointsCount.textContent = Analysis.reviewed(results) ? 'Image reviewed' : `${results.points.filter(p => p.class).length}/10 points classified`;
             } else {
                 quadratPointsCount.textContent = 'Analysis pending';
             }
@@ -2003,19 +1560,28 @@ const describeCoverageClass = function (code) {
             URL.revokeObjectURL(activeImageUrl);
         }
 
+        const previewKey = getFileKey(activeFile);
         activeImageUrl = URL.createObjectURL(activeFile);
-        quadratImage.src = activeImageUrl;
         quadratCanvas.style.display = 'block';
         quadratEmpty.style.display = 'none';
-
         quadratImage.onload = function () {
+            if (!getActiveFile() || getFileKey(getActiveFile()) !== previewKey) return;
             syncCanvasSize();
-            if (results && results.quadrat_bbox && results.points) {
-                drawQuadratAndPoints(results.quadrat_bbox, results.points);
+            const current = aiResultsByFileKey[previewKey];
+            if (current && (current.image.width !== quadratImage.naturalWidth || current.image.height !== quadratImage.naturalHeight)) {
+                analysisErrors[previewKey] = 'Image orientation could not be matched. Export an upright image and retry.';
+                delete aiResultsByFileKey[previewKey];
+                quadratCanvas.getContext('2d').clearRect(0, 0, quadratCanvas.width, quadratCanvas.height);
+                renderPointList();
+                return;
             }
+            const ctx = quadratCanvas.getContext('2d');
+            if (current) drawQuadratAndPoints(current.quadrat_bbox, current.points);
+            else if (ctx) ctx.clearRect(0, 0, quadratCanvas.width, quadratCanvas.height);
             renderPointList();
             syncInlinePanelHeight();
         };
+        quadratImage.src = activeImageUrl;
     };
 
     const renderSelectedFiles = function () {
@@ -2052,7 +1618,7 @@ const describeCoverageClass = function (code) {
             }
 
             const results = aiResultsByFileKey[fileKey];
-            const statusText = results && results.points ? `${getCoralCoveragePercent(results.points)}% coverage` : 'Pending';
+            const statusText = Analysis.reviewed(results) ? `${Analysis.coverage(results)}% HCC` : 'Review pending';
 
             card.innerHTML = `
                 <div class="thumb-card-head">
@@ -2096,8 +1662,8 @@ const describeCoverageClass = function (code) {
     // Accepted image types (matches the file input's `accept`).
     const isAcceptedImage = function (file) {
         const name = (file && file.name ? file.name : '').toLowerCase();
-        const byExt = /\.(jpe?g|png)$/.test(name);
-        const byType = /^image\/(jpe?g|png)$/.test(file && file.type ? file.type : '');
+        const byExt = /\.(jpe?g|png|webp)$/.test(name);
+        const byType = /^image\/(jpe?g|png|webp)$/.test(file && file.type ? file.type : '');
         return byExt || byType;
     };
 
@@ -2201,6 +1767,7 @@ const describeCoverageClass = function (code) {
 
     // Append image files to the current transect (dedup by file key).
     const appendImages = function (files) {
+        if (isAnalyzing) return;
         files.slice().sort(function (a, b) {
             return (a.name || '').localeCompare(b.name || '');
         }).forEach(function (file) {
@@ -2239,6 +1806,7 @@ const describeCoverageClass = function (code) {
         });
 
         dropzone.addEventListener('drop', function (event) {
+            if (isAnalyzing) return;
             if (!event.dataTransfer) {
                 return;
             }
@@ -2273,6 +1841,7 @@ const describeCoverageClass = function (code) {
     const folderInput = document.getElementById('folder-input');
     if (dropzone && folderInput) {
         dropzone.addEventListener('click', function () {
+            if (isAnalyzing) return;
             folderInput.click();
         });
         dropzone.addEventListener('keydown', function (event) {
@@ -2282,6 +1851,7 @@ const describeCoverageClass = function (code) {
             }
         });
         folderInput.addEventListener('change', function () {
+            if (isAnalyzing) return;
             const picked = folderInput.files ? Array.from(folderInput.files).filter(isAcceptedImage) : [];
             if (!picked.length) {
                 folderInput.value = '';
@@ -2297,6 +1867,7 @@ const describeCoverageClass = function (code) {
 
     if (thumbGrid) {
         thumbGrid.addEventListener('click', function (event) {
+            if (isAnalyzing) return;
             const removeButton = event.target.closest('button[data-remove-index]');
             if (!removeButton) {
                 const card = event.target.closest('.thumb-card[data-file-index]');
@@ -2314,7 +1885,11 @@ const describeCoverageClass = function (code) {
                 return;
             }
 
-            selectedFiles.splice(removeIndex, 1);
+            const removed = selectedFiles.splice(removeIndex, 1)[0];
+            const removedKey = getFileKey(removed);
+            delete aiResultsByFileKey[removedKey];
+            delete analysisErrors[removedKey];
+            pruneThumbUrls();
 
             syncUploadInputFromSelected();
 
@@ -2325,11 +1900,6 @@ const describeCoverageClass = function (code) {
 
     if (pointList) {
         pointList.addEventListener('click', function (event) {
-            // Species list items can be clicked to select/deselect for manual review
-            const speciesItem = event.target.closest('.species-item');
-            if (speciesItem) {
-                speciesItem.classList.toggle('selected');
-            }
             // In fullscreen, clicking a point row zooms the image to that point.
             const pointRow = event.target.closest('.point-row');
             if (pointRow && isFullscreen()) {
@@ -2437,16 +2007,19 @@ const describeCoverageClass = function (code) {
             }
             const bounds = { x: geo.offsetX, y: geo.offsetY, w: geo.displayWidth, h: geo.displayHeight };
             const clamped = clampRect(rectPx, bounds);
-            results.quadrat_bbox = {
+            const nextBox = {
                 x: (clamped.x - geo.offsetX) / geo.displayWidth,
                 y: (clamped.y - geo.offsetY) / geo.displayHeight,
                 w: clamped.w / geo.displayWidth,
                 h: clamped.h / geo.displayHeight
             };
+            Analysis.setQuadrat(results, nextBox);
+            refreshReviewState();
             drawQuadratAndPoints(results.quadrat_bbox, results.points);
         };
 
         quadratCanvas.addEventListener('mousedown', function (event) {
+            if (isAnalyzing || zoomedPointIndex >= 0 || event.button !== 0) return;
             const rectPx = getActiveRectPx();
             if (!rectPx) {
                 return;
@@ -2499,21 +2072,15 @@ const describeCoverageClass = function (code) {
             dragMode = null;
             dragHandle = null;
             dragStart = null;
+            renderPointList();
             updateSummary();
         };
         window.addEventListener('mouseup', endDrag);
     }
 
     const reanalyzeBtn = document.getElementById('reanalyze-btn');
-    if (reanalyzeBtn) {
-        reanalyzeBtn.addEventListener('click', function () {
-            // Clear AI results and re-run analysis
-            aiResultsByFileKey = {};
-            updateThumbPointsStatus();
-            renderSpeciesList();
-            runAnalyzeAll();
-        });
-    }
+    if (reanalyzeBtn) reanalyzeBtn.addEventListener('click', runAnalyzeAll);
+    if (retryAnalysisBtn) retryAnalysisBtn.addEventListener('click', () => startAnalyzeAll(true));
 
     if (batchNameInput) {
         batchNameInput.addEventListener('input', updateSummary);
@@ -2536,8 +2103,7 @@ const describeCoverageClass = function (code) {
 
     setTodayIfEmpty();
 
-    // AI Results Display - Canvas is now read-only (used to display AI-detected quadrats)
-    // Manual drawing has been replaced with AI automation
+    // Detection overlays remain aligned with the editable sampling boundary.
     if (quadratCanvas) {
         // Prevent default interactions on canvas
         quadratCanvas.style.cursor = 'default';
@@ -2551,7 +2117,7 @@ const describeCoverageClass = function (code) {
             syncCanvasSize();
             const activeFile = getActiveFile();
             const results = aiResultsByFileKey[getFileKey(activeFile)];
-            if (results && results.quadrat_bbox && results.points) {
+            if (results) {
                 drawQuadratAndPoints(results.quadrat_bbox, results.points);
             }
             syncInlinePanelHeight();
@@ -2579,7 +2145,7 @@ const describeCoverageClass = function (code) {
             }
             syncCanvasSize();
             const results = aiResultsByFileKey[getFileKey(getActiveFile())];
-            if (results && results.quadrat_bbox && results.points) {
+            if (results) {
                 drawQuadratAndPoints(results.quadrat_bbox, results.points);
             }
         };
@@ -2653,33 +2219,6 @@ const describeCoverageClass = function (code) {
     updateSummary();
     updateSubmitState();
 
-    const modal = document.getElementById('process-modal');
-    const openModalBtn = document.getElementById('process-open-btn');
-    const closeModalBtn = document.getElementById('process-close-btn');
-
-    if (modal && openModalBtn && closeModalBtn && openModalBtn.type === 'button') {
-        const openModal = function () {
-            modal.classList.add('is-visible');
-            modal.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('modal-open');
-        };
-
-        const closeModal = function () {
-            modal.classList.remove('is-visible');
-            modal.setAttribute('aria-hidden', 'true');
-            document.body.classList.remove('modal-open');
-        };
-
-        openModalBtn.addEventListener('click', openModal);
-        closeModalBtn.addEventListener('click', closeModal);
-
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal) {
-                closeModal();
-            }
-        });
-    }
-
     if (analyzeModal && analyzeCloseBtn) {
         analyzeCloseBtn.addEventListener('click', function () {
             closeAnalyzeModal();
@@ -2715,7 +2254,7 @@ const describeCoverageClass = function (code) {
             if (!isReadyToAnalyze()) {
                 event.preventDefault();
                 console.warn('Form submission blocked: AI analysis not complete for all images');
-                alert('Please complete AI analysis for all images before uploading the data repository.');
+                alert('Confirm each quadrat, classify all ten points, and confirm every image review before uploading.');
                 updateSubmitState();
                 return;
             }

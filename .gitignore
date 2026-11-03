@@ -38,3 +38,6 @@ build/
 
 # Private trained weights; retain lightweight metadata and setup instructions.
 /model_artifacts/**/*.pt
+
+# Local browser verification captures.
+/output/playwright/

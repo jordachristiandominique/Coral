@@ -30,6 +30,7 @@ from .models import (
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 from . import yolo_inference
+from .survey_validation import validate_quadrat_payload
 
 
 logger = logging.getLogger(__name__)
@@ -1148,17 +1149,10 @@ def upload_batch(request):
                 messages.error(request, f'Quadrat data is invalid for image {index}.')
                 return redirect(redirect_target)
 
-            rect = parsed.get('rect')
-            points = parsed.get('points')
-            point_classes = parsed.get('point_classes')
-            if not rect or not points:
-                messages.error(request, f'Quadrat data is incomplete for image {index}.')
-                return redirect(redirect_target)
-            if not isinstance(point_classes, list) or len(point_classes) != len(points):
-                messages.error(request, f'Point classes are incomplete for image {index}.')
-                return redirect(redirect_target)
-            if any(not value for value in point_classes):
-                messages.error(request, f'Please classify all points for image {index}.')
+            try:
+                validate_quadrat_payload(parsed)
+            except ValueError as exc:
+                messages.error(request, f'Image {index}: {exc}')
                 return redirect(redirect_target)
 
             quadrat_payloads.append(parsed)
@@ -1192,10 +1186,9 @@ def upload_batch(request):
                 point_classes = payload.get('point_classes') or []
 
                 # Hard Coral Cover (HCC): Hard Coral points only / total points
-                coral_count = sum(1 for value in point_classes if value == 'Hard Coral')
-                total_points = len(point_classes) or 1
-                coverage_percent = (Decimal(coral_count) * Decimal('100') / Decimal(total_points)).quantize(Decimal('0.01'))
-                coverage_class = classify_hcc(coverage_percent)
+                coverage = compute_coverage(point_classes)
+                coverage_percent = Decimal(str(coverage['percent'])).quantize(Decimal('0.01'))
+                coverage_class = coverage['coverage_class']
 
                 SurveyImage.objects.create(
                     batch=batch,

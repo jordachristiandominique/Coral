@@ -53,9 +53,8 @@ a box-only preview, and local dependency versions to ignored
 is not a steady-state benchmark. Zero detections are possible and are not an
 inference error. No source image or database record is modified.
 
-This does not measure accuracy, classify sampling points, or compute HCC. The
-upload page still uses its existing mock flow. Its connection to the endpoint
-below must retain researcher review and canonical point-based HCC calculations.
+This does not measure accuracy, classify sampling points, or compute HCC. The upload page now uses this endpoint for detection and requires researcher
+review before persisting canonical point-based HCC results.
 
 For a new model, add a separate artifact directory and provenance, validate its
 classes and runtime output, then explicitly select it during endpoint integration.
@@ -108,8 +107,7 @@ normal Django responses, so future frontend code must handle those too. Internal
 exceptions are logged server-side without returning private paths to clients.
 
 There is no point classification, HCC calculation, confidence tuning UI, automatic
-non-coral assignment, or database migration in this endpoint step. The existing
-upload page has not yet been connected.
+non-coral assignment, or database migration in this endpoint step. The upload page is connected as described below.
 
 ## Verified on 2026-11-03
 
@@ -137,3 +135,53 @@ upload page has not yet been connected.
   response is saved in ignored `backups/inference-endpoint-smoke/response.json`.
 - Django URL initialization was checked separately and did not import Torch.
   The existing Requests compatibility warning remains; it did not fail checks.
+
+
+## Connected upload page
+
+1. Select images for one transect and click **Analyze All Images**.
+2. Review the actual boxes and confidence scores. Purple is Hard Coral, teal is
+   Soft Coral, dashed blue is a detected quadrat, and orange is the editable
+   sampling boundary. The box list can highlight regions or select another
+   quadrat candidate. A visibility checkbox hides model boxes for closer review.
+3. Adjust the boundary by dragging/resizing or by editing its four percentages
+   and applying them. A missing detection requires a manual boundary; it never
+   produces a made-up centered quadrat. Confirm the sampling boundary.
+4. Classify all ten numbered points from the actual image. Points occupy two
+   evenly spaced rows of five within the quadrat and start unclassified. A box
+   suggestion does not confirm coral beneath a point. Existing seven CPCE classes
+   remain selectable for manual review, although the detector recognizes only
+   Hard Coral, Soft Coral, and quadrat_area.
+5. Click **Confirm image review** for every image, then **Upload**. Boundary edits
+   clear point classifications. Point edits and unapplied boundary drafts block
+   saving until reviewed again. Preview HCC stays pending until all images are
+   confirmed. Only Hard Coral enters its numerator; the displayed aggregate is
+   this transect's mean image HCC, not the existing site's total.
+
+Requests are sequential with an overall per-image timeout and bounded busy retries.
+**Retry failed images** retains other images' reviews. Re-analysis requires an
+acknowledgement before replacing edits. Failures show errors instead of fabricated
+boxes, classes, or coverage. Original-image orientation must match the endpoint's
+upright dimensions before the overlay can be reviewed.
+
+The existing save contract stores reviewed quadrat geometry, point classes, and
+canonical coverage caches. It does not yet store raw model detections or the
+model identifier with the survey image; those are currently visible only during
+review. This connection does not implement the standalone demo's proportional
+box-area marker allocation, coral-box editing, or undo/redo tools.
+
+Regression commands:
+
+```powershell
+node --test tests/js/upload_batch_analysis.test.cjs tests/js/upload_area_demo.test.cjs
+.venv/Scripts/python.exe manage.py check
+.venv/Scripts/python.exe manage.py makemigrations --check
+# Use the documented disposable-test PostgreSQL role for this command:
+.venv/Scripts/python.exe manage.py test
+```
+
+Browser checks used a separate local test database/media directory. The real
+model request and reviewed upload succeeded. Missing-quadrat, failed response,
+and retry conditions were additionally simulated in the browser, separately
+from the real-model test. Desktop, fullscreen, and 390px mobile review were
+checked. Prediction quality is still subject to expert review.

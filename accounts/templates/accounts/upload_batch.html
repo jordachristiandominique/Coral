@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=21">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=22">
 {% endblock %}
 
 {% block content %}
@@ -30,7 +30,7 @@
     </div>
 </header>
 
-<div class="container researcher-shell">
+<div class="container researcher-shell upload-shell">
     <aside class="researcher-sidebar" aria-label="Research sidebar">
         <nav class="sidebar-nav">
             <a href="{% url 'researcher_dashboard' %}">
@@ -98,7 +98,8 @@
             <p>Add underwater photos for coral analysis</p>
         </section>
 
-        <form id="upload-batch-form" class="upload-batch-form" method="post" enctype="multipart/form-data">
+        <form id="upload-batch-form" class="upload-batch-form" method="post" enctype="multipart/form-data"
+            data-analyze-url="{% url 'analyze_survey_image' %}">
             {% csrf_token %}
 
             {% if active_site %}
@@ -194,13 +195,13 @@
                     <div class="dropzone-inner">
                         <i data-lucide="folder-open"></i>
                         <p>Drop this transect's folder here, or click to choose a folder</p>
-                        <span>Accepted: JPG, PNG | Max 10MB per file | ~50 images per transect</span>
+                        <span>Accepted: JPG, PNG, WebP | Max 20MB per file | ~50 images per transect</span>
                     </div>
                 </div>
 
                 <!-- Hidden carriers: upload-input holds the files for form submit;
                      folder-input is the directory picker opened by clicking the box. -->
-                <input id="upload-input" name="images" type="file" accept=".jpg,.jpeg,.png" multiple hidden>
+                <input id="upload-input" name="images" type="file" accept=".jpg,.jpeg,.png,.webp" multiple hidden>
                 <input id="folder-input" type="file" webkitdirectory directory multiple hidden>
                 <input type="hidden" name="transect_label" id="transect-label-input">
 
@@ -209,29 +210,7 @@
                 <div class="thumb-grid-wrap" aria-label="Selected files preview">
                     <div class="transect-legend" id="transect-legend" aria-label="Transect image counts" hidden></div>
                     <div class="thumb-grid" id="thumb-grid">
-                        <article class="thumb-card">
-                            <div class="thumb-card-head">
-                                <div class="thumb-box">img1.jpg</div>
-                                <button type="button" aria-label="Remove img1.jpg">&times;</button>
-                            </div>
-                            <p>2.3 MB</p>
-                        </article>
-
-                        <article class="thumb-card">
-                            <div class="thumb-card-head">
-                                <div class="thumb-box">img2.jpg</div>
-                                <button type="button" aria-label="Remove img2.jpg">&times;</button>
-                            </div>
-                            <p>3.1 MB</p>
-                        </article>
-
-                        <article class="thumb-card">
-                            <div class="thumb-card-head">
-                                <div class="thumb-box">img3.jpg</div>
-                                <button type="button" aria-label="Remove img3.jpg">&times;</button>
-                            </div>
-                            <p>2.8 MB</p>
-                        </article>
+                        <p class="thumb-empty-state">No images selected yet.</p>
                     </div>
                 </div>
 
@@ -242,13 +221,14 @@
                        
                         Analyze All Images
                     </button>
+                    <button type="button" class="action-outline" id="retry-analysis-btn" hidden>Retry failed images</button>
                 </div>
 
                 <div class="quadrat-card" id="quadrat-card" aria-label="Auto-analysis results">
                     <div class="quadrat-head">
                         <div>
-                            <h3>Automated Analysis Results</h3>
-                            <p>Review and approve the results below.</p>
+                            <h3>AI Detections &amp; Point Review</h3>
+                            <p>Boxes are suggestions. Confirm the boundary and classify what is beneath each sampling point.</p>
                         </div>
                         <div class="quadrat-meta">
                             <span class="quadrat-meta-label">Active Image</span>
@@ -283,7 +263,7 @@
                     <div class="quadrat-body">
                         <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
                             <img id="quadrat-image" alt="Selected coral image" loading="lazy">
-                            <canvas id="quadrat-canvas" aria-label="Detected quadrat area with confidence overlay"></canvas>
+                            <canvas id="quadrat-canvas" aria-label="Coral detection boxes, editable quadrat, and numbered sampling points"></canvas>
                             <button type="button" class="image-nav image-nav-prev" id="image-prev-btn"
                                 aria-label="Previous image" title="Previous image" hidden>
                                 <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
@@ -305,9 +285,32 @@
                         </div>
 
                         <div class="analysis-results-panel" aria-label="Point classifications">
+                            <section class="detection-review" id="detection-review" aria-label="Detection review" hidden>
+                                <p id="detection-model" class="detection-model"></p>
+                                <p id="detection-warning" class="detection-warning" role="status"></p>
+                                <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Show coral and quadrat detection boxes</label>
+                                <details>
+                                    <summary id="detection-count">Detected regions</summary>
+                                    <div id="detection-list" class="detection-list"></div>
+                                </details>
+                                <details id="quadrat-editor" open>
+                                    <summary>Confirm sampling boundary</summary>
+                                    <p class="panel-head-hint">Drag the orange boundary or edit its percentages. Changing it clears point review.</p>
+                                    <div class="quadrat-coordinate-grid">
+                                        <label>Left (%)<input id="review-quadrat-x" type="number" min="0" max="100" step="any"></label>
+                                        <label>Top (%)<input id="review-quadrat-y" type="number" min="0" max="100" step="any"></label>
+                                        <label>Width (%)<input id="review-quadrat-w" type="number" min="0.1" max="100" step="any"></label>
+                                        <label>Height (%)<input id="review-quadrat-h" type="number" min="0.1" max="100" step="any"></label>
+                                    </div>
+                                    <button type="button" class="action-outline" id="apply-quadrat-btn">Apply boundary</button>
+                                    <label class="review-check"><input type="checkbox" id="confirm-quadrat"> I verified the sampling boundary</label>
+                                </details>
+                                <p id="review-feedback" class="detection-warning" role="status"></p>
+                            </section>
                             <div class="panel-head">
                                 <h4>Point Classifications</h4>
-                                <p class="panel-head-hint">Correct any point using its dropdown &mdash; coverage updates instantly.</p>
+                                <p class="panel-head-hint">Classify all ten points from the image. A box suggestion does not confirm the substrate.</p>
+                                <span id="point-progress" aria-live="polite">0/10 classified</span>
                                 <!-- Step through / zoom to each point (fullscreen only, shown via CSS) -->
                                 <div class="point-zoom-nav" id="point-zoom-nav" aria-label="Zoom through points">
                                     <button type="button" class="point-zoom-btn" id="point-zoom-prev"
@@ -328,6 +331,7 @@
                                 <!-- Point classifications will appear here -->
                             </div>
                             <div class="ai-actions">
+                                <button type="button" class="primary-btn" id="confirm-image-review" disabled>Confirm image review</button>
                                 <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
                                     <i data-lucide="refresh-cw"></i>
                                     Re-analyze
@@ -336,7 +340,7 @@
                         </div>
                     </div>
 
-                    <p class="quadrat-footer">💡 Tip: Match each numbered point on the image to its dropdown on the right and correct it if the class is wrong.</p>
+                    <p class="quadrat-footer">Purple: Hard Coral · Teal: Soft Coral · Blue dashed: detected quadrat · Orange: sampling boundary. Boxes may include background. No detection does not mean non-coral.</p>
                 </div>
             </section>
 
@@ -370,18 +374,18 @@
                     <p><strong>Survey by:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
-                    <p><strong>Data Repository Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
-                    <p><strong>Data Repository HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
-                    <p><strong>AI Confidence:</strong> <span id="summary-confidence">N/A</span></p>
+                    <p><strong>This Transect's Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
+                    <p><strong>This Transect's HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
+                    <p><strong>Review:</strong> <span id="summary-review">Awaiting image review</span></p>
                 </div>
-                <p class="summary-box-note">Hard Coral Cover pools every classified point across all analyzed images: Hard&nbsp;Coral&nbsp;points&nbsp;&divide;&nbsp;total&nbsp;points&nbsp;surveyed&nbsp;&times;&nbsp;100.</p>
+                <p class="summary-box-note">This transect uses the mean HCC of its reviewed images. Each image uses ten points; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.</p>
 
-                <p class="submit-hint" id="submit-hint">Upload at least one image. AI will auto-analyze. Review and approve results.
+                <p class="submit-hint" id="submit-hint">Choose images, run AI detection, and confirm the review of every image before saving.
                 </p>
 
                 <div class="submit-actions">
                     <a href="{% url 'researcher_dashboard' %}" class="action-outline">Cancel</a>
-                    <button type="submit" class="primary-btn" id="process-open-btn">Upload</button>
+                    <button type="submit" class="primary-btn" id="process-open-btn" disabled aria-disabled="true">Upload</button>
                 </div>
             </section>
         </form>
@@ -397,31 +401,6 @@
         <div class="logout-modal__actions">
             <button type="button" class="action-outline" data-logout-cancel>Cancel</button>
             <button type="button" class="logout-confirm-btn" data-logout-confirm>Log out</button>
-        </div>
-    </div>
-</div>
-
-<div class="process-modal" id="process-modal" aria-hidden="true">
-    <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="process-title">
-        <h2 id="process-title">Processing Your Images</h2>
-        <p class="process-sub">Please wait while CoralSense analyzes your upload batch.</p>
-
-        <div class="progress-wrap" aria-label="Processing progress">
-            <div class="progress-track">
-                <div class="progress-fill" id="progress-fill"></div>
-            </div>
-            <p id="progress-text">75% (3/4 complete)</p>
-        </div>
-
-        <ul class="process-list">
-            <li><span>img1.jpg - 38.3% (Category B)</span><em class="dot dot-b"></em></li>
-            <li><span>img2.jpg - 27.1% (Category C)</span><em class="dot dot-c"></em></li>
-            <li><span>img3.jpg - 48.7% (Category A)</span><em class="dot dot-a"></em></li>
-            <li><span>Processing img4.jpg...</span><em class="dot dot-pending"></em></li>
-        </ul>
-
-        <div class="process-actions">
-            <button type="button" class="primary-btn" id="process-close-btn">View Results</button>
         </div>
     </div>
 </div>
@@ -456,7 +435,7 @@
 <div class="process-modal" id="analyze-confirm-modal" aria-hidden="true">
     <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-confirm-title">
         <h2 id="analyze-confirm-title">Re-run AI Analysis?</h2>
-        <p class="process-sub">This will re-detect coral areas and re-classify all species. Continue?</p>
+        <p class="process-sub">This replaces the current detections, boundary edits, and reviewed point classifications. Continue?</p>
         <div class="process-actions">
             <button type="button" class="action-outline" id="analyze-confirm-cancel">Cancel</button>
             <button type="button" class="primary-btn" id="analyze-confirm-accept">Yes, re-run AI</button>
@@ -470,7 +449,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=26"></script>
+<script src="{% static 'js/upload_batch_analysis.js' %}?v=1"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=27"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

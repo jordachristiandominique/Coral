@@ -189,21 +189,23 @@ The core write path, end to end:
   review warnings. A per-process lock rejects overlapping inference with HTTP 503.
   Limits and artifact selection are in `coral_app/settings.py`; API details are in
   `docs/yolo-local-inference.md` and regression tests in `accounts/test_yolo_inference.py`.
-- The endpoint does not replace upload mocks, write survey records, classify
-  sampling points, or change HCC. Runtime verification is separate from dataset
-  accuracy evaluation. Frontend connection remains pending.
+- The upload page now calls this endpoint sequentially using CSRF-protected fetch.
+  `static/js/upload_batch_analysis.js` validates responses and controls review state;
+  `upload_batch.js` renders real boxes and the existing point-review canvas. The
+  endpoint still does not persist records or classify sampling points automatically.
+  See section 13 for the connected review/save workflow.
 
 Source findings checked on 2026-10-10; these do not imply runtime testing:
 
-- **Mock analysis:** `static/js/upload_batch.js::startAnalyzeAll` calls `generateMockAIResults` and includes a TODO for a YOLO API. The mock cycles seven classes over ten randomly positioned points. Root training/comparison notebooks are separate experiments, not a deployed inference integration.
+- **AI review integration (updated 2026-11-03):** upload analysis now uses the local YOLO endpoint, without fabricated fallback boxes or classes. All ten points require manual classification and image review. Training/comparison notebooks remain separate from inference. Raw detections and provenance are displayed in browser memory; the existing image fields persist reviewed geometry and classes only.
 - **Authentication exception:** `accounts/views.py::batch_detail` lacks `login_required` and directly calls role methods on `request.user`. The duplicated login decorators immediately before `batch_image_annotated` protect that view only. Anonymous batch-detail access is not guarded by the documented pattern.
 - **Report formats:** `accounts/report_generator.py::generate_docx`, `generate_xlsx`, and `generate_html` mark reports completed with fixed sizes without writing files. Its PDF renders metadata rather than survey results. The separate `accounts/excel_export.py` batch workbook is implemented.
 - **Report errors:** `accounts/views.py::generate_report` records generation failures but returns a success response with "Report generation started"; processing is synchronous and no worker is launched.
-- **Coverage precision:** `compute_coverage` rounds image HCC to an integer, while upload caches store two-decimal percentages. Report aggregation and batch Excel category percentages use different paths. Do not assume all displayed outputs are identical (`accounts/models.py`, `accounts/views.py::upload_batch`, `accounts/report_generator.py`, `accounts/excel_export.py`).
+- **Coverage precision:** `compute_coverage` rounds image HCC to an integer; upload now reuses it and stores that value in its decimal cache. Report aggregation and batch Excel category percentages use different paths. Do not assume all displayed outputs are identical (`accounts/models.py`, `accounts/views.py::upload_batch`, `accounts/report_generator.py`, `accounts/excel_export.py`).
 - **Export filtering:** CSV/PDF analysis exports discard the coverage filter state; category/min/max filters are applied separately only in the analysis page (`accounts/views.py`).
 - **Coordinates:** editing batch coordinates does not synchronize existing transect coordinates (`accounts/views.py::batch_detail`). Shared site coordinates remain the intended invariant in `AGENTS.md`.
 - **Dashboard years:** the researcher dashboard groups trends by month name/number without year, merging years (`accounts/views.py::researcher_dashboard`).
-- **Validation:** upload checks basic payload completeness but not allowed class membership, complete JSON shape, geographic bounds, or uploaded image content/size (`accounts/views.py::upload_batch`).
+- **Validation (updated 2026-11-03):** `accounts/survey_validation.py` now validates submitted rectangle/point bounds, finite coordinates, supported benthic names, and the versioned ten-point review acknowledgement. The inference endpoint validates actual image bytes and size. Final survey upload retains its existing file handling; geographic bounds and matching an analysis response to a submitted file are not newly verified here.
 - **Settings/env drift (updated October 24):** database variables now load from `.env`; other example variables do not automatically configure the application. Hardcoded development settings remain intentional; console email does not deliver password-reset mail externally (`coral_app/settings.py`).
 - **Django version metadata:** the initial migration header names Django 6.0.3 while requirements pin 5.2.6. A header alone does not establish an incompatibility.
 - **Environment unknowns:** installed versions, live OAuth configuration, applied database migrations, and notebook training results are not established by source inspection. No direct application imports of several pinned libraries were found in the initial audit; that does not prove they are unnecessary transitively.
@@ -246,3 +248,48 @@ PostgreSQL 17.11 now runs as `postgresql-x64-17` on localhost:5432. The ignored 
 `DataRepository` replaces `ImageBatch` and `SurveyImage` replaces `BatchImage`. Migration `0016_repository_image_category_names` uses `RenameModel` / `RenameField`; default tables become `accounts_datarepository` and `accounts_surveyimage`. `SurveyImage.coverage_category` and `Transect.coverage_category` replace their stored `coverage_class` fields. Existing primary keys, file paths, foreign keys, JSON annotations, cached values, and HCC rules are preserved. Permission codenames are renamed in place with reversible data operations to preserve existing grants. Historical migrations remain unchanged.
 
 The `batch` foreign-key name, `images` / `image_batches` reverse relations, URLs, upload keys, HCC helper dictionary keys (`coverage_class`), template context, filters, and frontend payloads retain their existing contracts. These display/calculation dictionary keys are not database column names. Repository distribution reads `SurveyImage.coverage_category`. Before a rename, export/backup existing data; old fixtures and audit snapshots use the old model/field names and require explicit normalization when comparing against the renamed schema. `accounts/test_model_renames.py` covers forward/reverse row preservation, permission identity/grants, upload/append category writes, pages, role guards, exports, and admin registrations.
+
+
+## 13. Upload inference and review (2026-11-03)
+
+The upload template supplies the inference URL via `data-analyze-url` and loads
+`static/js/upload_batch_analysis.js` before the page controller. Images are sent
+one at a time with the form CSRF token. Busy inference has a bounded retry;
+individual failures are shown and can be retried without discarding other images'
+reviews. Re-analysis replaces old results, never restoring fake fallback data.
+
+The canvas shows normalized full-image Hard/Soft Coral and quadrat detections
+with confidence labels. The highest-confidence quadrat is a suggested sampling
+boundary, not a forced square. Researchers can choose another detected quadrat,
+edit its numeric percentages, or drag/resize it. If none is detected, no centered
+boundary or classified points are invented. A manually applied boundary is needed.
+
+Ten deterministic points are placed in two rows of five, relative to the chosen
+quadrat (x = .1/.3/.5/.7/.9; y = 1/3 and 2/3). All start unclassified. Box hits
+are textual suggestions only, including ambiguous Hard/Soft overlaps. The seven
+existing CPCE class names remain available for manual review; lack of a detection
+never assigns Non-coral or another class. These are point-intercept samples,
+not the standalone demo's area-proportional representative markers.
+
+Saving is enabled only after every image's boundary, ten point classes, and image
+review are confirmed. Geometry edits reset point classifications; point edits and
+unapplied boundary drafts invalidate approval. The multipart contract remains
+`image_quadrat_1..n` with rect, quadrat-relative points, and full point_classes;
+new UI payloads also carry `review: {version: 1, confirmed: true}`. Server-side
+validation checks this versioned review contract and canonical HCC is computed
+through `compute_coverage`. Legacy manual payloads without the review extension
+remain supported. No historical records or database schema were changed.
+
+Only reviewed geometry, point classes, and canonical cached statistics are saved
+in the existing fields. Raw boxes, confidence, and model provenance are not yet
+persisted with a SurveyImage; they are review-session data. Durable inference
+provenance and editable accepted coral boxes remain separate future work.
+
+The preview reports this new transect, not an already-existing site's total HCC.
+Its equal ten-point image mean uses two-place ties-to-even rounding to match the
+canonical mean; category wording is unchanged. Node regression tests cover the
+request/review state machine. Django tests cover payload validation and save
+behaviour. Chrome verification used a separate ignored SQLite database/media
+folder for real inference, reviewed upload, navigation, missing-quadrat recovery,
+failure/retry, fullscreen and mobile layout, leaving the live PostgreSQL surveys
+untouched. Captures are ignored under `output/playwright/`.

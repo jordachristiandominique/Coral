@@ -1755,3 +1755,39 @@ body.modal-open {
     box-shadow: 0 1px 3px rgba(13, 43, 58, 0.35);
 }
 .leaflet-tooltip.transect-map-label::before { display: none; }
+
+/* Real detection suggestions and explicit image review. */
+.detection-review { display: grid; gap: 10px; min-width: 0; }
+.detection-review[hidden] { display: none; }
+#retry-analysis-btn[hidden] { display: none; }
+.detection-review details { padding: 8px; border: 1px solid #d8e5e9; border-radius: 8px; }
+.detection-review summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #1c5f6d; }
+.detection-model { margin: 0; font-size: 12px; color: #587987; overflow-wrap: anywhere; }
+.detection-warning { margin: 0; font-size: 12px; color: #895200; }
+.detection-warning:empty { display: none; }
+.review-check { display: flex; gap: 8px; align-items: start; font-size: 12px; color: #244d5a; margin: 8px 0; }
+.review-check input { margin: 2px 0 0; flex: 0 0 auto; }
+.detection-list { max-height: 160px; overflow-y: auto; margin-top: 8px; }
+.detection-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+.detection-row button { padding: 6px; border: 1px solid #d8e5e9; background: #f4f9fa; color: #244d5a; border-radius: 5px; cursor: pointer; text-align: left; }
+.detection-row button[aria-pressed="true"] { border-color: #2a8793; background: #def3f4; }
+.quadrat-coordinate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.quadrat-coordinate-grid label { display: grid; gap: 3px; font-size: 12px; color: #244d5a; min-width: 0; }
+.quadrat-coordinate-grid input { width: 100%; box-sizing: border-box; min-width: 0; padding: 7px; border: 1px solid #bdd2da; border-radius: 5px; }
+.point-suggestion { grid-column: 1 / -1; font-size: 11px; color: #597681; line-height: 1.4; }
+.process-badge-failed { color: #9a2929; background: #ffe5e5; }
+.process-list li.is-failed { border-color: #dc9999; }
+#analyze-modal.is-error .analyze-status-icon::before { content: '!'; border: 0; animation: none; color: #9a2929; font-size: 24px; text-align: center; }
+#analyze-modal.is-error .progress-fill { background: #b87324; }
+#analyze-modal.is-error .progress-fill::after { display: none; }
+.analysis-results-panel .ai-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.analysis-results-panel .ai-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.quadrat-fs-side .analysis-results-panel { overflow-y: auto; }
+.quadrat-fs-side .analysis-results-panel .point-list { flex: 0 0 auto; overflow: visible; }
+.upload-batch-form, .upload-step-card, .quadrat-card { min-width: 0; }
+@media (max-width: 1100px) {
+    .upload-shell { grid-template-columns: minmax(0, 1fr); }
+    .upload-shell .researcher-sidebar { min-width: 0; }
+    .upload-shell .sidebar-nav a { min-width: 0; }
+    .upload-shell .sidebar-nav a span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+}
