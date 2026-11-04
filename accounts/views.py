@@ -25,10 +25,9 @@ from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
 from .models import (
-    User, DataRepository, SurveyImage, Transect, Report, Notification, POINT_CLASS_CODES,
+    User, DataRepository, SurveyImage, Transect, Notification, POINT_CLASS_CODES,
     NATIONAL_HCC_AVERAGE, compute_coverage, classify_hcc, compute_site_hcc,
 )
-from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 from . import yolo_inference
 from .survey_validation import validate_quadrat_payload
@@ -752,11 +751,7 @@ def manage_users(request):
     # Get all users (researcher and admin roles) ordered by most recent
     users = User.objects.filter(role__in=['researcher', 'admin']).order_by('-date_joined')
     
-    # Annotate with batch and report counts
-    users = users.annotate(
-        batch_count=Count('image_batches', distinct=True),
-        report_count=Count('reports', distinct=True)
-    )
+    users = users.annotate(batch_count=Count('image_batches', distinct=True))
 
     context = {
         'user': request.user,
@@ -1369,246 +1364,10 @@ def batch_detail(request, batch_id):
 
 @login_required(login_url='login')
 def reports(request):
-    """Generate and display coral monitoring reports."""
+    """Send existing report-page bookmarks to repository Excel downloads."""
     if request.user.is_pending():
-        messages.info(request, 'Your account is still pending approval.')
         return redirect('pending_approval')
-
-    if request.user.is_admin():
-        batches_qs = DataRepository.objects.all()
-    else:
-        batches_qs = DataRepository.objects.filter(user=request.user)
-    
-    batches_list = list(batches_qs.annotate(
-        image_count=Count('images')
-    ).order_by('-survey_date'))
-
-    # Calculate statistics
-    total_surveys = len(batches_list)
-    total_images = sum(b.image_count or 0 for b in batches_list)
-
-    # Per-batch site HCC (mean of transect means) -> category tallies + average.
-    class_a = class_b = class_c = class_d = pending = 0
-    site_percents = []
-    for batch in batches_list:
-        site = compute_site_hcc(batch)
-        batch.avg_coverage = site['site_percent']
-        cls = site['coverage_class']
-        if cls == 'A':
-            class_a += 1
-        elif cls == 'B':
-            class_b += 1
-        elif cls == 'C':
-            class_c += 1
-        elif cls == 'D':
-            class_d += 1
-        else:
-            pending += 1
-        if site['site_percent'] is not None:
-            site_percents.append(site['site_percent'])
-    avg_coverage = round(sum(site_percents) / len(site_percents), 1) if site_percents else 0
-
-    # Extract unique locations from batches
-    area_counts = {}
-    for batch in batches_list:
-        if batch.area_name:
-            area_counts[batch.area_name] = area_counts.get(batch.area_name, 0) + 1
-    locations = []
-    seen_locations = set()
-    for batch in batches_list:
-        if batch.area_name and batch.area_name not in seen_locations:
-            locations.append({
-                'name': batch.area_name,
-                'latitude': float(batch.latitude),
-                'longitude': float(batch.longitude),
-                'batch_count': area_counts.get(batch.area_name, 0),
-            })
-            seen_locations.add(batch.area_name)
-
-    context = {
-        'user': request.user,
-        'generated_at': timezone.now(),
-        'total_surveys': total_surveys,
-        'total_images': total_images,
-        'avg_coverage': avg_coverage,
-        'class_a': class_a,
-        'class_b': class_b,
-        'class_c': class_c,
-        'class_d': class_d,
-        'pending': pending,
-        'recent_batches': batches_list[:10],
-        'locations': locations,
-        'recent_reports': Report.objects.filter(user=request.user, status='completed')[:10],
-    }
-    return render(request, 'accounts/reports.html', context)
-
-
-@login_required(login_url='login')
-@require_http_methods(["POST"])
-@csrf_protect
-def generate_report(request):
-    """Generate a new report from form data."""
-    if request.user.is_pending():
-        return HttpResponse(json.dumps({'status': 'error', 'message': 'Your account is pending approval'}), 
-                          content_type='application/json', status=403)
-    
-    try:
-        # Parse form data
-        report_type = request.POST.get('report_type', 'summary')
-        title = request.POST.get('report_title', f'Report - {timezone.now().strftime("%Y-%m-%d")}')
-        author = request.POST.get('report_author', '')
-        export_format = request.POST.get('export_format', 'pdf')
-        
-        # Collect configuration data
-        config = {
-            'report_type': report_type,
-            'title': title,
-            'author': author,
-            'export_format': export_format,
-            'date_from': request.POST.get('date_from', ''),
-            'date_to': request.POST.get('date_to', ''),
-            'selected_batch': request.POST.get('selected_batch', ''),
-            'include_options': {
-                'all_batches': request.POST.get('include_all') == 'on',
-                'specific_locations': request.POST.get('specific_locations') == 'on',
-                'specific_classes': request.POST.get('specific_classes') == 'on',
-            },
-            'customization': {
-                'sections': {
-                    'summary': request.POST.get('section_summary') == 'on',
-                    'methodology': request.POST.get('section_methodology') == 'on',
-                    'findings': request.POST.get('section_findings') == 'on',
-                    'results': request.POST.get('section_results') == 'on',
-                    'maps': request.POST.get('section_maps') == 'on',
-                    'images': request.POST.get('section_images') == 'on',
-                    'recommendations': request.POST.get('section_recommendations') == 'on',
-                    'appendix': request.POST.get('section_appendix') == 'on',
-                },
-                'cover_page': {
-                    'logo': request.POST.get('cover_logo') == 'on',
-                    'institution_logo': request.POST.get('cover_institution_logo') == 'on',
-                    'header_image': request.POST.get('cover_header_image') == 'on',
-                },
-                'color_theme': request.POST.get('color_theme', 'coralsense'),
-                'sample_images_count': int(request.POST.get('sample_images_count', 3)),
-            },
-            'advanced_options': {
-                'include_raw_images': request.POST.get('include_raw_images') == 'on',
-                'multiple_formats': request.POST.get('multiple_formats') == 'on',
-                'email_when_ready': request.POST.get('email_when_ready') == 'on',
-            },
-        }
-        
-        # Create Report entry
-        report = Report.objects.create(
-            user=request.user,
-            title=title,
-            report_type=report_type,
-            author=author,
-            export_format=export_format,
-            config=config,
-            status='pending'
-        )
-        
-        # Generate report (for now, synchronously; can be moved to Celery task)
-        try:
-            generator = ReportGenerator(report)
-            generator.generate()
-        except Exception as e:
-            report.status = 'failed'
-            report.error_message = str(e)
-            report.save()
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Report generated successfully' if report.status == 'completed' else 'Report generation started',
-            'report_id': report.id
-        })
-    
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
-
-
-@login_required(login_url='login')
-def download_report(request, report_id):
-    """Download a generated report."""
-    if request.user.is_pending():
-        messages.info(request, 'Your account is still pending approval.')
-        return redirect('pending_approval')
-    
-    if request.user.is_admin():
-        report = get_object_or_404(Report, id=report_id)
-    else:
-        report = get_object_or_404(Report, id=report_id, user=request.user)
-    
-    if not report.file:
-        messages.error(request, 'Report file not found.')
-        return redirect('reports')
-    
-    try:
-        response = HttpResponse(report.file.read(), content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{report.title}.{report.export_format}"'
-        return response
-    except Exception as e:
-        messages.error(request, f'Error downloading report: {str(e)}')
-        return redirect('reports')
-
-
-@login_required(login_url='login')
-def view_report(request, report_id):
-    """View report details."""
-    if request.user.is_pending():
-        messages.info(request, 'Your account is still pending approval.')
-        return redirect('pending_approval')
-    
-    if request.user.is_admin():
-        report = get_object_or_404(Report, id=report_id)
-    else:
-        report = get_object_or_404(Report, id=report_id, user=request.user)
-    
-    context = {
-        'report': report,
-        'generated_at': timezone.now(),
-    }
-    return render(request, 'accounts/report_view.html', context)
-
-
-@login_required(login_url='login')
-def delete_report(request, report_id):
-    """Delete a report."""
-    if request.user.is_pending():
-        return JsonResponse({'error': 'Your account is still pending approval.'}, status=403)
-    
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'Method not allowed.'}, status=405)
-    
-    try:
-        if request.user.is_admin():
-            report = get_object_or_404(Report, id=report_id)
-        else:
-            report = get_object_or_404(Report, id=report_id, user=request.user)
-        
-        # Delete the file from storage
-        if report.file:
-            try:
-                storage = report.file.storage
-                storage.delete(report.file.name)
-            except Exception as e:
-                print(f'Error deleting file: {str(e)}')
-        
-        # Delete the report record
-        report_title = report.title
-        report.delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Report "{report_title}" has been deleted successfully.'
-        }, status=200)
-    
-    except Report.DoesNotExist:
-        return JsonResponse({'error': 'Report not found.'}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': f'Error deleting report: {str(e)}'}, status=500)
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+    messages.info(request, 'Download Excel results from a data repository.')
+    return redirect('batches')

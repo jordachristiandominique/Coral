@@ -20,7 +20,7 @@
 | Settings | `coral_app/settings.py` | Plain settings; `SECRET_KEY` and `DEBUG=True` **hardcoded**; `os.environ.get` used only for Google OAuth client id/secret. Reads only database variables from project `.env` or process environment; retains hardcoded development DEBUG/SECRET_KEY. | `coral_app/settings.py`, `.env.example` |
 | Root URLconf | `coral_app/urls.py` | `''` landing, `public-dashboard/`, `admin/`, `accounts/` include, `oauth/` (allauth); media served in DEBUG via `static()` | `coral_app/urls.py` |
 | Project views | `coral_app/views.py` | `landing_page`, `public_dashboard` (public HCC dashboard) | `coral_app/views.py` |
-| Single app | `accounts/` | models, views (1,803 lines), forms, signals, context processor, admin, plus helpers: `excel_export.py` (openpyxl), `report_generator.py` (reportlab), `image_annotator.py` (Pillow annotation rendering) | `accounts/` directory, `accounts/apps.py` (registers `signals` in `ready()`) |
+| Single app | `accounts/` | models, views (1,803 lines), forms, signals, context processor, admin, plus helpers: `excel_export.py` (openpyxl), `image_annotator.py` (Pillow annotation rendering) | `accounts/` directory, `accounts/apps.py` (registers `signals` in `ready()`) |
 | Templates — project | `templates/` (3 files) | `base.html` (nav/messages toasts/footer), `landing_page.html`, `public_dashboard.html` | `templates/` tree |
 | Templates — app | `accounts/templates/accounts/` (22 files) | incl. `partials/coverage_class_key.html`, `partials/_profile_menu.html`, password-reset email templates | `accounts/templates/` tree |
 | Static | `static/` | 15 CSS, 16 JS files, icons/images; page scripts named per page (`upload_batch.js`, `map_view.js`, …) | `static/` tree |
@@ -71,11 +71,7 @@ App (`accounts/urls.py`) — all under `accounts/`:
 | `researcher/analysis-results/` | `analysis_results` | `analysis_results` |
 | `researcher/analysis-results/export/csv/` | `analysis_results_export_csv` | `analysis_results_export_csv` |
 | `researcher/analysis-results/export/pdf/` | `analysis_results_export_pdf` | `analysis_results_export_pdf` |
-| `researcher/reports/` | `reports` | `reports` |
-| `researcher/reports/generate/` | `generate_report` (POST, JSON) | `generate_report` |
-| `researcher/reports/<int:report_id>/download/` | `download_report` | `download_report` |
-| `researcher/reports/<int:report_id>/view/` | `view_report` | `view_report` |
-| `researcher/reports/<int:report_id>/delete/` | `delete_report` (DELETE, JSON) | `delete_report` |
+| `researcher/reports/` | Legacy bookmark redirect to Data Repositories | `reports` |
 | `password-reset/` | `CustomPasswordResetView` (CBV) | `password_reset` |
 | `password-reset/done/` | `password_reset_done` | `password_reset_done` |
 | `password-reset/<uidb64>/<token>/` | `CustomPasswordResetConfirmView` (CBV) | `password_reset_confirm` |
@@ -419,3 +415,26 @@ The display-code extension maps Other Substrate to OS. This is a JSON label
 normalization and requires no schema migration. A transactional local PostgreSQL
 normalization found zero image labels requiring updates. Future submissions and
 older databases are normalized through the shared reader/validator.
+
+
+## 18. Report builder retired (2026-11-04)
+
+The researcher report-generation workflow has been removed. Sidebar links and the
+Manage Users report-count column were removed. The report builder/detail templates,
+report-specific JS/CSS, and accounts/report_generator.py were deleted. Generate,
+view, download and delete report routes are no longer registered. Their view
+implementations and the ReportGenerator import were removed from accounts/views.py.
+The existing reports URL remains a login/role-guarded bookmark redirect to batches,
+with a server message directing users to repository Excel downloads.
+
+The primary result workflow is Data Repositories -> Excel or repository details ->
+Download Excel, using the existing batch_export_excel view and workbook helper.
+Report model rows, files and migration history are retained as historical archives
+accessible through Django Admin. The separate Analysis Results CSV/PDF exports are
+independent of the retired builder. Earlier ReportGenerator references in the
+initial architecture audit describe the removed implementation.
+
+Retirement verification passed 48 Django tests on PostgreSQL, system checks and
+migration consistency checks. An isolated browser followed the old Reports URL
+to repositories, downloaded a real .xlsx workbook, confirmed generation returns
+404, and checked the repository page at 390px without horizontal overflow.

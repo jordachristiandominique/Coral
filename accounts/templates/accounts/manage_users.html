@@ -69,11 +69,6 @@
                 <img src="{% static 'icons/map-view.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
                 <span>Surveyed Sites</span>
             </a>
-            <a href="{% url 'reports' %}">
-                <img src="{% static 'icons/report.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
-                <span>Reports</span>
-            </a>
-
             <!-- User Management Dropdown (Admin only) -->
             {% if user.is_admin %}
             <div class="sidebar-nav-dropdown is-open">
@@ -137,7 +132,6 @@
                             <th scope="col">Role</th>
                             <th scope="col">Status</th>
                             <th scope="col">Data Repositories</th>
-                            <th scope="col">Reports</th>
                             <th scope="col">Joined</th>
                             <th scope="col">Actions</th>
                         </tr>
@@ -162,9 +156,6 @@
                             </td>
                             <td data-label="Data Repositories" class="text-center">
                                 <span class="stat-number">{{ u.batch_count }}</span>
-                            </td>
-                            <td data-label="Reports" class="text-center">
-                                <span class="stat-number">{{ u.report_count }}</span>
                             </td>
                             <td data-label="Joined">
                                 <span class="join-date">{{ u.date_joined|date:"M d, Y" }}</span>

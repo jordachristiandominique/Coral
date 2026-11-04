@@ -53,7 +53,7 @@ class RepositoryWorkflowTests(TestCase):
             self.assertEqual(list(repository.transects.values_list('number', flat=True)), [1, 2])
             self.assertEqual(compute_site_hcc(repository)['site_percent'], 50)
             for name in ('researcher_dashboard', 'batches', 'map_view',
-                         'analysis_results', 'reports', 'public_dashboard',
+                         'analysis_results', 'public_dashboard',
                          'analysis_results_export_csv', 'analysis_results_export_pdf'):
                 with self.subTest(page=name):
                     self.assertEqual(self.client.get(reverse(name)).status_code, 200)

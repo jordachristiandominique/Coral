@@ -27,10 +27,6 @@ urlpatterns = [
     path('researcher/analysis-results/export/csv/', views.analysis_results_export_csv, name='analysis_results_export_csv'),
     path('researcher/analysis-results/export/pdf/', views.analysis_results_export_pdf, name='analysis_results_export_pdf'),
     path('researcher/reports/', views.reports, name='reports'),
-    path('researcher/reports/generate/', views.generate_report, name='generate_report'),
-    path('researcher/reports/<int:report_id>/download/', views.download_report, name='download_report'),
-    path('researcher/reports/<int:report_id>/view/', views.view_report, name='view_report'),
-    path('researcher/reports/<int:report_id>/delete/', views.delete_report, name='delete_report'),
     
     # Password reset URLs
     path('password-reset/', views.CustomPasswordResetView.as_view(), name='password_reset'),
