@@ -1,6 +1,7 @@
 import csv
 import json
 import logging
+from collections import Counter
 from decimal import Decimal, InvalidOperation
 from datetime import date
 from io import BytesIO
@@ -24,13 +25,14 @@ from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
 from .models import (
-    User, DataRepository, SurveyImage, Transect, Report, Notification, CPCE_CODES,
+    User, DataRepository, SurveyImage, Transect, Report, Notification, POINT_CLASS_CODES,
     NATIONAL_HCC_AVERAGE, compute_coverage, classify_hcc, compute_site_hcc,
 )
 from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 from . import yolo_inference
 from .survey_validation import validate_quadrat_payload
+from .visualization_data import composition_summary, COMPOSITION_COLORS
 
 
 logger = logging.getLogger(__name__)
@@ -198,12 +200,8 @@ def researcher_dashboard(request):
     # All users (admin and researchers) see all survey data
     batches = DataRepository.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
 
-    # Recalculate coverage from point_classes for each batch (HC+SC only),
-    # and aggregate the 7 benthic classes across every survey for the
-    # class-distribution chart.
-    BENTHIC_CLASSES = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-                       'Algae Assemblage', 'Abiotic', 'Other Biota']
-    benthic_counts = {c: 0 for c in BENTHIC_CLASSES}
+    # Reuse the image pass for the saved-marker composition chart.
+    composition_points = Counter()
 
     batches_with_coverage = []
     for batch in batches:
@@ -212,9 +210,7 @@ def researcher_dashboard(request):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
 
-        for pc in all_point_classes:
-            if pc in benthic_counts:
-                benthic_counts[pc] += 1
+        composition_points.update(all_point_classes)
 
         # Site HCC = mean of the transect means (transect = replicate).
         batch.avg_coverage = compute_site_hcc(batch)['site_percent']
@@ -241,23 +237,6 @@ def researcher_dashboard(request):
 
     locations = batches.values('area_name').distinct().count()
 
-    # Build chart data (monthly trend)
-    chart_labels = []
-    chart_values = []
-    months_data = {}
-    for batch in batches_with_coverage:
-        if batch.avg_coverage is None:
-            continue
-        month_key = batch.survey_date.strftime('%b')
-        if month_key not in months_data:
-            months_data[month_key] = {'month_num': batch.survey_date.month, 'values': []}
-        months_data[month_key]['values'].append(batch.avg_coverage)
-    
-    # Sort by actual month number (chronological order) instead of alphabetically
-    for month_key in sorted(months_data.keys(), key=lambda x: months_data[x]['month_num']):
-        chart_labels.append(month_key)
-        chart_values.append(round(sum(months_data[month_key]['values']) / len(months_data[month_key]['values']), 0))
-
     # Build recent submissions
     recent_submissions = []
     for batch in batches_with_coverage[:5]:
@@ -274,24 +253,7 @@ def researcher_dashboard(request):
             'coverage_class': coverage_class,
         })
 
-    # Benthic class distribution (7 classes) for the dashboard chart.
-    # Validated, colour-blind-safe palette (same as the public dashboard).
-    BENTHIC_COLORS = {
-        'Hard Coral': '#2a78d6', 'Soft Coral': '#008300', 'Macroalgae': '#e87ba4',
-        'Halimeda': '#eda100', 'Algae Assemblage': '#1baf7a', 'Abiotic': '#eb6834',
-        'Other Biota': '#4a3aa7',
-    }
-    benthic_total = sum(benthic_counts.values())
-    benthic_distribution = [
-        {
-            'label': c,
-            'code': CPCE_CODES.get(c, ''),
-            'count': benthic_counts[c],
-            'value': round((benthic_counts[c] / benthic_total) * 100, 1) if benthic_total else 0,
-            'color': BENTHIC_COLORS[c],
-        }
-        for c in BENTHIC_CLASSES
-    ]
+    benthic_distribution = composition_summary(composition_points)
 
     insight_total = class_counts['A'] + class_counts['B'] + class_counts['C'] + class_counts['D']
     insight_items = [
@@ -309,18 +271,14 @@ def researcher_dashboard(request):
         'healthy_reefs': healthy_reefs,
         'locations': locations,
         'recent_submissions': recent_submissions,
-        'chart_data': {
-            'labels': chart_labels,
-            'values': chart_values,
-        },
         'insight_total': round(avg_coverage, 1) if avg_coverage is not None else None,
         'insight_items': insight_items,
         'benthic_distribution': benthic_distribution,
-        'benthic_chart': json.dumps({
+        'benthic_chart': {
             'labels': [b['label'] for b in benthic_distribution],
-            'values': [b['value'] for b in benthic_distribution],
+            'values': [b['count'] for b in benthic_distribution],
             'colors': [b['color'] for b in benthic_distribution],
-        }),
+        },
     }
     return render(request, 'accounts/researcher_dashboard.html', context)
 
@@ -395,8 +353,6 @@ def _apply_analysis_filters(request, queryset):
 
 
 def _build_analysis_rows(queryset):
-    benthic_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-                       'Algae Assemblage', 'Abiotic', 'Other Biota']
     rows = []
     for batch in queryset:
         # Recalculate coverage from point_classes (HC+SC only)
@@ -405,13 +361,8 @@ def _build_analysis_rows(queryset):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
 
-        # Per-site benthic composition (% of all classified points in each of
-        # the 7 classes) for the "Composition by Site" chart.
-        benthic = {}
-        if all_point_classes:
-            total = len(all_point_classes)
-            for cls in benthic_classes:
-                benthic[cls] = round(all_point_classes.count(cls) / total * 100, 1)
+        composition = composition_summary(all_point_classes)
+        benthic = {item['label']: item['value'] for item in composition} if all_point_classes else {}
 
         # Site HCC = mean of the transect means (transect = replicate); `se` is
         # the standard error across those transect means.
@@ -476,174 +427,22 @@ def analysis_results(request):
     for row in rows:
         distribution[row['coverage_class']] += 1
 
-    # Calculate 7-class distribution and hard/soft coral stats
-    class_distribution = {
-        'Hard Coral': 0,
-        'Soft Coral': 0,
-        'Macroalgae': 0,
-        'Halimeda': 0,
-        'Algae Assemblage': 0,
-        'Abiotic': 0,
-        'Other Biota': 0,
-    }
-    total_points = 0
-    
-    for batch in batches_queryset:
-        for image in batch.images.all():
-            if image.point_classes:
-                for point_class in image.point_classes:
-                    if point_class in class_distribution:
-                        class_distribution[point_class] += 1
-                    total_points += 1
-    
-    # Convert to percentages
-    class_percentages = {}
-    for class_name, count in class_distribution.items():
-        if total_points > 0:
-            class_percentages[class_name] = round((count / total_points) * 100, 1)
-        else:
-            class_percentages[class_name] = 0
-    
-    # Calculate hard vs soft coral averages
-    hard_soft_totals = {'hard': 0, 'soft': 0}
-    hard_soft_count = 0
-    
-    for batch in batches_queryset:
-        all_point_classes = []
-        for image in batch.images.all():
-            if image.point_classes:
-                all_point_classes.extend(image.point_classes)
-        
-        if all_point_classes:
-            hard_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-            soft_count = sum(1 for pc in all_point_classes if pc == 'Soft Coral')
-            
-            hard_soft_totals['hard'] += hard_count
-            hard_soft_totals['soft'] += soft_count
-            hard_soft_count += len(all_point_classes)
-    
-    hard_coral_pct = round((hard_soft_totals['hard'] / hard_soft_count) * 100, 1) if hard_soft_count > 0 else 0
-    soft_coral_pct = round((hard_soft_totals['soft'] / hard_soft_count) * 100, 1) if hard_soft_count > 0 else 0
-
-    # Calculate chart data using ALL batches (not filtered by coverage), grouped by month
-    # This shows the actual trend without filtering distorting the averages
-    chart_data_rows = _build_analysis_rows(batches_queryset)
-    
-    # Group by month and calculate average coverage
-    from collections import defaultdict
-    monthly_data = defaultdict(list)
-    for row in chart_data_rows:
-        month_key = row['survey_date'].strftime('%b %Y')
-        monthly_data[month_key].append(row['avg_coverage'])
-    
-    # Sort by date and create chart labels/values
-    chart_labels = []
-    chart_values = []
-    from datetime import datetime
-    month_dates = []
-    for month_str in monthly_data.keys():
-        try:
-            month_date = datetime.strptime(month_str, '%b %Y')
-            month_dates.append((month_date, month_str))
-        except:
-            pass
-    
-    month_dates.sort(key=lambda x: x[0])
-    for month_date, month_str in month_dates:
-        chart_labels.append(month_str)
-        avg = sum(monthly_data[month_str]) / len(monthly_data[month_str])
-        chart_values.append(round(avg, 1))
-
-    # Calculate Hard and Soft Coral trends by month
-    monthly_hard_soft = defaultdict(lambda: {'hard_points': 0, 'soft_points': 0, 'total_points': 0})
-    
-    for batch in batches_queryset:
-        month_key = batch.survey_date.strftime('%b %Y')
-        for image in batch.images.all():
-            if image.point_classes:
-                hard_count = sum(1 for pc in image.point_classes if pc == 'Hard Coral')
-                soft_count = sum(1 for pc in image.point_classes if pc == 'Soft Coral')
-                
-                monthly_hard_soft[month_key]['hard_points'] += hard_count
-                monthly_hard_soft[month_key]['soft_points'] += soft_count
-                monthly_hard_soft[month_key]['total_points'] += len(image.point_classes)
-    
-    # Convert to percentages and sort by month
-    hard_soft_labels = []
-    hard_coral_trend = []
-    soft_coral_trend = []
-    
-    for month_date, month_str in month_dates:
-        if month_str in monthly_hard_soft:
-            data = monthly_hard_soft[month_str]
-            if data['total_points'] > 0:
-                hard_pct = round((data['hard_points'] / data['total_points']) * 100, 1)
-                soft_pct = round((data['soft_points'] / data['total_points']) * 100, 1)
-            else:
-                hard_pct = 0
-                soft_pct = 0
-            
-            hard_soft_labels.append(month_str)
-            hard_coral_trend.append(hard_pct)
-            soft_coral_trend.append(soft_pct)
-
-    # Calculate monthly statistics table
+    # Monthly HCC uses the same filtered site means and categories as the charts.
+    monthly_rows = {}
+    for row in rows:
+        key = row['survey_date'].replace(day=1)
+        monthly_rows.setdefault(key, []).append(row)
     monthly_stats = []
-    monthly_coverage_data = defaultdict(list)
-    monthly_classes = defaultdict(lambda: {'A': 0, 'B': 0, 'C': 0, 'D': 0})
-    monthly_batches = defaultdict(int)
-    monthly_images = defaultdict(int)
-    
-    for batch in batches_queryset:
-        month_key = batch.survey_date.strftime('%b %Y')
-        monthly_batches[month_key] += 1
-        
-        # Count images and collect coverage data
-        all_point_classes = []
-        for image in batch.images.all():
-            monthly_images[month_key] += 1
-            if image.point_classes:
-                all_point_classes.extend(image.point_classes)
-        
-        # Calculate HCC for this batch (Hard Coral points only)
-        if all_point_classes:
-            coral_count = sum(1 for pc in all_point_classes if pc == 'Hard Coral')
-            batch_coverage = round((coral_count / len(all_point_classes)) * 100, 1)
-            monthly_coverage_data[month_key].append(batch_coverage)
-
-            # Assign to HCC category
-            monthly_classes[month_key][classify_hcc(batch_coverage)] += 1
-    
-    # Build monthly stats list
-    for month_date, month_str in month_dates:
-        if month_str in monthly_batches:
-            avg_coverage = sum(monthly_coverage_data[month_str]) / len(monthly_coverage_data[month_str]) if monthly_coverage_data[month_str] else 0
-            
-            # Get hard/soft percentages
-            if month_str in monthly_hard_soft:
-                data = monthly_hard_soft[month_str]
-                if data['total_points'] > 0:
-                    hard_pct = round((data['hard_points'] / data['total_points']) * 100, 1)
-                    soft_pct = round((data['soft_points'] / data['total_points']) * 100, 1)
-                else:
-                    hard_pct = 0
-                    soft_pct = 0
-            else:
-                hard_pct = 0
-                soft_pct = 0
-            
-            monthly_stats.append({
-                'month': month_str,
-                'batch_count': monthly_batches[month_str],
-                'image_count': monthly_images[month_str],
-                'avg_coverage': avg_coverage,
-                'hard_coral_pct': hard_pct,
-                'soft_coral_pct': soft_pct,
-                'class_a_count': monthly_classes[month_str]['A'],
-                'class_b_count': monthly_classes[month_str]['B'],
-                'class_c_count': monthly_classes[month_str]['C'],
-                'class_d_count': monthly_classes[month_str]['D'],
-            })
+    for month, month_rows in sorted(monthly_rows.items()):
+        valid = [row for row in month_rows if row['coverage_class'] != 'Pending']
+        average = round(sum(row['avg_coverage'] for row in valid) / len(valid), 1) if valid else None
+        monthly_stats.append({
+            'month': month.strftime('%b %Y'), 'batch_count': len(month_rows),
+            'image_count': sum(row['image_count'] or 0 for row in month_rows),
+            'avg_coverage': average,
+            **{f'class_{category.lower()}_count': sum(row['coverage_class'] == category for row in valid)
+               for category in ('A', 'B', 'C', 'D')},
+        })
 
     context = {
         'user': request.user,
@@ -654,16 +453,9 @@ def analysis_results(request):
         'distribution': distribution,
         'monthly_stats': monthly_stats,
         'chart_data': {
-            'labels': chart_labels,
-            'values': chart_values,
             'classes': [distribution['A'], distribution['B'], distribution['C'], distribution['D'], distribution['Pending']],
-            'class_percentages': class_percentages,
-            'hard_coral_pct': hard_coral_pct,
-            'soft_coral_pct': soft_coral_pct,
-            'hard_soft_labels': hard_soft_labels,
-            'hard_coral_trend': hard_coral_trend,
-            'soft_coral_trend': soft_coral_trend,
             'national_hcc_average': NATIONAL_HCC_AVERAGE,
+            'composition_colors': COMPOSITION_COLORS,
         },
         'filter_state': filter_state,
         'area_options': area_options,
@@ -1346,28 +1138,8 @@ def map_view(request):
             if image.point_classes:
                 all_point_classes.extend(image.point_classes)
         
-        # Calculate class distribution for all 7 classes
-        class_breakdown = {
-            'Hard Coral': 0,
-            'Soft Coral': 0,
-            'Macroalgae': 0,
-            'Halimeda': 0,
-            'Algae Assemblage': 0,
-            'Abiotic': 0,
-            'Other Biota': 0,
-        }
-        
-        total_points = len(all_point_classes)
-        for pc in all_point_classes:
-            if pc in class_breakdown:
-                class_breakdown[pc] += 1
-        
-        # Convert counts to percentages
-        if total_points > 0:
-            class_breakdown_pct = {k: round((v / total_points) * 100, 1) for k, v in class_breakdown.items()}
-        else:
-            class_breakdown_pct = {k: 0 for k in class_breakdown.keys()}
-        
+        class_breakdown_pct = {item['label']: item['value'] for item in composition_summary(all_point_classes)}
+
         batch.class_breakdown = class_breakdown_pct
         
         # Site HCC = mean of the transect means (transect = replicate).
@@ -1555,7 +1327,7 @@ def batch_detail(request, batch_id):
         image.point_rows = [
             {
                 'number': index,
-                'code': CPCE_CODES.get(class_name, '--'),
+                'code': POINT_CLASS_CODES.get(class_name, '--'),
                 'name': class_name or 'Unclassified',
             }
             for index, class_name in enumerate(image.point_classes or [], start=1)

@@ -5,7 +5,7 @@
     else root.UploadBatchAnalysis = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (Representative) {
     'use strict';
-    const classes = ['Hard Coral', 'Soft Coral', 'Unclassified'];
+    const classes = ['Hard Coral', 'Soft Coral', 'Non-Coral'];
     const validRect = r => Boolean(r && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(r[k])) &&
         r.x >= 0 && r.y >= 0 && r.w > 0 && r.h > 0 && r.x + r.w <= 1.000001 && r.y + r.h <= 1.000001);
     const complete = r => Boolean(r && !r.boundary_draft && validRect(r.quadrat_bbox) && r.quadrat_confirmed &&

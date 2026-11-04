@@ -47,7 +47,8 @@ const initializeResearcherDashboard = function () {
                     tooltip: {
                         callbacks: {
                             label: function (ctx) {
-                                return ctx.label + ': ' + ctx.parsed + '%';
+                                const total = values.reduce((sum, value) => sum + value, 0);
+                                return ctx.label + ': ' + (total ? ctx.parsed / total * 100 : 0).toFixed(1) + '%';
                             }
                         }
                     }
@@ -55,12 +56,12 @@ const initializeResearcherDashboard = function () {
             }
         });
     } else if (benthicEl) {
-        // No classified points yet — show a friendly placeholder
+        // No reviewed marker data yet — show a friendly placeholder
         const ctx = benthicEl.getContext('2d');
         ctx.font = '13px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = '#688792';
         ctx.textAlign = 'center';
-        ctx.fillText('No classified points yet', benthicEl.width / 2, benthicEl.height / 2);
+        ctx.fillText('No reviewed marker data yet', benthicEl.width / 2, benthicEl.height / 2);
     }
 };
 

@@ -31,7 +31,7 @@ function setClassBadge(badge, coverageClass) {
 }
 
 /**
- * Batch Visualization - 7 Coral Classes
+ * Repository marker visualizations
  * Displays pie chart, map, and statistics for coral detection analysis
  */
 
@@ -39,29 +39,25 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeVisualization();
 });
 
-// 7 Coral Classes with their color scheme.
-// Uses the validated, colorblind-safe system palette (matches
-// accounts/views.py BENTHIC_COLORS and the public dashboard) so every
-// chart across the app reads as one consistent, professional system.
+// Saved classes and the representative Non-Coral remainder.
+// Primary colors match the upload review and dashboard composition charts.
 const CORAL_CLASSES = {
-    'Hard Coral': { hex: '#2a78d6', label: 'HC' },
-    'Soft Coral': { hex: '#008300', label: 'SC' },
+    'Hard Coral': { hex: '#a44cff', label: 'HC' },
+    'Soft Coral': { hex: '#2a8793', label: 'SC' },
     'Macroalgae': { hex: '#e87ba4', label: 'MA' },
     'Halimeda': { hex: '#eda100', label: 'HA' },
     'Algae Assemblage': { hex: '#1baf7a', label: 'AA' },
     'Abiotic': { hex: '#eb6834', label: 'AB' },
-    'Other Biota': { hex: '#4a3aa7', label: 'OB' }
+    'Other Biota': { hex: '#4a3aa7', label: 'OB' },
+    'Non-Coral': { hex: '#d9a321', label: 'NC' },
+    'Unclassified': { hex: '#7a8d96', label: '--' }
 };
 
-// Shared accents for the coral (HC/SC) breakdown UI. HC = system blue,
-// SC = system green, totals = brand teal. Muted ink for secondary text.
-const CORAL_HC = '#2a78d6';
-const CORAL_SC = '#008300';
+// Shared accents for Hard/Soft Coral and marker totals.
+const CORAL_HC = '#a44cff';
+const CORAL_SC = '#2a8793';
 const CORAL_TOTAL = '#1c5f6d';
 const CORAL_INK_MUTED = '#6b8893';
-
-// Coral classes for coverage (excludes Abiotic)
-const COVERAGE_CLASSES = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Other Biota'];
 
 function initializeVisualization() {
     // Extract batch data from page
@@ -77,7 +73,7 @@ function initializeVisualization() {
     // Initialize visualizations
     initializePieChart(classDistribution);
     initializeMap(latitude, longitude, batchName);
-    updateStatistics(classDistribution, latitude, longitude);
+    updateStatistics(classDistribution);
     renderClassLegend(classDistribution);
 
     // Per-image Hard Coral Cover badges (Hard Coral only)
@@ -108,8 +104,8 @@ function collectClassDistribution() {
                     classArray.forEach(className => {
                         // Map short names back to full names
                         const fullName = mapShortNameToFullName(className);
-                        if (fullName && distribution.hasOwnProperty(fullName)) {
-                            distribution[fullName]++;
+                        if (fullName) {
+                            distribution[fullName] = (distribution[fullName] || 0) + 1;
                         }
                     });
                 }
@@ -124,74 +120,10 @@ function collectClassDistribution() {
         }
     }
 
-    // Fallback: Generate from quadrat_points if point_classes is empty
-    // This handles existing batches uploaded before AI analysis was run
-    console.log('No point_classes found, generating from quadrat_points...');
-    return generateDistributionFromQuadratPoints();
-}
-
-/**
- * Generate class distribution from quadrat_points (fallback for existing batches)
- * Simulates deterministic classification based on point location
- */
-function generateDistributionFromQuadratPoints() {
-    const distribution = {};
-
-    // Initialize all classes with 0
-    Object.keys(CORAL_CLASSES).forEach(className => {
-        distribution[className] = 0;
-    });
-
-    // Get all point canvas elements
-    const canvases = document.querySelectorAll('.batch-image-canvas');
-    const classOrder = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota'];
-    let classIndex = 0;
-
-    canvases.forEach(canvas => {
-        const pointsId = canvas.getAttribute('data-points-id');
-        
-        // Try to find points in window object (set by batch_detail.js)
-        if (window[pointsId]) {
-            const points = window[pointsId];
-            if (Array.isArray(points)) {
-                points.forEach((point, idx) => {
-                    // Deterministic cycling through classes
-                    const className = classOrder[(idx + classIndex) % classOrder.length];
-                    distribution[className]++;
-                });
-                classIndex += points.length;
-            }
-        }
-    });
-
-    // If still no data, create synthetic test data to show visualization works
-    if (Object.values(distribution).every(v => v === 0)) {
-        console.log('No quadrat_points found either - generating synthetic test data');
-        return generateSyntheticTestData();
-    }
-
     return distribution;
 }
 
-/**
- * Generate synthetic test data (for empty batches, shows visualization is working)
- */
-function generateSyntheticTestData() {
-    return {
-        'Hard Coral': 15,
-        'Soft Coral': 12,
-        'Macroalgae': 8,
-        'Halimeda': 6,
-        'Algae Assemblage': 10,
-        'Abiotic': 5,
-        'Other Biota': 4
-    };
-}
-
-/**
- * Map short class names to full names
- * HC -> Hard Coral, SC -> Soft Coral, etc.
- */
+/** Map legacy short names and current marker classes to their saved names. */
 function mapShortNameToFullName(shortName) {
     const mapping = {
         'Hard Coral': 'Hard Coral',
@@ -207,33 +139,17 @@ function mapShortNameToFullName(shortName) {
         'Abiotic': 'Abiotic',
         'AB': 'Abiotic',
         'Other Biota': 'Other Biota',
-        'OB': 'Other Biota'
+        'OB': 'Other Biota',
+        'Non-Coral': 'Non-Coral',
+        'NC': 'Non-Coral',
+        'Unclassified': 'Unclassified'
     };
     return mapping[shortName] || null;
 }
 
-/**
- * Extract class data from image metadata (fallback)
- */
-function extractFromImageMetadata() {
-    const distribution = {};
-
-    // Initialize all classes with 0
-    Object.keys(CORAL_CLASSES).forEach(className => {
-        distribution[className] = 0;
-    });
-
-    // This would come from the backend in a real implementation
-    // For now, return empty distribution
-    return distribution;
-}
-
-/**
- * Initialize pie chart showing 7-class distribution
- */
 function initializePieChart(distribution) {
     const ctx = document.getElementById('coralClassChart');
-    if (!ctx) return;
+    if (!ctx || !window.Chart) return;
 
     const labels = Object.keys(distribution);
     const data = Object.values(distribution);
@@ -249,6 +165,14 @@ function initializePieChart(distribution) {
     const chartLabels = filteredData.map(item => `${CORAL_CLASSES[item.label].label} (${item.value})`);
     const chartData = filteredData.map(item => item.value);
     const chartColors = filteredData.map(item => item.color);
+
+    if (!chartData.length) {
+        ctx.hidden = true;
+        const empty = document.createElement('p');
+        empty.textContent = 'No saved marker composition available.';
+        ctx.after(empty);
+        return;
+    }
 
     new Chart(ctx, {
         type: 'doughnut',
@@ -331,36 +255,9 @@ function initializeMap(latitude, longitude, batchName) {
 /**
  * Update statistics display with Hard Coral Cover (HCC, Hard Coral only)
  */
-function updateStatistics(distribution, latitude, longitude) {
-    const totalPoints = Object.values(distribution).reduce((a, b) => a + b, 0);
-
-    // Hard Coral Cover (HCC): Hard Coral points only
-    const coralCount = distribution['Hard Coral'] || 0;
-    const coralCoveragePercent = totalPoints > 0 ? Math.round((coralCount / totalPoints) * 100) : 0;
-
-    // Determine HCC category (A>44, B>33-44, C>22-33, D 0-22)
-    const coverageClass = getCoverageClass(coralCoveragePercent);
-
-    // Update main statistics display
-    document.getElementById('totalPointsValue').textContent = totalPoints;
-    document.getElementById('coralCoveragePercentValue').textContent = `${coralCoveragePercent}%`;
-    document.getElementById('coverageClassValue').textContent = `Category ${coverageClass}`;
-    
-    // Update batch header coverage class badge
-    const batchCoverageValue = document.getElementById('batchCoverageValue');
-    const batchClassBadge = document.getElementById('batchCoverageClassBadge');
-    
-    if (batchCoverageValue) {
-        batchCoverageValue.textContent = `${coralCoveragePercent}%`;
-    }
-    
-    if (batchClassBadge) {
-        setClassBadge(batchClassBadge, coverageClass);
-    }
-
-    // Style the coverage class
-    const classValue = document.getElementById('coverageClassValue');
-    classValue.className = `stat-value class-${coverageClass.toLowerCase()}`;
+function updateStatistics(distribution) {
+    const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+    document.getElementById('totalPointsValue').textContent = total;
 }
 
 /**
@@ -370,10 +267,11 @@ function renderClassLegend(distribution) {
     const legendElement = document.getElementById('classLegend');
     if (!legendElement) return;
 
-    let legendHTML = '<div style="font-weight: bold; margin-bottom: 0.75rem;">Benthic Substrate Composition</div>';
+    let legendHTML = '<div style="font-weight: bold; margin-bottom: 0.75rem;">Reviewed Marker Composition</div>';
 
     Object.entries(CORAL_CLASSES).forEach(([className, classData]) => {
         const count = distribution[className] || 0;
+        if (!count) return;
         const total = Object.values(distribution).reduce((a, b) => a + b, 0);
         const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
 

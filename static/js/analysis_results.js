@@ -11,15 +11,11 @@ function describeCoverageClass(code) {
 
 const initializeAnalysisResults = function () {
     const chartScript = document.getElementById('analysis-chart-data');
-    let labels = [];
-    let values = [];
     let classValues = [0, 0, 0, 0, 0];
 
     if (chartScript) {
         try {
             const payload = JSON.parse(chartScript.textContent || '{}');
-            labels = payload.labels || [];
-            values = payload.values || [];
             classValues = payload.classes || classValues;
         } catch (error) {
             // Keep fallback values.
@@ -45,6 +41,14 @@ const initializeAnalysisResults = function () {
         tt.boxPadding = 5;
         tt.usePointStyle = true;
     }
+
+    const showEmptyChart = function (canvas, text) {
+        canvas.hidden = true;
+        const message = document.createElement('p');
+        message.className = 'chart-sub';
+        message.textContent = text;
+        canvas.after(message);
+    };
 
     // ---- Site Hard Coral Cover (± SE) with category thresholds + benchmark ----
     // Each site's mean HCC with an error bar (± standard error across its
@@ -177,177 +181,34 @@ const initializeAnalysisResults = function () {
                 },
                 plugins: [hccExtras]
             });
+        } else {
+            showEmptyChart(siteHccEl, 'No reviewed site HCC data for these filters.');
         }
     }
 
     const classEl = document.getElementById('analysisClassChart');
-    if (classEl && window.Chart) {
-        const doughnutLabelPlugin = {
-            id: 'doughnutLabelPlugin',
-            afterDatasetDraw: function (chart, args) {
-                if (args.index !== 0) {
-                    return;
-                }
-
-                const ctx = chart.ctx;
-                const meta = chart.getDatasetMeta(0);
-                const dataset = chart.data.datasets[0];
-                const labels = chart.data.labels || [];
-
-                // Calculate total for percentage
-                const total = dataset.data.reduce((a, b) => a + b, 0);
-
-                meta.data.forEach(function (arc, index) {
-                    const value = dataset.data[index];
-                    if (!value) {
-                        return;
-                    }
-
-                    const percentage = total > 0 ? ((value / total) * 100).toFixed(0) : 0;
-
-                    const angle = (arc.startAngle + arc.endAngle) / 2;
-                    const outer = arc.outerRadius;
-                    const inner = arc.innerRadius;
-                    const color = Array.isArray(dataset.backgroundColor)
-                        ? dataset.backgroundColor[index]
-                        : dataset.backgroundColor;
-
-                    const lineStartX = arc.x + Math.cos(angle) * (outer + 4);
-                    const lineStartY = arc.y + Math.sin(angle) * (outer + 4);
-                    const lineMidX = arc.x + Math.cos(angle) * (outer + 16);
-                    const lineMidY = arc.y + Math.sin(angle) * (outer + 16);
-                    const lineEndX = arc.x + Math.cos(angle) * (outer + 30);
-                    const lineEndY = arc.y + Math.sin(angle) * (outer + 30);
-
-                    const align = Math.cos(angle) >= 0 ? 'left' : 'right';
-                    const textX = lineEndX + (align === 'left' ? 12 : -12);
-
-                    ctx.save();
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.6;
-                    ctx.beginPath();
-                    ctx.moveTo(lineStartX, lineStartY);
-                    ctx.quadraticCurveTo(lineMidX, lineMidY, lineEndX, lineEndY);
-                    ctx.stroke();
-
-                    ctx.fillStyle = color;
-                    ctx.textAlign = align;
-                    ctx.textBaseline = 'middle';
-                    ctx.font = 'italic 600 15px "Inter", sans-serif';
-                    ctx.fillText(String(labels[index] || ''), textX, lineEndY);
-
-                    const valueX = arc.x + Math.cos(angle) * (inner + -7);
-                    const valueY = arc.y + Math.sin(angle) * (inner + -7);
-                    ctx.font = 'italic 600 14px "Inter", sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(String(percentage) + '%', valueX, valueY);
-                    ctx.restore();
-                });
-            }
-        };
-
+    if (classEl && window.Chart && classValues.some(value => value > 0)) {
         new Chart(classEl, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: ['Category A', 'Category B', 'Category C', 'Category D', 'Pending'],
-                datasets: [
-                    {
-                        data: classValues,
-                        backgroundColor: ['#1e8e5a', '#f2c11f', '#e8820c', '#d64545', '#9bb1b8'],
-                        borderRadius: 999,
-                        spacing: 12,
-                        borderWidth: 10,
-                        borderColor: '#ffffff',
-                        hoverOffset: 0
-                    }
-                ]
+                datasets: [{ label: 'Sites', data: classValues,
+                    backgroundColor: ['#1e8e5a', '#f2c11f', '#e8820c', '#d64545', '#9bb1b8'],
+                    borderRadius: 5 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '72%',
-                rotation: 0,
-                circumference: 360,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (c) {
-                                const total = c.dataset.data.reduce(function (a, b) { return a + b; }, 0);
-                                const pct = total ? Math.round((c.parsed / total) * 100) : 0;
-                                return ' ' + c.parsed + ' site' + (c.parsed === 1 ? '' : 's') + ' · ' + pct + '%';
-                            }
-                        }
-                    }
-                }
-            },
-            plugins: [doughnutLabelPlugin]
-        });
-    }
-
-    // 7-Class Distribution Chart
-    const coralClassEl = document.getElementById('analysisCoralClassChart');
-    if (coralClassEl && window.Chart) {
-        let classPercentages = {};
-        if (chartScript) {
-            try {
-                const payload = JSON.parse(chartScript.textContent || '{}');
-                classPercentages = payload.class_percentages || {};
-            } catch (error) {
-                console.error('Error parsing chart data for class percentages:', error);
-            }
-        }
-
-        const classLabels = [
-            'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-            'Algae Assemblage', 'Abiotic', 'Other Biota'
-        ];
-        const classColors = [
-            '#d4a574', '#e85d75', '#f5d76e', '#7ec8c8',
-            '#a8d5a8', '#b0b0b0', '#d8a5d5'
-        ];
-        const classData = classLabels.map(label => classPercentages[label] || 0);
-
-        new Chart(coralClassEl, {
-            type: 'doughnut',
-            data: {
-                labels: classLabels,
-                datasets: [{
-                    data: classData,
-                    backgroundColor: classColors,
-                    borderRadius: 999,
-                    spacing: 8,
-                    borderWidth: 10,
-                    borderColor: '#ffffff',
-                    hoverOffset: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (c) { return ' ' + c.label + ': ' + c.parsed.toFixed(1) + '%'; }
-                        }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            font: { size: 11 },
-                            padding: 10,
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            boxWidth: 8
-                        }
-                    }
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: {
+                    label: function (context) { return context.parsed.x + ' sites'; }
+                } } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Number of sites' } },
+                    y: { grid: { display: false } }
                 }
             }
         });
+    } else if (classEl && !classValues.some(value => value > 0)) {
+        showEmptyChart(classEl, 'No survey categories for these filters.');
     }
 
     // ---- Per-site benthic composition (100% stacked, horizontal) ----
@@ -363,14 +224,12 @@ const initializeAnalysisResults = function () {
         });
 
         if (benthicSites.length) {
-            const classLabels = [
-                'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-                'Algae Assemblage', 'Abiotic', 'Other Biota'
-            ];
-            const classColors = [
-                '#d4a574', '#e85d75', '#f5d76e', '#7ec8c8',
-                '#a8d5a8', '#b0b0b0', '#d8a5d5'
-            ];
+            const primaryLabels = ['Hard Coral', 'Soft Coral', 'Non-Coral'];
+            const recordedLabels = [...new Set(benthicSites.flatMap(row => Object.keys(row.benthic)))];
+            const classLabels = primaryLabels.concat(recordedLabels.filter(label => !primaryLabels.includes(label)));
+            const payload = JSON.parse(chartScript.textContent || '{}');
+            const colors = payload.composition_colors || {};
+            const classColors = classLabels.map(label => colors[label] || '#7a8d96');
             const siteLabels = benthicSites.map(function (r) { return r.name; });
             const datasets = classLabels.map(function (cls, idx) {
                 return {
@@ -401,11 +260,13 @@ const initializeAnalysisResults = function () {
                         }
                     },
                     scales: {
-                        x: { stacked: true, max: 100, title: { display: true, text: '% of points' }, grid: { color: 'rgba(28,95,109,0.08)' } },
+                        x: { stacked: true, max: 100, title: { display: true, text: '% of reviewed markers' }, grid: { color: 'rgba(28,95,109,0.08)' } },
                         y: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } }
                     }
                 }
             });
+        } else {
+            showEmptyChart(siteBenthicEl, 'No saved marker composition for these filters.');
         }
     }
 

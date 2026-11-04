@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=4">
 {% endblock %}
 
 {% block content %}
@@ -67,36 +67,23 @@
             </div>
         </section>
 
-        <section class="charts-grid" aria-label="Coverage and biodiversity charts">
+        <section class="charts-grid" aria-label="Hard Coral Cover trend">
             <article class="chart-card">
-                <h2>Coverage Trend</h2>
+                <h2>Hard Coral Cover Trend</h2>
                 <p class="chart-sub">Line chart (last 6 months)</p>
                 <svg id="coverage-line-chart" class="line-chart" viewBox="0 0 600 220" role="img"
                     aria-labelledby="coverage-chart-title">
-                    <title id="coverage-chart-title">Coral coverage trend line chart</title>
+                    <title id="coverage-chart-title">Hard Coral Cover trend line chart</title>
                     <line class="line-grid" x1="30" y1="20" x2="30" y2="190"></line>
                     <line class="line-grid" x1="30" y1="190" x2="580" y2="190"></line>
                     <path id="line-path" class="line-path" d=""></path>
                 </svg>
-                <p id="line-caption" class="chart-caption">Average monthly coverage based on visible survey records.</p>
+                <p id="line-caption" class="chart-caption">Monthly mean site HCC for the selected survey records.</p>
             </article>
 
-            <article class="chart-card">
-                <h2>Benthic Substrate Composition Over Time</h2>
-                <p class="chart-sub">Benthic substrate distribution by month</p>
-                <svg id="stacked-bar-chart" class="stacked-bar-chart" viewBox="0 0 600 250" role="img"
-                    aria-labelledby="stacked-chart-title">
-                    <title id="stacked-chart-title">Coral class composition stacked bar chart</title>
-                    <line class="line-grid" x1="30" y1="20" x2="30" y2="210"></line>
-                    <line class="line-grid" x1="30" y1="210" x2="580" y2="210"></line>
-                    <g id="stacked-bars"></g>
-                </svg>
-                <div id="stacked-legend" class="stacked-legend" aria-live="polite"></div>
-                <p id="stacked-caption" class="chart-caption">Percentage breakdown of all 7 benthic substrate classes by month.</p>
-            </article>
         </section>
 
-        <section class="charts-grid" aria-label="Biodiversity charts">
+        <section class="charts-grid" aria-label="HCC category and marker composition charts">
             <article class="chart-card">
                 <h2>HCC Category Distribution</h2>
                 <p class="chart-sub">Category A/B/C/D breakdown</p>
@@ -112,8 +99,8 @@
             </article>
 
             <article class="chart-card">
-                <h2>Benthic Substrate Composition</h2>
-                <p class="chart-sub">All 7 benthic substrate classes</p>
+                <h2>Reviewed Marker Composition</h2>
+                <p class="chart-sub">Hard Coral (HC), Soft Coral (SC), and Non-Coral (NC)</p>
                 <div class="donut-wrap">
                     <div id="ecosystem-donut" class="donut donut-lg" aria-hidden="true"></div>
                     <div id="ecosystem-legend" class="donut-legend ecosystem-legend" aria-live="polite"></div>
@@ -132,7 +119,7 @@
                             <th>Date</th>
                             <th>HCC</th>
                             <th>Category</th>
-                            <th>Benthic Substrate</th>
+                            <th>Marker Composition</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -144,9 +131,8 @@
         <section class="edu-panel" aria-label="Educational panel">
             <h2>What do these numbers mean?</h2>
             <p class="edu-formula">
-                <strong>Hard Coral Cover (HCC)</strong> is measured with the CPCE point-intercept method: sample points
-                are placed on each survey image and classified, then
-                <em>Hard&nbsp;Coral&nbsp;Cover&nbsp;=&nbsp;Hard&nbsp;Coral&nbsp;points&nbsp;&divide;&nbsp;Total&nbsp;points&nbsp;surveyed&nbsp;&times;&nbsp;100</em>.
+                <strong>Hard Coral Cover (HCC)</strong> uses ten representative markers allocated from reviewed coral boxes in each quadrat. The calculation is
+                <em>HCC = Hard Coral markers &divide; 10 &times; 100</em>.
                 Only scleractinian (stony) hard coral counts toward HCC. Categories are benchmarked against the
                 Philippine national average of 22.8% and the Tubbataha Reefs benchmark.
             </p>
@@ -170,5 +156,5 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="{% static 'js/public_dashboard.js' %}?v=20260916e"></script>
+<script src="{% static 'js/public_dashboard.js' %}?v=20261104"></script>
 {% endblock %}

@@ -24,7 +24,7 @@ const http = (data, status = 200) => ({ ok: status === 200, status, redirected: 
 test('a quadrat without coral boxes generates ten unclassified representative markers', () => {
     const r = A.fromResponse(response());
     assert.equal(r.points.length, 10);
-    assert(r.points.every(p => p.class === 'Unclassified' && p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1));
+    assert(r.points.every(p => p.class === 'Non-Coral' && p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1));
     assert.equal(A.coverage(r), null);
     assert.equal(A.reviewed(r), false);
 });
@@ -55,7 +55,7 @@ test('box edits regenerate markers and invalidate approval, including a coral-fr
     A.regenerate(r);
     assert.equal(r.reviewed, false);
     assert.equal(A.coverage(r), 0);
-    assert(r.points.every(p=>p.class==='Unclassified'));
+    assert(r.points.every(p=>p.class==='Non-Coral'));
 });
 test('quadrat edits regenerate box representatives and require boundary confirmation', () => {
     const r = reviewed(); A.setQuadrat(r, {x:.1,y:.1,w:.4,h:.8});
@@ -76,7 +76,7 @@ test('mixed overlaps use Hard Coral priority and outside boxes receive no marker
     const r=A.fromResponse(data);
     assert(r.points.every(p=>p.class==='Hard Coral'));
     r.detections=[{id:'outside',class_name:'Hard Coral',box:{x:0,y:0,w:.01,h:.01}}];
-    A.regenerate(r); assert(r.points.every(p=>p.class==='Unclassified'));
+    A.regenerate(r); assert(r.points.every(p=>p.class==='Non-Coral'));
 });
 test('transect HCC excludes Soft Coral and unreviewed images, with canonical mean rounding', () => {
     assert.equal(A.transect([reviewed(0), reviewed(10)]).pct, 50);
@@ -111,7 +111,7 @@ test('a transient busy response recovers without supplying fabricated labels', a
     const r = await A.request(file(), '/analyze/', 'token', { fetch: async () => ++calls === 1
         ? http({ code: 'inference_busy' }, 503) : http(response()), delay: async () => {} });
     assert.equal(calls, 2);
-    assert(r.points.every(p => p.class === 'Unclassified'));
+    assert(r.points.every(p => p.class === 'Non-Coral'));
 });
 test('redirects, CSRF failure, non-JSON, offline and timeout errors remain actionable', async () => {
     for (const result of [{ ...http({}), redirected: true }, http({}, 403)]) {

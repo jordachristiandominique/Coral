@@ -1,19 +1,8 @@
-// Benthic classes in fixed order. Colours are assigned by slot and never
-// cycled or reordered — the ordering is what keeps adjacent segments
-// distinguishable for colour-vision deficiency, so don't shuffle it.
-// Validated as a set: worst adjacent CVD dE 9.1, normal-vision dE 19.6.
-const CLASS_ORDER = [
-    'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-    'Algae Assemblage', 'Abiotic', 'Other Biota'
-];
+const PRIMARY_CLASSES = ['Hard Coral', 'Soft Coral', 'Non-Coral'];
 const CLASS_COLORS = {
-    'Hard Coral': '#2a78d6',
-    'Soft Coral': '#008300',
-    'Macroalgae': '#e87ba4',
-    'Halimeda': '#eda100',
-    'Algae Assemblage': '#1baf7a',
-    'Abiotic': '#eb6834',
-    'Other Biota': '#4a3aa7'
+    'Hard Coral': '#a44cff', 'Soft Coral': '#2a8793', 'Non-Coral': '#d9a321',
+    'Macroalgae': '#e87ba4', 'Halimeda': '#eda100', 'Algae Assemblage': '#1baf7a',
+    'Abiotic': '#eb6834', 'Other Biota': '#4a3aa7'
 };
 // Reef health is a status scale, not a series — these are reserved colours
 // and always ship alongside the "Class A/B/C" label, never colour alone.
@@ -40,38 +29,8 @@ const initializePublicDashboard = function () {
         }
     }
 
-    if (!surveys.length) {
-        // Sample captures are intentionally placed in open water areas of Davao Gulf.
-        const generateClassDistribution = function (hardCoral, softCoral) {
-            const total = hardCoral + softCoral + 15 + 8 + 12 + 20 + 10;
-            return {
-                'Hard Coral': { count: hardCoral, percentage: Math.round((hardCoral / total) * 100) },
-                'Soft Coral': { count: softCoral, percentage: Math.round((softCoral / total) * 100) },
-                'Macroalgae': { count: 15, percentage: Math.round((15 / total) * 100) },
-                'Halimeda': { count: 8, percentage: Math.round((8 / total) * 100) },
-                'Algae Assemblage': { count: 12, percentage: Math.round((12 / total) * 100) },
-                'Abiotic': { count: 20, percentage: Math.round((20 / total) * 100) },
-                'Other Biota': { count: 10, percentage: Math.round((10 / total) * 100) }
-            };
-        };
-
-        // Sample HCC values (Hard Coral only) spread across the Licuanan (2020)
-        // categories: A>44, B>33-44, C>22-33, D 0-22.
-        surveys = [
-            { area: 'Samal Offshore North', surveyors: 'R. Team', lat: 6.900, lng: 125.650, date: '2026-04-14', coverage: 46, classCode: 'A', classDistribution: generateClassDistribution(50, 15) },
-            { area: 'Central Gulf Transect', surveyors: 'Davao Marine Unit', lat: 6.850, lng: 125.770, date: '2026-04-10', coverage: 38, classCode: 'B', classDistribution: generateClassDistribution(40, 18) },
-            { area: 'Talikud Offshore East', surveyors: 'Blue Sentinel', lat: 6.880, lng: 125.810, date: '2026-03-28', coverage: 30, classCode: 'C', classDistribution: generateClassDistribution(30, 12) },
-            { area: 'Pujada Deep Water 1', surveyors: 'Davao Marine Unit', lat: 6.840, lng: 125.850, date: '2026-03-08', coverage: 18, classCode: 'D', classDistribution: generateClassDistribution(25, 12) },
-            { area: 'Pujada Deep Water 2', surveyors: 'R. Team', lat: 6.800, lng: 125.790, date: '2026-02-19', coverage: 41, classCode: 'B', classDistribution: generateClassDistribution(48, 13) },
-            { area: 'Southern Gulf Offshore', surveyors: 'Blue Sentinel', lat: 6.760, lng: 125.750, date: '2026-02-09', coverage: 25, classCode: 'C', classDistribution: generateClassDistribution(35, 11) },
-            { area: 'Governor Generoso Offshore', surveyors: 'R. Team', lat: 6.720, lng: 125.830, date: '2026-01-26', coverage: 12, classCode: 'D', classDistribution: generateClassDistribution(22, 10) },
-            { area: 'Cape San Agustin Channel', surveyors: 'R. Team', lat: 6.680, lng: 125.790, date: '2026-01-11', coverage: 48, classCode: 'A', classDistribution: generateClassDistribution(52, 15) },
-            { area: 'Samal West Open Water', surveyors: 'Blue Sentinel', lat: 6.800, lng: 125.600, date: '2025-12-20', coverage: 34, classCode: 'B', classDistribution: generateClassDistribution(42, 12) },
-            { area: 'Davao Gulf Midline', surveyors: 'Davao Marine Unit', lat: 6.860, lng: 125.710, date: '2025-11-29', coverage: 21, classCode: 'D', classDistribution: generateClassDistribution(28, 11) },
-            { area: 'Mati Offshore Belt', surveyors: 'R. Team', lat: 6.780, lng: 125.870, date: '2025-11-08', coverage: 45, classCode: 'A', classDistribution: generateClassDistribution(49, 13) },
-            { area: 'Sarangani Current Edge', surveyors: 'Blue Sentinel', lat: 6.700, lng: 125.910, date: '2025-10-17', coverage: 28, classCode: 'C', classDistribution: generateClassDistribution(33, 11) }
-        ];
-    }
+    const recordedClasses = [...new Set(surveys.flatMap(row => Object.keys(row.classDistribution || {})))];
+    const CLASS_ORDER = PRIMARY_CLASSES.concat(recordedClasses.filter(name => !PRIMARY_CLASSES.includes(name)));
 
     const classFilter = document.getElementById('class-filter');
     const startDateInput = document.getElementById('start-date');
@@ -92,21 +51,15 @@ const initializePublicDashboard = function () {
     const lineChart = document.getElementById('coverage-line-chart');
     const lineCaption = document.getElementById('line-caption');
 
-    if (typeof L === 'undefined') {
-        return;
+    const map = window.L ? L.map('public-survey-map', {
+        zoomControl: true, scrollWheelZoom: false
+    }).setView([6.86, 125.86], 8) : null;
+    const markerLayer = map ? L.layerGroup().addTo(map) : null;
+    if (map) {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
+        }).addTo(map);
     }
-
-    const map = L.map('public-survey-map', {
-        zoomControl: true,
-        scrollWheelZoom: false
-    }).setView([6.86, 125.86], 8);
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
-    }).addTo(map);
-
-    const markerLayer = L.layerGroup().addTo(map);
 
     function colorForClass(classCode) {
         if (classCode === 'A') return STATUS_COLORS.A;
@@ -172,7 +125,7 @@ const initializePublicDashboard = function () {
         }
 
         let html = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px;">';
-        html += '<strong style="display: block; margin-bottom: 8px;">Benthic Substrate Composition:</strong>';
+        html += '<strong style="display: block; margin-bottom: 8px;">Reviewed Marker Composition</strong>';
 
         const classOrder = CLASS_ORDER;
         const classColors = CLASS_COLORS;
@@ -219,6 +172,7 @@ const initializePublicDashboard = function () {
     }
 
     function renderMarkers(filtered) {
+        if (!markerLayer) return;
         markerLayer.clearLayers();
 
         filtered.forEach(function (row) {
@@ -273,9 +227,9 @@ const initializePublicDashboard = function () {
         }).length;
 
         statSurveys.textContent = String(total);
-        statCoverage.textContent = String(avg) + '%';
+        statCoverage.textContent = total ? String(avg) + '%' : '--';
         statSites.textContent = String(sites);
-        statClassA.textContent = total ? Math.round((classACount / total) * 100) + '%' : '0%';
+        statClassA.textContent = total ? Math.round((classACount / total) * 100) + '%' : '--';
     }
 
     function renderDonut(filtered) {
@@ -291,7 +245,7 @@ const initializePublicDashboard = function () {
         const aDeg = total ? (aCount / total) * 360 : 0;
         const bDeg = total ? (bCount / total) * 360 : 0;
         const cDeg = total ? (cCount / total) * 360 : 0;
-        const dDeg = 360 - aDeg - bDeg - cDeg;
+        const dDeg = total ? (dCount / total) * 360 : 0;
 
         donut.style.background = 'conic-gradient(' +
             STATUS_COLORS.A + ' 0deg ' + aDeg.toFixed(1) + 'deg, ' +
@@ -299,10 +253,11 @@ const initializePublicDashboard = function () {
             STATUS_COLORS.C + ' ' + (aDeg + bDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg, ' +
             STATUS_COLORS.D + ' ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg + dDeg).toFixed(1) + 'deg)';
 
-        legendA.textContent = aCount + ' surveys';
-        legendB.textContent = bCount + ' surveys';
-        legendC.textContent = cCount + ' surveys';
-        if (legendD) legendD.textContent = dCount + ' surveys';
+        if (!total) donut.style.background = '#e5ecee';
+        legendA.textContent = aCount + (aCount === 1 ? ' site' : ' sites');
+        legendB.textContent = bCount + (bCount === 1 ? ' site' : ' sites');
+        legendC.textContent = cCount + (cCount === 1 ? ' site' : ' sites');
+        if (legendD) legendD.textContent = dCount + (dCount === 1 ? ' site' : ' sites');
     }
 
     function renderEcosystemDonut(filtered) {
@@ -330,7 +285,7 @@ const initializePublicDashboard = function () {
 
         if (grandTotal === 0) {
             ecosystemDonut.style.background = '#f0f0f0';
-            ecosystemLegend.innerHTML = '<div style="color: #999; font-size: 12px; grid-column: 1/-1;">No ecosystem data available</div>';
+            ecosystemLegend.innerHTML = '<div style="color: #999; font-size: 12px; grid-column: 1/-1;">No reviewed marker data available</div>';
             return;
         }
 
@@ -340,11 +295,11 @@ const initializePublicDashboard = function () {
 
         classOrder.forEach(function (cls) {
             const count = totalCounts[cls];
-            const percentage = Math.round((count / grandTotal) * 100);
+            const percentage = Number((count / grandTotal * 100).toFixed(1));
             const degrees = (count / grandTotal) * 360;
             
-            if (percentage > 0) {
-                const color = classColors[cls];
+            if (count > 0) {
+                const color = classColors[cls] || '#7a8d96';
                 conicGradientParts.push(color + ' ' + currentDeg.toFixed(1) + 'deg ' + (currentDeg + degrees).toFixed(1) + 'deg');
                 currentDeg += degrees;
             }
@@ -357,10 +312,10 @@ const initializePublicDashboard = function () {
         let legendHtml = '';
         classOrder.forEach(function (cls) {
             const count = totalCounts[cls];
-            const percentage = grandTotal ? Math.round((count / grandTotal) * 100) : 0;
+            const percentage = grandTotal ? Number((count / grandTotal * 100).toFixed(1)) : 0;
             
-            if (percentage > 0) {
-                const color = classColors[cls];
+            if (count > 0) {
+                const color = classColors[cls] || '#7a8d96';
                 legendHtml += '<div class="eco-legend-item">' +
                     '<span class="eco-legend-swatch" style="background: ' + color + ';"></span>' +
                     '<span class="eco-legend-name">' + escapeHtml(cls) + '</span>' +
@@ -374,135 +329,6 @@ const initializePublicDashboard = function () {
     function monthKey(d) {
         const dt = parseDate(d);
         return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
-    }
-
-    function renderStackedBarChart(filtered) {
-        const stackedBarsGroup = document.getElementById('stacked-bars');
-        const stackedLegend = document.getElementById('stacked-legend');
-        const stackedCaption = document.getElementById('stacked-caption');
-        const stacked = document.getElementById('stacked-bar-chart');
-
-        const sorted = filtered.filter(function (row) {
-            return row.classDistribution && Object.keys(row.classDistribution).length > 0;
-        }).slice().sort(function (a, b) {
-            return parseDate(a.date) - parseDate(b.date);
-        });
-
-        const monthBuckets = {};
-        sorted.forEach(function (row) {
-            const key = monthKey(row.date);
-            if (!monthBuckets[key]) {
-                monthBuckets[key] = [];
-            }
-            monthBuckets[key].push(row.classDistribution);
-        });
-
-        const keys = Object.keys(monthBuckets).sort().slice(-6);
-        if (!keys.length) {
-            stackedBarsGroup.innerHTML = '';
-            stackedLegend.innerHTML = '';
-            stackedCaption.textContent = 'No class distribution data for the selected filters.';
-            return;
-        }
-
-        const classOrder = CLASS_ORDER;
-        const classColors = CLASS_COLORS;
-
-        // Calculate average percentages for each class per month
-        const monthlyAverages = keys.map(function (key) {
-            const distributions = monthBuckets[key];
-            const averages = {};
-            classOrder.forEach(function (className) {
-                let total = 0;
-                distributions.forEach(function (dist) {
-                    if (dist[className]) {
-                        total += dist[className].percentage;
-                    }
-                });
-                averages[className] = Math.round(total / distributions.length);
-            });
-            return averages;
-        });
-
-        // Clear existing bars
-        stackedBarsGroup.innerHTML = '';
-
-        const xStart = 40;
-        const xEnd = 570;
-        const yBottom = 210;
-        const barHeight = 150;
-
-        const barWidth = Math.max(15, (xEnd - xStart) / keys.length * 0.7);
-        const barSpacing = (xEnd - xStart) / keys.length;
-
-        monthlyAverages.forEach(function (monthData, idx) {
-            let yOffset = yBottom;
-            let monthLabel = keys[idx].substring(5) + '/' + keys[idx].substring(0, 4);
-            
-            const xPos = xStart + idx * barSpacing + barSpacing / 2 - barWidth / 2;
-
-            // Add month label
-            const monthText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            monthText.setAttribute('x', xPos + barWidth / 2);
-            monthText.setAttribute('y', yBottom + 20);
-            monthText.setAttribute('text-anchor', 'middle');
-            monthText.setAttribute('font-size', '11');
-            monthText.setAttribute('fill', '#587483');
-            monthText.textContent = monthLabel;
-            stackedBarsGroup.appendChild(monthText);
-
-            classOrder.forEach(function (className) {
-                const percentage = monthData[className] || 0;
-                if (percentage > 0) {
-                    const segmentHeight = (barHeight * percentage) / 100;
-                    const color = classColors[className];
-
-                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    rect.setAttribute('x', xPos);
-                    rect.setAttribute('y', yOffset - segmentHeight);
-                    rect.setAttribute('width', barWidth);
-                    rect.setAttribute('height', segmentHeight);
-                    rect.setAttribute('fill', color);
-                    // 2px surface-coloured gap keeps adjacent segments readable
-                    rect.setAttribute('stroke', '#ffffff');
-                    rect.setAttribute('stroke-width', '2');
-                    rect.setAttribute('class', 'stack-segment');
-
-                    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                    title.textContent = className + ': ' + percentage + '%';
-                    rect.appendChild(title);
-
-                    stackedBarsGroup.appendChild(rect);
-                    yOffset -= segmentHeight;
-                }
-            });
-        });
-
-        // Add y-axis percentage markers
-        for (let i = 0; i <= 100; i += 25) {
-            const y = yBottom - (barHeight * i) / 100;
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', '20');
-            text.setAttribute('y', y + 4);
-            text.setAttribute('text-anchor', 'end');
-            text.setAttribute('font-size', '10');
-            text.setAttribute('fill', '#587483');
-            text.textContent = i + '%';
-            stackedBarsGroup.appendChild(text);
-        }
-
-        // Render legend
-        let legendHtml = '';
-        classOrder.forEach(function (className) {
-            const color = classColors[className];
-            legendHtml += '<div class="stacked-legend-item">' +
-                '<div class="stacked-legend-color" style="background: ' + color + ';"></div>' +
-                '<span>' + escapeHtml(className) + '</span>' +
-                '</div>';
-        });
-        stackedLegend.innerHTML = legendHtml;
-
-        stackedCaption.textContent = 'Showing average class distribution for the latest ' + keys.length + ' months.';
     }
 
     function renderLineChart(filtered) {
@@ -524,7 +350,7 @@ const initializePublicDashboard = function () {
         const keys = Object.keys(monthBuckets).sort().slice(-6);
         if (!keys.length) {
             linePath.setAttribute('d', '');
-            Array.from(lineChart.querySelectorAll('.line-point')).forEach(function (point) {
+            Array.from(lineChart.querySelectorAll('.line-point, .line-area, .line-tick, .line-tick-label, .line-x-label, .line-hover')).forEach(function (point) {
                 point.remove();
             });
             lineCaption.textContent = 'No survey data for the selected filters.';
@@ -684,7 +510,7 @@ const initializePublicDashboard = function () {
         classOrder.forEach(function (className) {
             const data = classDistribution[className];
             if (data && data.percentage > 0) {
-                const color = classColors[className];
+                const color = classColors[className] || '#7a8d96';
                 const percentage = data.percentage;
                 html += '<div class="mini-bar-segment" style="background: ' + color + '; flex: ' + percentage + ';" data-tooltip="' + escapeHtml(className) + ': ' + percentage + '%"></div>';
             }
@@ -741,7 +567,6 @@ const initializePublicDashboard = function () {
         renderSummary(filtered);
         renderDonut(filtered);
         renderEcosystemDonut(filtered);
-        renderStackedBarChart(filtered);
         renderLineChart(filtered);
         renderFindings(filtered);
     }

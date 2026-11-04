@@ -338,8 +338,8 @@ The upload page replaces manual point-classification dropdowns with ten markers
 allocated from accepted HC/SC rectangles clipped to the quadrat. Shared area is
 counted once. Hard Coral takes priority in mixed HC/SC overlaps, rounds its area
 share to the nearest marker (53/54% -> 5, 55% -> 6), and Soft Coral takes its
-rounded share of remaining slots. Remainder markers use `Unclassified`, a marker
-status outside CPCE_CODES. No model class has been added. The active-image card
+rounded share of remaining slots. Remainder markers use `Non-Coral` (NC), a derived marker
+label outside CPCE_CODES. No model class has been added. The active-image card
 previews HCC from HC marker count/10 and the canonical category thresholds. The
 footer retains the confirmed-image transect mean.
 
@@ -354,8 +354,50 @@ The multipart fields retain quadrat-relative points and full class names, with
 `review.version=2` and `analysis.method=box_representative_v1`.
 `accounts/representative_points.py` recomputes expected class counts and validates
 marker positions against accepted boxes. `survey_validation.py` permits the
-Unclassified remainder only for this versioned method. The assessment method is
+Non-Coral remainder only for this versioned method. Older version-2
+submissions using Unclassified are normalized to Non-Coral. The assessment method is
 stored in analysis_review. Existing model HCC helpers and schema remain valid.
 The method estimates representative counts from rectangles, including any
 background enclosed by those rectangles. Tests cover rounding, clipping, overlap,
 review invalidation, marker movement, legacy acceptance and persisted HCC.
+
+Non-Coral (NC) is automatically assigned to the representative remainder outside
+accepted HC/SC boxes. Its label depends on reviewed box completeness. Upload
+markers and their magnifier show NC identifiers, the saved-point display code
+map includes NC, and Excel summaries include a Non-Coral row. POINT_CLASS_CODES
+extends display codes while CPCE_CODES retains the seven legacy benthic names.
+
+
+## 16. Current dashboard charts (2026-11-04)
+
+`accounts/visualization_data.py::composition_summary` supplies HC/SC/NC counts,
+percentages, display codes and colors to the researcher dashboard, analysis rows,
+public dashboard, and map popup composition. NC participates in the full marker denominator. Historical
+labels appear when present in saved data. Composition pools saved markers while
+site HCC continues to use compute_site_hcc and transect weighting.
+
+The researcher dashboard retains overall marker composition and HCC overview.
+Analysis Results retains site HCC with SE/reference lines, category site counts
+(horizontal bars), and stacked marker composition by site. The duplicate overall
+composition donut was removed. Monthly summaries reuse the filtered site rows
+and canonical HCC values, replacing repeated pooled-point calculations. Unused
+monthly-trend/duplicate-chart aggregates were removed rather than adding queries.
+The unused pooled Hard Coral percentage column was removed from the monthly table.
+
+The public dashboard retains monthly mean site HCC, category distribution and
+HC/SC/NC composition, with its duplicate monthly composition plot removed. The
+sample-survey fallback was removed so empty databases/filters show empty graphs,
+zero counts and missing coverage. Composition renders independently of Leaflet.
+Chart JSON uses json_script. Chart labels, colors, legend percentages and mobile
+containers were checked using isolated SQLite fixtures. Five PostgreSQL regression
+tests cover NC denominators, historical labels, filtering, empty series and unequal
+transect weighting, in addition to the existing suite.
+
+Repository details also display NC in their saved-marker donut and show only
+classes with actual counts. Their deterministic/synthetic classification fallback
+was removed. Duplicate pooled HCC/category statistic boxes were removed so the
+server-rendered canonical site headline remains authoritative. Map popups consume
+the shared composition summary, include NC, and handle a full 100% single-class
+ring. Browser checks covered these pages and their empty/mobile states. The final
+suite passed 43 Django tests on PostgreSQL and 44 JavaScript tests. Screenshots
+are ignored under output/playwright.

@@ -751,6 +751,18 @@
 }
 
 @media (max-width: 640px) {
+    .map-toolbar label {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .map-toolbar select,
+    .map-toolbar input[type="date"] {
+        width: 100%;
+        min-width: 0;
+    }
+
     .public-dashboard {
         padding-top: 1.5rem;
     }

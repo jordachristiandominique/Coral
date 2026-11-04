@@ -8,10 +8,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
+from openpyxl import load_workbook
 
 from .models import DataRepository, SurveyImage, Transect, User
 from .survey_validation import validate_quadrat_payload
 from .representative_points import representative_counts
+from .excel_export import build_batch_coverage_workbook
 
 
 def accepted_review():
@@ -38,11 +40,19 @@ def representative_payload():
             'points': ([{'x': .25, 'y': (i + 1) / 6} for i in range(5)]
                        + [{'x': .625, 'y': (i + 1) / 4} for i in range(3)]
                        + [{'x': .875, 'y': (i + 1) / 3} for i in range(2)]),
-            'point_classes': ['Hard Coral'] * 5 + ['Soft Coral'] * 3 + ['Unclassified'] * 2,
+            'point_classes': ['Hard Coral'] * 5 + ['Soft Coral'] * 3 + ['Non-Coral'] * 2,
             'review': {'version': 2, 'confirmed': True}, 'analysis': analysis}
 
 
 class ReviewPayloadTests(SimpleTestCase):
+    def test_older_representative_remainder_labels_are_normalized_to_nc(self):
+        payload = representative_payload()
+        payload['point_classes'] = ['Unclassified' if name == 'Non-Coral' else name
+                                    for name in payload['point_classes']]
+        saved = validate_quadrat_payload(payload)
+        self.assertEqual(saved['point_classes'].count('Non-Coral'), 2)
+        self.assertNotIn('Unclassified', saved['point_classes'])
+
     def test_representative_counts_round_like_demo_and_deduplicate_overlapping_boxes(self):
         quadrat = {'x': .1, 'y': .1, 'w': .8, 'h': .8}
         for percent, expected in ((0, 0), (30, 3), (53, 5), (54, 5), (55, 6), (100, 10)):
@@ -53,7 +63,7 @@ class ReviewPayloadTests(SimpleTestCase):
         counts = representative_counts(quadrat, [
             {'class_name': 'Hard Coral', 'box': {**quadrat, 'w': .4}},
             {'class_name': 'Soft Coral', 'box': quadrat}])
-        self.assertEqual(counts, {'Hard Coral': 5, 'Soft Coral': 5, 'Unclassified': 0})
+        self.assertEqual(counts, {'Hard Coral': 5, 'Soft Coral': 5, 'Non-Coral': 0})
 
     def test_representative_payload_requires_matching_boxes_counts_positions_and_method(self):
         payload = representative_payload()
@@ -108,6 +118,7 @@ class ReviewPayloadTests(SimpleTestCase):
                            ('points', [{'x': 2, 'y': .5}] * 10),
                            ('points', [{'x': True, 'y': .5}] * 10),
                            ('point_classes', ['Unclassified'] * 10),
+                           ('point_classes', ['Non-Coral'] * 10),
                            ('review', {'version': 1, 'confirmed': False})]:
             payload = reviewed_payload()
             payload[key] = value
@@ -162,6 +173,10 @@ class ReviewedUploadTests(TestCase):
         self.assertEqual(image.analysis_review['method'], 'box_representative_v1')
         self.assertEqual(image.coverage_percent, 50)
         self.assertEqual(image.coverage_category, 'A')
+        workbook = load_workbook(build_batch_coverage_workbook(image.batch), data_only=True)
+        rows = {row[0].value: row for row in workbook.active.iter_rows()}
+        self.assertEqual(rows['NON-CORAL (NC)'][1].value, 20)
+        self.assertEqual(rows['Sum (excluding tape+shadow+wand)'][1].value, 100)
         self.assertEqual(Transect.objects.get().coverage_percent, 50)
 
     def test_unreviewed_upload_is_rejected_before_any_rows_or_files_are_saved(self):

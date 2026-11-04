@@ -13,7 +13,7 @@ import io
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .models import CPCE_CODES
+from .models import POINT_CLASS_CODES
 
 QUADRAT_COLOR = (255, 138, 61)   # #ff8a3d, matches the on-screen overlay
 MARKER_COLOR = (255, 255, 255)
@@ -115,7 +115,7 @@ def render_annotated_image(batch_image, max_width=None, annotate=True,
 
         if label_mode == 'code':
             class_name = point_classes[index - 1] if index - 1 < len(point_classes) else None
-            label = CPCE_CODES.get(class_name, '--')
+            label = POINT_CLASS_CODES.get(class_name, '--')
         else:
             label = str(index)
 

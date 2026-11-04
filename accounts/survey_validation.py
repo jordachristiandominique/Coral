@@ -28,6 +28,10 @@ def validate_quadrat_payload(payload):
             raise ValueError('Sampling points must stay inside the quadrat.')
     review = payload.get('review')
     representative = isinstance(review, dict) and type(review.get('version')) is int and review['version'] == 2
+    if representative:
+        # Accept remainder labels from pages opened before the NC label update.
+        classes = ['Non-Coral' if value == 'Unclassified' else value for value in classes]
+        payload['point_classes'] = classes
     allowed_classes = MARKER_CLASSES if representative else CPCE_CODES
     if any(not isinstance(value, str) or value not in allowed_classes for value in classes):
         raise ValueError('Classify every point using a supported benthic class.')

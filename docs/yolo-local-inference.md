@@ -157,7 +157,7 @@ non-coral assignment, or database migration in this endpoint step. The upload pa
    Coral receives nearest-ten-percent allocation (53/54% gives five markers,
    55% gives six). Soft Coral receives its rounded allocation from the remaining
    slots. Mixed Hard/Soft overlaps use Hard Coral priority. Remainder markers
-   are labeled Unclassified. The active-image HCC/category preview uses the Hard
+   are labeled Non-Coral (NC). The active-image HCC/category preview uses the Hard
    Coral marker count out of ten. Counts appear in a compact summary.
 5. Click **Confirm image review** for every image, then **Upload**. Quadrat and
    coral-box edits regenerate the allocation and invalidate approval. Marker
@@ -224,8 +224,9 @@ in ignored `output/playwright/`. These checks establish behavior, not model accu
 
 Uploads now send `review.version = 2` and
 `analysis.method = "box_representative_v1"`. The seven-class manual dropdown
-workflow has been replaced on the upload page. `Unclassified` is a remainder
-marker label supported only by this versioned contract. Existing CPCE class names
+workflow has been replaced on the upload page. `Non-Coral` (NC) is the automatic remainder
+marker label supported by this versioned contract. Earlier version-2 submissions
+using `Unclassified` are accepted and normalized on save. Existing CPCE class names
 and legacy manual upload validation remain available to older data/callers.
 `accounts/representative_points.py` recomputes expected counts from accepted
 boxes and checks each marker's region before persistence. Canonical HCC helpers

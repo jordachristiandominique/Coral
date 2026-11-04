@@ -2,7 +2,24 @@
 
 .analysis-main {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
+}
+
+.analysis-main > *,
+.analysis-section > *,
+.analysis-charts > * {
+    min-width: 0;
+}
+
+.analysis-chart-plot {
+    position: relative;
+    height: 360px;
+    min-width: 0;
+}
+
+.analysis-chart-plot canvas {
+    height: 100% !important;
 }
 
 .analysis-page-head {

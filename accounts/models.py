@@ -17,6 +17,9 @@ CPCE_CODES = {
     'Other Biota': 'OB',
 }
 
+# Display codes include the representative method's derived remainder label.
+POINT_CLASS_CODES = {**CPCE_CODES, 'Non-Coral': 'NC'}
+
 # Hard Coral Cover (HCC) assessment scale for Philippine reefs, following
 # Licuanan et al. (2019/2020). HCC counts scleractinian (stony) Hard Coral
 # points ONLY, over the total number of points surveyed. The four categories

@@ -198,21 +198,23 @@ class CoralSenseMap {
     createDonutChart(breakdown) {
         /**
          * Creates an SVG donut chart from class breakdown percentages
-         * Shows the distribution of all 7 classes with colors and labels
+         * Shows saved HC/SC/NC composition and recorded historical classes
          */
         const colors = {
-            'Hard Coral': '#d4a574',
-            'Soft Coral': '#e85d75',
+            'Hard Coral': '#a44cff',
+            'Soft Coral': '#2a8793',
             'Macroalgae': '#f5d76e',
             'Halimeda': '#7ec8c8',
             'Algae Assemblage': '#a8d5a8',
             'Abiotic': '#b0b0b0',
-            'Other Biota': '#d8a5d5'
+            'Other Biota': '#4a3aa7',
+            'Non-Coral': '#d9a321',
+            'Unclassified': '#7a8d96'
         };
 
         // Prepare data - only show classes with > 0.5%
         const data = Object.entries(breakdown)
-            .filter(([cls, pct]) => pct > 0.5)
+            .filter(([cls, pct]) => pct > 0)
             .sort((a, b) => b[1] - a[1]);
 
         if (data.length === 0) {
@@ -228,6 +230,10 @@ class CoralSenseMap {
         let currentAngle = -90; // Start from top
 
         data.forEach(([cls, pct]) => {
+            if (pct >= 99.999) {
+                svg += `<circle cx="50" cy="50" r="37.5" fill="none" stroke="${colors[cls] || '#7a8d96'}" stroke-width="15"/>`;
+                return;
+            }
             const sliceAngle = (pct / 100) * 360;
             const startAngle = currentAngle * Math.PI / 180;
             const endAngle = (currentAngle + sliceAngle) * Math.PI / 180;
@@ -244,7 +250,7 @@ class CoralSenseMap {
             const largeArc = sliceAngle > 180 ? 1 : 0;
 
             const pathData = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`;
-            svg += `<path d="${pathData}" fill="${colors[cls]}" stroke="white" stroke-width="0.5" style="opacity: 0.85;"/>`;
+            svg += `<path d="${pathData}" fill="${colors[cls] || '#7a8d96'}" stroke="white" stroke-width="0.5" style="opacity: 0.85;"/>`;
 
             currentAngle += sliceAngle;
         });
@@ -254,7 +260,7 @@ class CoralSenseMap {
 
         let legend = '<div style="margin-top: 8px; font-size: 10px; line-height: 1.4;">';
         data.forEach(([cls, pct]) => {
-            const colorDot = `<span style="display: inline-block; width: 8px; height: 8px; background: ${colors[cls]}; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>`;
+            const colorDot = `<span style="display: inline-block; width: 8px; height: 8px; background: ${colors[cls] || '#7a8d96'}; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>`;
             legend += `<div style="margin: 2px 0;">${colorDot} ${cls}: <strong>${pct.toFixed(1)}%</strong></div>`;
         });
         legend += '</div>';

@@ -222,11 +222,11 @@
                 </div>
             </section>
 
-            <!-- 7-Class Coral Distribution Visualization -->
+            <!-- Saved marker composition -->
             <section class="visualization-section">
                 <!-- Pie Chart Card -->
                 <div class="viz-card">
-                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Benthic Substrate Composition</h3>
+                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Reviewed Marker Composition</h3>
                     <div class="chart-container">
                         <canvas id="coralClassChart"></canvas>
                     </div>
@@ -240,15 +240,7 @@
                     <div class="stats-grid" id="statsGrid">
                         <div class="stat-box">
                             <div class="stat-value" id="totalPointsValue">0</div>
-                            <div class="stat-label">Total Points</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-value" id="coralCoveragePercentValue" style="color: #2a8793;">0%</div>
-                            <div class="stat-label">Hard Coral Cover</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-value" id="coverageClassValue">--</div>
-                            <div class="stat-label">HCC Category</div>
+                            <div class="stat-label">Total Markers</div>
                         </div>
                     </div>
                 </div>
@@ -420,5 +412,5 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/batch_detail.js' %}?v=5"></script>
-<script src="{% static 'js/batch_visualization.js' %}?v=8"></script>
+<script src="{% static 'js/batch_visualization.js' %}?v=9"></script>
 {% endblock %}

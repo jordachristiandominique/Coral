@@ -1,7 +1,7 @@
 from django.shortcuts import render
-from django.db.models import Avg
 
-from accounts.models import DataRepository, classify_hcc, compute_site_hcc
+from accounts.models import DataRepository, compute_site_hcc
+from accounts.visualization_data import composition_summary
 
 def landing_page(request):
     """Render the landing page"""
@@ -30,18 +30,8 @@ def public_dashboard(request):
             coverage_value = float(coverage)
             coverage_class = site['coverage_class']
 
-        # Calculate 7-class distribution
-        all_classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota']
-        class_distribution = {}
-        total_count = len(all_point_classes) if all_point_classes else 0
-        
-        for cls in all_classes:
-            count = sum(1 for pc in all_point_classes if pc == cls)
-            percentage = round((count / total_count) * 100) if total_count > 0 else 0
-            class_distribution[cls] = {
-                'count': count,
-                'percentage': percentage
-            }
+        class_distribution = {item['label']: {'count': item['count'], 'percentage': item['value'], 'color': item['color']}
+                              for item in composition_summary(all_point_classes)}
 
         surveys.append({
             'area': batch.area_name,

@@ -4,7 +4,7 @@ from collections import Counter
 import math
 
 
-MARKER_CLASSES = ('Hard Coral', 'Soft Coral', 'Unclassified')
+MARKER_CLASSES = ('Hard Coral', 'Soft Coral', 'Non-Coral')
 METHOD = 'box_representative_v1'
 
 
@@ -12,7 +12,7 @@ def class_at(boxes, x, y):
     hits = {region['class_name'] for region in boxes
             if region['box']['x'] <= x <= region['box']['x'] + region['box']['w']
             and region['box']['y'] <= y <= region['box']['y'] + region['box']['h']}
-    return next((name for name in MARKER_CLASSES if name in hits), 'Unclassified')
+    return next((name for name in MARKER_CLASSES if name in hits), 'Non-Coral')
 
 
 def representative_counts(quadrat, boxes):
@@ -46,10 +46,10 @@ def representative_counts(quadrat, boxes):
     hard = rounded_count('Hard Coral')
     soft = min(10 - hard, rounded_count('Soft Coral'))
     remainder = 10 - hard - soft
-    if remainder and not areas['Unclassified']:
+    if remainder and not areas['Non-Coral']:
         soft += remainder
         remainder = 0
-    return {'Hard Coral': hard, 'Soft Coral': soft, 'Unclassified': remainder}
+    return {'Hard Coral': hard, 'Soft Coral': soft, 'Non-Coral': remainder}
 
 
 def validate_representative_points(quadrat, boxes, points, classes):

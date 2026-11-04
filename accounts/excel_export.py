@@ -6,7 +6,7 @@ column, and every cell is that category's mean percentage across the transect's
 images. MEAN, STD. DEV. (sample, n-1) and STD. ERROR columns summarize across
 the transects.
 
-Uses the project's seven benthic classes as the Major Categories. The
+Uses the project's benthic classes and the Non-Coral remainder. The
 "Total points (minus tape+wand+shadow)" row and the Subcategories section from
 the original CPCE sheet are intentionally out of scope for now.
 """
@@ -19,11 +19,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-# The seven benthic "major categories" in fixed order, shown in the CPCE style
+# Benthic categories and the derived remainder, shown in the CPCE style
 # (UPPER CASE with the code in parentheses) to match the sample sheet.
 CLASS_ORDER = [
     'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-    'Algae Assemblage', 'Abiotic', 'Other Biota',
+    'Algae Assemblage', 'Abiotic', 'Other Biota', 'Non-Coral',
 ]
 CATEGORY_DISPLAY = {
     'Hard Coral': 'HARD CORAL (HC)',
@@ -33,6 +33,7 @@ CATEGORY_DISPLAY = {
     'Algae Assemblage': 'ALGAE ASSEMBLAGE (AA)',
     'Abiotic': 'ABIOTIC (AB)',
     'Other Biota': 'OTHER BIOTA (OB)',
+    'Non-Coral': 'NON-CORAL (NC)',
 }
 
 # ---- Styling ----
@@ -209,7 +210,7 @@ def build_batch_coverage_workbook(batch):
         cell(r, se_col, se, align=_CENTER, fmt=NUM_FMT, fill=zebra, border=True)
         r += 1
 
-    # ---- Sum row (the 7 categories cover every point, so each column = 100%) ----
+    # ---- Sum row includes the Non-Coral remainder. ----
     cell(r, 1, 'Sum (excluding tape+shadow+wand)', font=_LABEL, border=True)
     for i in range(n):
         col_sum = sum(series[name][i] for name in CLASS_ORDER)

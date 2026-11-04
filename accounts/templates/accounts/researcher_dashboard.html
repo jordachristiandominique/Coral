@@ -4,7 +4,7 @@
 {% block title %}Researcher Dashboard | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=16">
 {% endblock %}
 
 {% block content %}
@@ -137,7 +137,7 @@
         <section class="charts-grid charts-grid-enhanced">
             <article class="surface-card chart-card">
                 <div class="card-header">
-                    <h2>Benthic Substrate Composition</h2>
+                    <h2>Reviewed Marker Composition</h2>
                     <span class="ghost-link">All surveys</span>
                 </div>
                 <div class="benthic-chart-wrap">
@@ -224,8 +224,7 @@
     </main>
 </div>
 
-{{ chart_data|json_script:"dashboard-chart-data" }}
-<script id="benthic-distribution-data" type="application/json">{{ benthic_chart|safe }}</script>
+{{ benthic_chart|json_script:"benthic-distribution-data" }}
 
 <div class="logout-modal" aria-hidden="true" data-logout-modal>
     <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
@@ -245,5 +244,5 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'js/custom.js' %}?v=4"></script>
-<script src="{% static 'js/researcher_dashboard.js' %}"></script>
+<script src="{% static 'js/researcher_dashboard.js' %}?v=2"></script>
 {% endblock %}
