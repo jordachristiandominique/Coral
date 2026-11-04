@@ -1,13 +1,13 @@
 (function (root, factory) {
-    const api = factory();
+    const api = factory(typeof module === 'object' && module.exports
+        ? require('./representative_points.js') : root.RepresentativePoints);
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.UploadBatchAnalysis = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (Representative) {
     'use strict';
-    const classes = ['Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota'];
+    const classes = ['Hard Coral', 'Soft Coral', 'Unclassified'];
     const validRect = r => Boolean(r && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(r[k])) &&
         r.x >= 0 && r.y >= 0 && r.w > 0 && r.h > 0 && r.x + r.w <= 1.000001 && r.y + r.h <= 1.000001);
-    const points = () => [1 / 3, 2 / 3].flatMap(y => [.1, .3, .5, .7, .9].map(x => ({ x, y, class: '' })));
     const complete = r => Boolean(r && !r.boundary_draft && validRect(r.quadrat_bbox) && r.quadrat_confirmed &&
         r.points.length === 10 && r.points.every(p => classes.includes(p.class)));
     const reviewed = r => Boolean(complete(r) && r.reviewed === true);
@@ -26,7 +26,7 @@
     function setQuadrat(result, box) {
         if (!validRect(box)) throw new Error('Enter a quadrat inside the image with positive width and height.');
         result.quadrat_bbox = { ...box };
-        result.points = points();
+        regenerate(result);
         result.quadrat_confirmed = false;
         result.reviewed = false;
         result.boundary_draft = false;
@@ -53,27 +53,29 @@
         return result;
     }
 
-    function setPoint(result, index, value) {
-        if (!result.points[index] || (value !== '' && !classes.includes(value))) throw new Error('Invalid point classification.');
-        result.points[index].class = value;
+    function regenerate(result) {
+        result.points = result.quadrat_bbox ? Representative.calculate(result.quadrat_bbox,
+            result.detections.filter(d => d.class_name !== 'quadrat_area')) : [];
+        result.reviewed = false;
+    }
+    function moveMarker(result, index, point) {
+        const current = result.points[index], quadrat = result.quadrat_bbox;
+        if (!current || !quadrat) return;
+        const next = { x: Math.max(.00000001, Math.min(.99999999, point.x)),
+            y: Math.max(.00000001, Math.min(.99999999, point.y)), class: current.class };
+        const imagePoint = { x: quadrat.x + next.x * quadrat.w, y: quadrat.y + next.y * quadrat.h };
+        if (Representative.classAt(result.detections.filter(d => d.class_name !== 'quadrat_area'), imagePoint) !== current.class) return;
+        result.points[index] = next;
         result.reviewed = false;
     }
 
-    function pointSuggestion(result, point) {
-        if (!validRect(result.quadrat_bbox)) return '';
-        const b = result.quadrat_bbox;
-        const x = b.x + point.x * b.w, y = b.y + point.y * b.h;
-        const hits = [...new Set(result.detections.filter(d => d.class_name !== 'quadrat_area' &&
-            x >= d.box.x && y >= d.box.y && x <= d.box.x + d.box.w && y <= d.box.y + d.box.h).map(d => d.class_name))];
-        return hits.length ? `Box suggestion: ${hits.join(' / ')}. Verify the image beneath this point.` : 'No coral-box suggestion. Inspect and classify this point manually.';
-    }
-
     function payload(result) {
-        if (!reviewed(result)) throw new Error('Confirm the quadrat, classify all ten points, and confirm image review.');
+        if (!reviewed(result)) throw new Error('Verify the quadrat and representative markers, then confirm image review.');
         const submitted = { rect: { ...result.quadrat_bbox }, points: result.points.map(p => ({ x: p.x, y: p.y })),
-            point_classes: result.points.map(p => p.class), review: { version: 1, confirmed: true } };
-        if (result.editor) submitted.analysis = {
-            version: 1, model: { ...result.model }, square_lock: result.editor.square,
+            point_classes: result.points.map(p => p.class), review: { version: 2, confirmed: true } };
+        submitted.analysis = {
+            method: 'box_representative_v1',
+            version: 1, model: { ...result.model }, square_lock: Boolean(result.editor?.square),
             boxes: result.detections.filter(d => d.class_name !== 'quadrat_area').map(d => ({
                 id: d.id, class_name: d.class_name, box: { ...d.box }, source: d.source === 'manual' ? 'manual' : 'ai'
             }))
@@ -112,5 +114,5 @@
         } finally { clearTimeout(timer); }
     }
 
-    return { classes, validRect, points, complete, reviewed, coverage, transect, setQuadrat, fromResponse, setPoint, pointSuggestion, payload, request };
+    return { classes, validRect, complete, reviewed, coverage, transect, setQuadrat, fromResponse, regenerate, moveMarker, payload, request };
 }));

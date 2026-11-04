@@ -38,28 +38,27 @@ test('one pointer gesture records one history entry, new edits clear redo, histo
     assert.equal(r.editor.redo.length, 0);
     assert.equal(E.ensure(other).undo.length, 0);
 });
-test('box corrections invalidate approval without changing sampling point classes or HCC math', () => {
+test('box corrections regenerate representative counts and undo restores their prior allocation', () => {
     const r = sample(); A.setQuadrat(r, { x: 0, y: 0, w: 1, h: 1 });
-    r.quadrat_confirmed = true; r.points.forEach((p, i) => p.class = i < 5 ? 'Hard Coral' : 'Soft Coral'); r.reviewed = true;
+    r.quadrat_confirmed = true; r.reviewed = true;
     E.ensure(r).selected = 'large'; E.change(r, () => E.setBox(r, 'large', { x: .2, y: .2, w: .4, h: .4 }));
-    assert.equal(r.reviewed, false); assert.equal(A.coverage(r), 50);
-    E.undo(r); assert.equal(r.reviewed, false); assert.equal(A.coverage(r), 50);
+    assert.equal(r.reviewed, false); assert.equal(A.coverage(r), 20);
+    E.undo(r); assert.equal(r.reviewed, false); assert.equal(A.coverage(r), 30);
 });
-test('quadrat edits clear point classes; deleting it requires redrawing, and undo restores geometry', () => {
+test('quadrat edits regenerate representatives; deleting and undo restore their geometry', () => {
     const r = sample(); A.setQuadrat(r, { x: .1, y: .1, w: .8, h: .8 }); E.ensure(r).selected = 'quadrat';
-    r.points[0].class = 'Hard Coral';
     E.change(r, () => E.setBox(r, 'quadrat', { x: .2, y: .2, w: .6, h: .6 }));
-    assert(r.points.every(p => p.class === ''));
+    assert.equal(r.points.length, 10); assert(r.points.some(p=>p.class==='Hard Coral'));
     E.remove(r); assert.equal(r.quadrat_bbox, null); assert.equal(r.points.length, 0);
     E.undo(r); assert.equal(r.quadrat_bbox.x, .2); assert.equal(r.points.length, 10);
 });
-test('marker movement clamps to quadrat and clears only its classification; undo restores prior coordinates', () => {
-    const r = sample(); A.setQuadrat(r, { x: .1, y: .1, w: .8, h: .8 });
-    r.points[0].class = 'Hard Coral'; r.points[1].class = 'Soft Coral';
-    E.change(r, () => E.marker(r, 0, { x: 2, y: -1 }));
-    assert.deepEqual(r.points[0], { x: 1, y: 0, class: '' });
-    assert.equal(r.points[1].class, 'Soft Coral');
-    E.undo(r); assert.equal(r.points[0].class, 'Hard Coral'); assert.equal(r.points[0].x, .1);
+test('marker movement preserves its allocation and stays inside its assigned region', () => {
+    const r=sample(); A.setQuadrat(r,{x:0,y:0,w:1,h:1});
+    const before=E.snapshot(r), original={...r.points[0]};
+    E.marker(r,0,{x:.9,y:.9}); assert.deepEqual(r.points[0],original);
+    E.marker(r,0,{x:.15,y:.15}); E.commit(r,before);
+    assert.equal(r.points[0].class,'Hard Coral'); assert.equal(r.points[0].x,.15);
+    E.undo(r); assert.deepEqual(r.points[0],original);
 });
 test('square locking and corner resizing use image pixels and stay inside non-square images', () => {
     const image = { width: 4000, height: 3000 };
@@ -82,11 +81,11 @@ test('image-edge moves and resizes retain positive boxes; canceled gestures rest
 test('saved review contains accepted edited boxes and model reference, with no box-area calculations', () => {
     const r = sample(); A.setQuadrat(r, { x: 0, y: 0, w: 1, h: 1 });
     E.add(r, { x: .7, y: .7, w: .1, h: .1 }, 'Hard Coral');
-    r.quadrat_confirmed = true; r.points.forEach(p => p.class = 'Soft Coral'); r.reviewed = true;
+    r.quadrat_confirmed = true; r.reviewed = true;
     const p = A.payload(r);
     assert.equal(p.analysis.boxes.length, 3);
     assert.equal(p.analysis.boxes.at(-1).source, 'manual');
     assert.equal(p.analysis.model.id, 'yolov8s-v4-3x');
-    assert.equal(A.coverage(r), 0);
+    assert.equal(A.coverage(r), 30);
     assert(!JSON.stringify(p.analysis).includes('area_percent'));
 });

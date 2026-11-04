@@ -251,7 +251,7 @@ PostgreSQL 17.11 now runs as `postgresql-x64-17` on localhost:5432. The ignored 
 The `batch` foreign-key name, `images` / `image_batches` reverse relations, URLs, upload keys, HCC helper dictionary keys (`coverage_class`), template context, filters, and frontend payloads retain their existing contracts. These display/calculation dictionary keys are not database column names. Repository distribution reads `SurveyImage.coverage_category`. Before a rename, export/backup existing data; old fixtures and audit snapshots use the old model/field names and require explicit normalization when comparing against the renamed schema. `accounts/test_model_renames.py` covers forward/reverse row preservation, permission identity/grants, upload/append category writes, pages, role guards, exports, and admin registrations.
 
 
-## 13. Upload inference and review (2026-11-03)
+## 13. Initial upload inference and review (2026-11-03, superseded by section 15)
 
 The upload template supplies the inference URL via `data-analyze-url` and loads
 `static/js/upload_batch_analysis.js` before the page controller. Images are sent
@@ -295,7 +295,7 @@ failure/retry, fullscreen and mobile layout, leaving the live PostgreSQL surveys
 untouched. Captures are ignored under `output/playwright/`.
 
 
-## 14. Compact review editor
+## 14. Compact review editor (marker allocation updated in section 15)
 
 `static/js/upload_batch_review.js` contains pure geometry/history operations, loaded
 between the analysis adapter and page controller. The upload template now offers
@@ -330,3 +330,32 @@ calculations and area-proportional marker allocation are not imported into this
 point-intercept editor. Test commands additionally include
 `node --test tests/js/upload_batch_review.test.cjs`. Django/Node tests and browser
 checks are recorded in `docs/yolo-local-inference.md`.
+
+
+## 15. Box-based representative markers (2026-11-04)
+
+The upload page replaces manual point-classification dropdowns with ten markers
+allocated from accepted HC/SC rectangles clipped to the quadrat. Shared area is
+counted once. Hard Coral takes priority in mixed HC/SC overlaps, rounds its area
+share to the nearest marker (53/54% -> 5, 55% -> 6), and Soft Coral takes its
+rounded share of remaining slots. Remainder markers use `Unclassified`, a marker
+status outside CPCE_CODES. No model class has been added. The active-image card
+previews HCC from HC marker count/10 and the canonical category thresholds. The
+footer retains the confirmed-image transect mean.
+
+`static/js/representative_points.js` applies the demo's cell decomposition,
+largest-remainder distribution and deterministic patterns (including a triangle
+for three in one cell). `upload_batch_analysis.js` invokes it after detection and
+boundary edits. `upload_batch_review.js` regenerates after box edits and preserves
+allocation through undo/redo. Marker repositioning stays within its assigned
+class region. Saving requires boundary/box verification and image confirmation.
+
+The multipart fields retain quadrat-relative points and full class names, with
+`review.version=2` and `analysis.method=box_representative_v1`.
+`accounts/representative_points.py` recomputes expected class counts and validates
+marker positions against accepted boxes. `survey_validation.py` permits the
+Unclassified remainder only for this versioned method. The assessment method is
+stored in analysis_review. Existing model HCC helpers and schema remain valid.
+The method estimates representative counts from rectangles, including any
+background enclosed by those rectangles. Tests cover rounding, clipping, overlap,
+review invalidation, marker movement, legacy acceptance and persisted HCC.

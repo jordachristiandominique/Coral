@@ -230,8 +230,8 @@
                 <div class="quadrat-card" id="quadrat-card" aria-label="Auto-analysis results">
                     <div class="quadrat-head">
                         <div>
-                            <h3>AI Detections &amp; Point Review</h3>
-                            <p>Boxes are suggestions. Confirm the boundary and classify what is beneath each sampling point.</p>
+                            <h3>AI Detections &amp; Representative Markers</h3>
+                            <p>Review the quadrat and coral boxes. Ten representative markers are allocated from the accepted boxes.</p>
                         </div>
                         <div class="quadrat-meta">
                             <span class="quadrat-meta-label">Active Image</span>
@@ -244,7 +244,7 @@
                     <section class="coverage-summary" aria-label="Coverage result">
                         <div class="coverage-summary-metrics">
                             <div class="coverage-metric">
-                                <span class="coverage-metric-label">Hard Coral Cover (HCC)</span>
+                                <span class="coverage-metric-label">Active Image Hard Coral Cover (HCC)</span>
                                 <span class="coverage-metric-value" id="coral-coverage-percent">--%</span>
                             </div>
                             <div class="coverage-metric">
@@ -253,9 +253,9 @@
                             </div>
                         </div>
                         <div class="coverage-computation" id="coverage-computation" aria-live="polite">
-                            <span class="coverage-computation-label">How this is computed &mdash; CPCE point-intercept method</span>
+                            <span class="coverage-computation-label">How this is computed &mdash; Representative marker method</span>
                             <div class="coverage-formula">
-                                Hard Coral Cover (HCC) = Hard Coral points &divide; Total points surveyed &times; 100
+                                Hard Coral Cover (HCC) = Hard Coral markers &divide; 10 representative markers &times; 100
                             </div>
                             <div class="coverage-substitution" id="coverage-substitution">
                                 Awaiting analysis&hellip;
@@ -266,7 +266,7 @@
                     <div class="quadrat-body">
                         <div class="quadrat-canvas-wrap" id="quadrat-canvas-wrap">
                             <img id="quadrat-image" alt="Selected coral image" loading="lazy">
-                            <canvas id="quadrat-canvas" tabindex="0" aria-label="Coral detection boxes, editable quadrat, and numbered sampling points"></canvas>
+                            <canvas id="quadrat-canvas" tabindex="0" aria-label="Coral detection boxes, editable quadrat, and numbered representative markers"></canvas>
                             <button type="button" class="image-nav image-nav-prev" id="image-prev-btn"
                                 aria-label="Previous image" title="Previous image" hidden>
                                 <img src="{% static 'icons/right-arrow.png' %}" alt="" aria-hidden="true"
@@ -287,7 +287,7 @@
                             <div class="quadrat-empty" id="quadrat-empty">Upload and select an image to view auto-analysis.</div>
                         </div>
 
-                        <div class="analysis-results-panel" aria-label="Point classifications">
+                        <div class="analysis-results-panel" aria-label="Box review and representative markers">
                             <section class="detection-review" id="detection-review" aria-label="Detection review" hidden>
                                 <p id="detection-model" class="detection-model"></p>
                                 <p id="detection-warning" class="detection-warning" role="status"></p>
@@ -321,13 +321,12 @@
                                 <label class="review-check" id="quadrat-candidate-label" hidden>Detected boundary
                                     <select id="review-quadrat-candidate" aria-label="Detected quadrat candidate"></select>
                                 </label>
-                                <label class="review-check"><input type="checkbox" id="confirm-quadrat"> I verified the sampling boundary</label>
+                                <label class="review-check"><input type="checkbox" id="confirm-quadrat"> I verified the quadrat and accepted coral boxes</label>
                                 <p id="review-feedback" class="detection-warning" role="status"></p>
                             </section>
                             <div class="panel-head">
-                                <h4>Point Classifications</h4>
-                                <p class="panel-head-hint">Classify all ten points from the image. A box suggestion does not confirm the substrate.</p>
-                                <span id="point-progress" aria-live="polite">0/10 classified</span>
+                                <h4>Ten representative markers</h4>
+                                <p class="panel-head-hint">Markers update with the accepted boxes. Purple represents Hard Coral, teal represents Soft Coral, and yellow represents the unclassified remainder.</p>
                                 <!-- Step through / zoom to each point (fullscreen only, shown via CSS) -->
                                 <div class="point-zoom-nav" id="point-zoom-nav" aria-label="Zoom through points">
                                     <button type="button" class="point-zoom-btn" id="point-zoom-prev"
@@ -344,8 +343,8 @@
                                 </div>
                             </div>
 
-                            <div class="point-list" id="point-list">
-                                <!-- Point classifications will appear here -->
+                            <div class="panel-head-hint" id="representative-summary" role="status">
+                                <!-- Representative marker counts appear here. -->
                             </div>
                             <div class="ai-actions">
                                 <button type="button" class="primary-btn" id="confirm-image-review" disabled>Confirm image review</button>
@@ -395,7 +394,7 @@
                     <p><strong>This Transect's HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
                     <p><strong>Review:</strong> <span id="summary-review">Awaiting image review</span></p>
                 </div>
-                <p class="summary-box-note">This transect uses the mean HCC of its reviewed images. Each image uses ten points; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.</p>
+                <p class="summary-box-note">This transect uses the mean HCC of its reviewed images. Each image uses ten representative markers; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.</p>
 
                 <p class="submit-hint" id="submit-hint">Choose images, run AI detection, and confirm the review of every image before saving.
                 </p>
@@ -452,7 +451,7 @@
 <div class="process-modal" id="analyze-confirm-modal" aria-hidden="true">
     <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-confirm-title">
         <h2 id="analyze-confirm-title">Re-run AI Analysis?</h2>
-        <p class="process-sub">This replaces the current detections, boundary edits, and reviewed point classifications. Continue?</p>
+        <p class="process-sub">This replaces the current detections, boundary edits, and representative markers. Continue?</p>
         <div class="process-actions">
             <button type="button" class="action-outline" id="analyze-confirm-cancel">Cancel</button>
             <button type="button" class="primary-btn" id="analyze-confirm-accept">Yes, re-run AI</button>
@@ -471,9 +470,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/upload_batch_analysis.js' %}?v=2"></script>
-<script src="{% static 'js/upload_batch_review.js' %}?v=1"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=30"></script>
+<script src="{% static 'js/representative_points.js' %}?v=1"></script>
+<script src="{% static 'js/upload_batch_analysis.js' %}?v=3"></script>
+<script src="{% static 'js/upload_batch_review.js' %}?v=2"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=31"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

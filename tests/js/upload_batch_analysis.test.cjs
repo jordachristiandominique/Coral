@@ -10,24 +10,25 @@ function response(detections) {
         quadrat: regions.find(d => d.class_name === 'quadrat_area') || null, warnings: [] };
 }
 function reviewed(hard = 5) {
-    const r = A.fromResponse(response());
+    const data = response();
+    if (hard) data.detections.push({id:'hc', class_name:'Hard Coral', confidence:.8,
+        box:{x:box.x,y:box.y,w:box.w*hard/10,h:box.h}});
+    const r = A.fromResponse(data);
     r.quadrat_confirmed = true;
-    r.points.forEach((_, i) => A.setPoint(r, i, i < hard ? 'Hard Coral' : 'Soft Coral'));
     r.reviewed = true;
     return r;
 }
 const file = () => new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
 const http = (data, status = 200) => ({ ok: status === 200, status, redirected: false, json: async () => data });
 
-test('real quadrat creates ten deterministic unclassified points, never invented classes', () => {
+test('a quadrat without coral boxes generates ten unclassified representative markers', () => {
     const r = A.fromResponse(response());
     assert.equal(r.points.length, 10);
-    assert(r.points.every(p => p.class === '' && p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1));
-    assert.deepEqual(r.points, A.points());
+    assert(r.points.every(p => p.class === 'Unclassified' && p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1));
     assert.equal(A.coverage(r), null);
     assert.equal(A.reviewed(r), false);
 });
-test('missing quadrat and zero detections stay empty until a manual boundary is supplied', () => {
+test('missing quadrat stays empty until a manual boundary is supplied', () => {
     const r = A.fromResponse(response([]));
     assert.equal(r.quadrat_bbox, null);
     assert.deepEqual(r.points, []);
@@ -36,40 +37,30 @@ test('missing quadrat and zero detections stay empty until a manual boundary is 
     assert.equal(r.points.length, 10);
     assert.equal(r.quadrat_confirmed, false);
 });
-test('boundary, ten classifications and explicit review are all required for serialization', () => {
-    const r = reviewed();
-    r.reviewed = false;
-    assert.equal(A.complete(r), true);
-    assert.throws(() => A.payload(r));
+test('box representatives require explicit review and save versioned allocation metadata', () => {
+    const r = reviewed(); r.reviewed = false;
+    assert.equal(A.complete(r), true); assert.throws(() => A.payload(r));
     r.reviewed = true;
     const payload = A.payload(r);
-    assert.deepEqual(payload.review, { version: 1, confirmed: true });
+    assert.deepEqual(payload.review, {version:2, confirmed:true});
+    assert.equal(payload.analysis.method, 'box_representative_v1');
     assert.equal(payload.point_classes.length, 10);
     assert.equal(payload.point_classes.filter(c => c === 'Hard Coral').length, 5);
-    assert.deepEqual(Object.keys(payload.points[0]).sort(), ['x', 'y']);
     assert.equal(A.coverage(r), 50);
-    r.quadrat_confirmed = false;
-    assert.throws(() => A.payload(r));
-    r.quadrat_confirmed = true;
-    r.boundary_draft = true;
-    assert.throws(() => A.payload(r));
+    r.quadrat_confirmed = false; assert.throws(() => A.payload(r));
+    r.quadrat_confirmed = true; r.boundary_draft = true; assert.throws(() => A.payload(r));
 });
-test('point edits invalidate approval and unsupported or missing classes cannot be saved', () => {
-    const r = reviewed();
-    A.setPoint(r, 0, 'Soft Coral');
+test('box edits regenerate markers and invalidate approval, including a coral-free result', () => {
+    const r = reviewed(); r.detections = r.detections.filter(d=>d.class_name==='quadrat_area');
+    A.regenerate(r);
     assert.equal(r.reviewed, false);
-    assert.equal(A.coverage(r), 40);
-    A.setPoint(r, 0, '');
-    assert.equal(A.complete(r), false);
-    assert.equal(A.coverage(r), null);
-    assert.throws(() => A.setPoint(r, 0, 'Non-coral'));
+    assert.equal(A.coverage(r), 0);
+    assert(r.points.every(p=>p.class==='Unclassified'));
 });
-test('boundary edits reset point classifications and quadrat confirmation', () => {
-    const r = reviewed();
-    A.setQuadrat(r, { x: .2, y: .2, w: .6, h: .6 });
-    assert.equal(r.reviewed, false);
-    assert.equal(r.quadrat_confirmed, false);
-    assert(r.points.every(p => p.class === ''));
+test('quadrat edits regenerate box representatives and require boundary confirmation', () => {
+    const r = reviewed(); A.setQuadrat(r, {x:.1,y:.1,w:.4,h:.8});
+    assert.equal(r.reviewed, false); assert.equal(r.quadrat_confirmed, false);
+    assert(r.points.every(p=>p.class==='Hard Coral'));
 });
 test('invalid detector boxes, classes, confidence, and responses fail without fallbacks', () => {
     for (const change of [{ box: { ...box, w: 2 } }, { class_name: 'Invented' }, { confidence: NaN }]) {
@@ -78,15 +69,14 @@ test('invalid detector boxes, classes, confidence, and responses fail without fa
     assert.throws(() => A.fromResponse({ success: false }));
     assert.throws(() => A.setQuadrat(reviewed(), { x: 0, y: 0, w: 0, h: 1 }));
 });
-test('overlapping Hard and Soft boxes are suggestions only; outside boxes do not assign points', () => {
+test('mixed overlaps use Hard Coral priority and outside boxes receive no markers', () => {
     const data = response();
-    data.detections.push({ id: 'hc', class_name: 'Hard Coral', confidence: .8, box });
-    data.detections.push({ id: 'sc', class_name: 'Soft Coral', confidence: .7, box });
-    const r = A.fromResponse(data);
-    assert.match(A.pointSuggestion(r, r.points[0]), /Hard Coral \/ Soft Coral/);
-    assert.equal(r.points[0].class, '');
-    r.detections = [{ id: 'outside', class_name: 'Hard Coral', confidence: .7, box: { x: 0, y: 0, w: .01, h: .01 } }];
-    assert.match(A.pointSuggestion(r, r.points[0]), /No coral-box suggestion/);
+    data.detections.push({id:'hc',class_name:'Hard Coral',confidence:.8,box});
+    data.detections.push({id:'sc',class_name:'Soft Coral',confidence:.7,box});
+    const r=A.fromResponse(data);
+    assert(r.points.every(p=>p.class==='Hard Coral'));
+    r.detections=[{id:'outside',class_name:'Hard Coral',box:{x:0,y:0,w:.01,h:.01}}];
+    A.regenerate(r); assert(r.points.every(p=>p.class==='Unclassified'));
 });
 test('transect HCC excludes Soft Coral and unreviewed images, with canonical mean rounding', () => {
     assert.equal(A.transect([reviewed(0), reviewed(10)]).pct, 50);
@@ -121,7 +111,7 @@ test('a transient busy response recovers without supplying fabricated labels', a
     const r = await A.request(file(), '/analyze/', 'token', { fetch: async () => ++calls === 1
         ? http({ code: 'inference_busy' }, 503) : http(response()), delay: async () => {} });
     assert.equal(calls, 2);
-    assert(r.points.every(p => p.class === ''));
+    assert(r.points.every(p => p.class === 'Unclassified'));
 });
 test('redirects, CSRF failure, non-JSON, offline and timeout errors remain actionable', async () => {
     for (const result of [{ ...http({}), redirected: true }, http({}, 403)]) {

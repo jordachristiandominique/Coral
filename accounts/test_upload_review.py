@@ -11,6 +11,7 @@ from PIL import Image
 
 from .models import DataRepository, SurveyImage, Transect, User
 from .survey_validation import validate_quadrat_payload
+from .representative_points import representative_counts
 
 
 def accepted_review():
@@ -26,7 +27,47 @@ def reviewed_payload():
             'review': {'version': 1, 'confirmed': True}}
 
 
+def representative_payload():
+    analysis = accepted_review()
+    analysis['method'] = 'box_representative_v1'
+    analysis['boxes'] = [
+        {'id': 'hc', 'class_name': 'Hard Coral', 'source': 'ai', 'box': {'x': 0, 'y': 0, 'w': .5, 'h': 1}},
+        {'id': 'sc', 'class_name': 'Soft Coral', 'source': 'manual', 'box': {'x': .5, 'y': 0, 'w': .25, 'h': 1}},
+    ]
+    return {'rect': {'x': 0, 'y': 0, 'w': 1, 'h': 1},
+            'points': ([{'x': .25, 'y': (i + 1) / 6} for i in range(5)]
+                       + [{'x': .625, 'y': (i + 1) / 4} for i in range(3)]
+                       + [{'x': .875, 'y': (i + 1) / 3} for i in range(2)]),
+            'point_classes': ['Hard Coral'] * 5 + ['Soft Coral'] * 3 + ['Unclassified'] * 2,
+            'review': {'version': 2, 'confirmed': True}, 'analysis': analysis}
+
+
 class ReviewPayloadTests(SimpleTestCase):
+    def test_representative_counts_round_like_demo_and_deduplicate_overlapping_boxes(self):
+        quadrat = {'x': .1, 'y': .1, 'w': .8, 'h': .8}
+        for percent, expected in ((0, 0), (30, 3), (53, 5), (54, 5), (55, 6), (100, 10)):
+            boxes = [{'class_name': 'Hard Coral', 'box': {**quadrat, 'w': quadrat['w'] * percent / 100}}] if percent else []
+            counts = representative_counts(quadrat, boxes * 2)
+            self.assertEqual(counts['Hard Coral'], expected)
+            self.assertEqual(sum(counts.values()), 10)
+        counts = representative_counts(quadrat, [
+            {'class_name': 'Hard Coral', 'box': {**quadrat, 'w': .4}},
+            {'class_name': 'Soft Coral', 'box': quadrat}])
+        self.assertEqual(counts, {'Hard Coral': 5, 'Soft Coral': 5, 'Unclassified': 0})
+
+    def test_representative_payload_requires_matching_boxes_counts_positions_and_method(self):
+        payload = representative_payload()
+        self.assertEqual(validate_quadrat_payload(deepcopy(payload)), payload)
+        for mutate in (lambda p: p['analysis'].pop('method'),
+                       lambda p: p['point_classes'].__setitem__(0, 'Soft Coral'),
+                       lambda p: p['points'][0].update(x=.9),
+                       lambda p: p['analysis']['boxes'][0]['box'].update(w=.1),
+                       lambda p: p.update(review={'version': 1, 'confirmed': True})):
+            invalid = deepcopy(payload)
+            mutate(invalid)
+            with self.assertRaises(ValueError):
+                validate_quadrat_payload(invalid)
+
     def test_accepted_boxes_and_model_reference_are_retained_without_extra_fields(self):
         payload = reviewed_payload()
         payload['analysis'] = accepted_review()
@@ -112,6 +153,17 @@ class ReviewedUploadTests(TestCase):
         self.assertEqual(image.analysis_review, payload['analysis'])
         self.assertEqual(Transect.objects.get().coverage_percent, 50)
 
+    def test_representative_upload_saves_method_counts_and_canonical_hcc(self):
+        payload = representative_payload()
+        self.assertEqual(self.submit(payload).status_code, 302)
+        image = SurveyImage.objects.get()
+        self.assertEqual(image.point_classes, payload['point_classes'])
+        self.assertEqual(image.quadrat_points, payload['points'])
+        self.assertEqual(image.analysis_review['method'], 'box_representative_v1')
+        self.assertEqual(image.coverage_percent, 50)
+        self.assertEqual(image.coverage_category, 'A')
+        self.assertEqual(Transect.objects.get().coverage_percent, 50)
+
     def test_unreviewed_upload_is_rejected_before_any_rows_or_files_are_saved(self):
         payload = reviewed_payload()
         payload['review']['confirmed'] = False
@@ -125,3 +177,6 @@ class ReviewedUploadTests(TestCase):
         self.assertContains(response, 'id="confirm-image-review"')
         self.assertContains(response, 'id="retry-analysis-btn"')
         self.assertContains(response, 'js/upload_batch_analysis.js')
+        self.assertNotContains(response, 'Point Classifications')
+        self.assertNotContains(response, 'point-class-select')
+        self.assertContains(response, 'js/representative_points.js')

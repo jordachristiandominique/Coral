@@ -4,6 +4,7 @@ import math
 import re
 
 from .models import CPCE_CODES
+from .representative_points import MARKER_CLASSES, METHOD, validate_representative_points
 
 
 def validate_quadrat_payload(payload):
@@ -25,13 +26,19 @@ def validate_quadrat_payload(payload):
     for point in points:
         if (not isinstance(point, dict) or not all(number(point.get(k)) and 0 <= point[k] <= 1 for k in ('x', 'y'))):
             raise ValueError('Sampling points must stay inside the quadrat.')
-    if any(not isinstance(value, str) or value not in CPCE_CODES for value in classes):
+    review = payload.get('review')
+    representative = isinstance(review, dict) and type(review.get('version')) is int and review['version'] == 2
+    allowed_classes = MARKER_CLASSES if representative else CPCE_CODES
+    if any(not isinstance(value, str) or value not in allowed_classes for value in classes):
         raise ValueError('Classify every point using a supported benthic class.')
     if 'review' in payload:
         review = payload['review']
         if (not isinstance(review, dict) or type(review.get('version')) is not int
-                or review['version'] != 1 or review.get('confirmed') is not True or len(points) != 10):
+                or review['version'] not in (1, 2) or review.get('confirmed') is not True or len(points) != 10):
             raise ValueError('AI-assisted uploads require confirmed review of ten sampling points.')
+    if representative and ('analysis' not in payload or not isinstance(payload['analysis'], dict)
+                           or payload['analysis'].get('method') != METHOD):
+        raise ValueError('Representative markers require their accepted coral boxes and allocation method.')
     if 'analysis' in payload:
         analysis = payload['analysis']
         if ('review' not in payload or not isinstance(analysis, dict) or type(analysis.get('version')) is not int or analysis['version'] != 1
@@ -61,4 +68,7 @@ def validate_quadrat_payload(payload):
         # A researcher-confirmed model reference, not an independent inference attestation.
         payload['analysis'] = {'version': 1, 'model': {k: model[k] for k in ('id', 'sha256', 'dataset_version')},
                                'square_lock': analysis['square_lock'], 'boxes': accepted}
+        if representative:
+            validate_representative_points(rect, accepted, points, classes)
+            payload['analysis']['method'] = METHOD
     return payload

@@ -152,16 +152,17 @@ non-coral assignment, or database migration in this endpoint step. The upload pa
    inspector. Right-click a selected box for deletion, or use its Delete button.
    Optional square locking uses image pixels and is not imposed on detections;
    perspective can legitimately make a physical quadrat appear rectangular.
-4. Classify all ten numbered points from the actual image. Points occupy two
-   evenly spaced rows of five within the quadrat and start unclassified. A box
-   suggestion does not confirm coral beneath a point. Existing seven CPCE classes
-   remain selectable for manual review, although the detector recognizes only
-   Hard Coral, Soft Coral, and quadrat_area.
-5. Click **Confirm image review** for every image, then **Upload**. Boundary edits
-   clear point classifications. Point edits and accepted-box corrections block
-   saving until reviewed again. Preview HCC stays pending until all images are
-   confirmed. Only Hard Coral enters its numerator; the displayed aggregate is
-   this transect's mean image HCC, not the existing site's total.
+4. Verify the ten representative markers generated from the accepted boxes.
+   Boxes are clipped to the quadrat and overlapping area is counted once. Hard
+   Coral receives nearest-ten-percent allocation (53/54% gives five markers,
+   55% gives six). Soft Coral receives its rounded allocation from the remaining
+   slots. Mixed Hard/Soft overlaps use Hard Coral priority. Remainder markers
+   are labeled Unclassified. The active-image HCC/category preview uses the Hard
+   Coral marker count out of ten. Counts appear in a compact summary.
+5. Click **Confirm image review** for every image, then **Upload**. Quadrat and
+   coral-box edits regenerate the allocation and invalidate approval. Marker
+   movement preserves its assigned class and stays in its matching region.
+   The footer summarizes confirmed images using the canonical transect mean.
 
 Requests are sequential with an overall per-image timeout and bounded busy retries.
 **Retry failed images** retains other images' reviews. Re-analysis requires an
@@ -169,8 +170,8 @@ acknowledgement before replacing edits. Failures show errors instead of fabricat
 boxes, classes, or coverage. Original-image orientation must match the endpoint's
 upright dimensions before the overlay can be reviewed.
 
-**Edit markers** moves one of the existing ten sampling points within the
-quadrat; it clears that point's class. Quadrat changes reset all ten classes.
+**Edit markers** repositions a representative marker within its assigned region.
+Quadrat or coral-box changes regenerate all ten markers.
 Undo/redo is per image, with up to 40 edit transactions; a drag is one transaction.
 Ctrl+Z and Ctrl+Y act on the editor when focus is not in a text/select field, where
 native editing is preserved. A new edit clears redo. Undo/redo requires image
@@ -217,3 +218,27 @@ Ctrl+Z/Ctrl+Y, square locking, marker movement, visibility controls, and saving.
 The saved test review retained its manual Soft Coral box and moved marker while
 HCC remained 50% from five Hard Coral points out of ten. Layout screenshots are
 in ignored `output/playwright/`. These checks establish behavior, not model accuracy.
+
+
+## Representative marker contract (2026-11-04)
+
+Uploads now send `review.version = 2` and
+`analysis.method = "box_representative_v1"`. The seven-class manual dropdown
+workflow has been replaced on the upload page. `Unclassified` is a remainder
+marker label supported only by this versioned contract. Existing CPCE class names
+and legacy manual upload validation remain available to older data/callers.
+`accounts/representative_points.py` recomputes expected counts from accepted
+boxes and checks each marker's region before persistence. Canonical HCC helpers
+consume the ten stored marker classes. The accepted-box method is retained in
+`analysis_review` so the assessment method can be identified later.
+
+The model still supplies detection boxes. Rectangular bounds determine the
+representative allocation, including background enclosed by each box. The UI
+shows HCC from the rounded marker count and retains compact box labels.
+
+Verification for the representative update passed 37 Django tests on PostgreSQL
+and 41 JavaScript tests. An additional 120 mixed-box frontend/backend parity cases
+passed. Isolated browser verification used real detections, then edited boxes and
+saved 6 Hard Coral / 2 Soft Coral / 2 Unclassified markers with HCC 60%, Category A.
+Desktop, mobile, fullscreen, deletion, and undo behavior were checked. Captures
+are under ignored `output/playwright/upload-representative-*.png`.

@@ -237,8 +237,7 @@ const initializeUploadBatch = function () {
     const showDetectionBoxes = document.getElementById('show-detection-boxes');
     const reviewFeedback = document.getElementById('review-feedback');
     const quadratInputs = document.getElementById('quadrat-inputs');
-    const pointList = document.getElementById('point-list');
-    const pointProgress = document.getElementById('point-progress');
+    const markerSummary = document.getElementById('representative-summary');
     const batchNameInput = document.getElementById('batch-name');
     const surveyDateInput = document.getElementById('survey-date');
     const areaNameInput = document.getElementById('area-name');
@@ -273,23 +272,10 @@ const initializeUploadBatch = function () {
     const setTransectLabel = function (label) {
         if (transectLabelInput && label) { transectLabelInput.value = label; }
     };
-    const MIN_POINTS = 10;
     // Quadrat edit affordances: corner grab tolerance (px) and smallest box.
     const HANDLE_SIZE = 10;
     const MIN_RECT_SIZE = 24;
-    const POINT_CLASSES = [
-        'Hard Coral',
-        'Soft Coral',
-        'Macroalgae',
-        'Halimeda',
-        'Algae Assemblage',
-        'Abiotic',
-        'Other Biota'
-    ];
-    // CPCE code shown to the surveyor/expert for each class. The stored value
-    // stays the full class name so backend coverage logic is unaffected.
-    // Plain-language meaning for each HCC category. Keep in sync with
-// COVERAGE_CLASS_LABELS in accounts/models.py.
+    // Category thresholds match accounts/models.py.
 const COVERAGE_CLASS_LABELS = {
     A: 'HCC more than 44%',
     B: 'HCC more than 33% up to 44%',
@@ -299,23 +285,6 @@ const COVERAGE_CLASS_LABELS = {
 const describeCoverageClass = function (code) {
     return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
 };
-    const CPCE_CODES = {
-        'Hard Coral': 'HC',
-        'Soft Coral': 'SC',
-        'Macroalgae': 'MA',
-        'Halimeda': 'HA',
-        'Algae Assemblage': 'AA',
-        'Abiotic': 'AB',
-        'Other Biota': 'OB'
-    };
-    // Build <option> markup for a point-class dropdown, marking `selected` current.
-    const buildClassOptions = function (selectedClass) {
-        return '<option value="">Review and choose...</option>' + POINT_CLASSES.map(function (cls) {
-            const code = CPCE_CODES[cls] || '';
-            const isSel = cls === selectedClass ? ' selected' : '';
-            return `<option value="${cls}"${isSel}>${code} – ${cls}</option>`;
-        }).join('');
-    };
     let activeFileIndex = 0;
     let activeImageUrl = null;
     // Index of the point currently zoomed/highlighted in the fullscreen view
@@ -436,7 +405,7 @@ const describeCoverageClass = function (code) {
         activeFileIndex = Math.max(0, Math.min(index, selectedFiles.length - 1));
         updateThumbActiveState();
         updateQuadratPreview();
-        renderPointList();
+        renderMarkerSummary();
         updatePointNavLabel();
     };
 
@@ -462,7 +431,7 @@ const describeCoverageClass = function (code) {
 
         if (analyzeHint) {
             analyzeHint.textContent = ready
-                ? 'Run detection, then verify the quadrat and classify all ten sampling points.'
+                ? 'Run detection, then verify the quadrat, coral boxes, and representative markers.'
                 : 'Upload at least one image to enable AI analysis.';
         }
     };
@@ -482,7 +451,7 @@ const describeCoverageClass = function (code) {
         if (uploadInput) uploadInput.disabled = isAnalyzing;
         if (chooseImagesButton) chooseImagesButton.disabled = isAnalyzing;
         if (detectionReview) detectionReview.inert = isAnalyzing;
-        if (pointList) pointList.inert = isAnalyzing;
+        if (markerSummary) markerSummary.inert = isAnalyzing;
         processOpenBtn.disabled = !ready;
         processOpenBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
 
@@ -493,7 +462,7 @@ const describeCoverageClass = function (code) {
                 submitHint.textContent = 'All images reviewed. Upload to save this transect and its point-based HCC.';
                 submitHint.style.color = '#2a8793';
             } else {
-                submitHint.textContent = 'Run detection, confirm each quadrat, classify ten points, and confirm every image review.';
+                submitHint.textContent = 'Run detection, verify each quadrat and coral boxes, and confirm every image review.';
                 submitHint.style.color = '';
             }
         }
@@ -555,7 +524,7 @@ const describeCoverageClass = function (code) {
     };
 
     /**
-     * Draw a CPCE-style survey point: a cross (+) marker with its number
+     * Draw a representative marker: a cross (+) marker with its number
      * beside it. Both are drawn with a dark halo so they stay readable over
      * any substrate (pale sand, dark coral, bright algae).
      */
@@ -699,7 +668,7 @@ const describeCoverageClass = function (code) {
         ctx.lineWidth = 2;
         ctx.strokeRect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
 
-        // Draw CPCE-style cross markers with point numbers
+        // Draw representative cross markers with point numbers
         if (showMarkers.checked && points && points.length) {
             points.forEach(function (point, index) {
                 const x = rectPx.x + point.x * rectPx.w;
@@ -718,6 +687,7 @@ const describeCoverageClass = function (code) {
                 }
                 drawCpcePoint(ctx, x, y, index + 1, {
                     arm: 7,
+                    color: point.class === 'Hard Coral' ? '#d5a4ff' : point.class === 'Soft Coral' ? '#60f0d1' : '#ffd147',
                     lineWidth: 1.5,
                     font: 'bold 11px "Inter", "Segoe UI", Arial, sans-serif'
                 });
@@ -894,13 +864,6 @@ const describeCoverageClass = function (code) {
         startAnalyzeAll();
     };
 
-    const updatePointProgress = function () {
-        const file = getActiveFile();
-        const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        const filled = result ? result.points.filter(p => POINT_CLASSES.includes(p.class)).length : 0;
-        if (pointProgress) pointProgress.textContent = `${filled}/${MIN_POINTS} classified`;
-    };
-
     const updateThumbPointsStatus = function () {
         if (!thumbGrid) return;
         thumbGrid.querySelectorAll('.thumb-card[data-file-key]').forEach(function (card) {
@@ -1063,34 +1026,26 @@ const describeCoverageClass = function (code) {
         return { ...result, code: getCoverageClass(result.pct) };
     };
 
-    // The Step 2 result panel shows the transect total (same for every image),
-    // not the active image alone.
-    const renderTransectCoverageSummary = function () {
+    // Preview the active image while the footer summarizes confirmed images in this transect.
+    const renderImageCoverageSummary = function () {
         const coverageClassEl = document.getElementById('coverage-class');
         const coveragePercentEl = document.getElementById('coral-coverage-percent');
         const substitutionEl = document.getElementById('coverage-substitution');
-        const t = computeTransectCoverage();
-        if (!t.total || t.imgCount !== selectedFiles.length) {
-            if (coveragePercentEl) { coveragePercentEl.textContent = '--%'; }
-            if (coverageClassEl) {
-                coverageClassEl.textContent = 'Pending';
-                coverageClassEl.className = 'coverage-metric-badge class-pending';
-            }
-            if (substitutionEl) { substitutionEl.innerHTML = 'Awaiting review of every image&hellip;'; }
+        const result = activeResult();
+        if (!result || result.points.length !== 10) {
+            coveragePercentEl.textContent = '--%';
+            coverageClassEl.textContent = 'Pending';
+            coverageClassEl.className = 'coverage-metric-badge class-pending';
+            substitutionEl.textContent = 'Choose a quadrat to generate representative markers.';
             return;
         }
-        if (coveragePercentEl) { coveragePercentEl.textContent = `${t.pct}%`; }
-        if (coverageClassEl) {
-            coverageClassEl.textContent = `Category ${t.code}`;
-            coverageClassEl.className = `coverage-metric-badge class-${t.code.toLowerCase()}`;
-        }
-        if (substitutionEl) {
-            substitutionEl.innerHTML =
-                `= ${t.hc} Hard Coral &divide; ${t.total} points &times; 100 ` +
-                `= <strong class="coverage-result">${t.pct}%</strong> ` +
-                `&rarr; Category ${t.code} ` +
-                `<span class="coverage-note">(whole transect · ${t.imgCount} image${t.imgCount === 1 ? '' : 's'})</span>`;
-        }
+        const hard = result.points.filter(point => point.class === 'Hard Coral').length;
+        const percent = getCoralCoveragePercent(result.points);
+        const category = getCoverageClass(percent);
+        coveragePercentEl.textContent = `${percent}%`;
+        coverageClassEl.textContent = `Category ${category}`;
+        coverageClassEl.className = `coverage-metric-badge class-${category.toLowerCase()}`;
+        substitutionEl.textContent = `${hard} Hard Coral markers ÷ 10 × 100 = ${percent}% · Active image${Analysis.reviewed(result) ? ' reviewed' : ' awaiting confirmation'}`;
     };
 
     const refreshReviewState = function () {
@@ -1109,12 +1064,14 @@ const describeCoverageClass = function (code) {
             result.coverage_class = result.coverage_percent === null ? null : getCoverageClass(result.coverage_percent);
         }
         if (result) syncEditorControls(result);
-        updatePointProgress();
+        if (markerSummary && result && result.quadrat_bbox) {
+            markerSummary.textContent = Analysis.classes.map(name => `${name} ${result.points.filter(point => point.class === name).length}`).join(' · ');
+        }
         if (quadratPointsCount) quadratPointsCount.textContent = result
-            ? Analysis.reviewed(result) ? 'Image reviewed' : `${result.points.filter(p => p.class).length}/10 points classified`
+            ? Analysis.reviewed(result) ? 'Image reviewed' : `${result.points.length}/10 representative markers`
             : 'Detection pending';
         updateThumbPointsStatus();
-        renderTransectCoverageSummary();
+        renderImageCoverageSummary();
         updateSubmitState();
         updateSummary();
     };
@@ -1163,36 +1120,25 @@ const describeCoverageClass = function (code) {
         refreshReviewState();
     };
 
-    const renderPointList = function () {
-        if (!pointList) return;
+    const renderMarkerSummary = function () {
+        if (!markerSummary) return;
         const file = getActiveFile(), key = file ? getFileKey(file) : null;
         const result = key ? aiResultsByFileKey[key] : null;
         renderDetectionReview(result);
         if (fsBtn) fsBtn.hidden = !result;
         if (!result) {
-            pointList.innerHTML = `<p class="thumb-empty-state">${escapeHtml(key && analysisErrors[key]
+            markerSummary.innerHTML = `<p class="thumb-empty-state">${escapeHtml(key && analysisErrors[key]
                 ? analysisErrors[key] : 'Run AI detection to begin image review.')}</p>`;
             refreshReviewState();
             return;
         }
         if (!result.quadrat_bbox) {
-            pointList.innerHTML = '<p class="thumb-empty-state">No sampling boundary selected. Choose Edit quadrat and drag on the image to draw a boundary and place ten sampling points.</p>';
+            markerSummary.innerHTML = '<p class="thumb-empty-state">Choose Edit quadrat and draw the boundary to generate ten representative markers.</p>';
             refreshReviewState();
             return;
         }
-        pointList.innerHTML = result.points.map(function (point, index) {
-            return `<label class="point-row"><span class="point-row-label">Point ${index + 1}</span>
-                <select class="point-class-select" data-index="${index}" aria-label="Class for point ${index + 1}">
-                ${buildClassOptions(point.class)}</select>
-                <small class="point-suggestion">${escapeHtml(Analysis.pointSuggestion(result, point))}</small></label>`;
-        }).join('');
-        pointList.querySelectorAll('.point-class-select').forEach(function (select) {
-            select.addEventListener('change', function () {
-                Editor.change(result, () => Analysis.setPoint(result, Number(this.dataset.index), this.value));
-                if (reviewFeedback) reviewFeedback.textContent = 'Point changed. Confirm image review again when all points are checked.';
-                refreshReviewState();
-            });
-        });
+        const counts = Analysis.classes.map(name => `${name} ${result.points.filter(point => point.class === name).length}`);
+        markerSummary.textContent = counts.join(' · ');
         refreshReviewState();
     };
 
@@ -1207,12 +1153,12 @@ const describeCoverageClass = function (code) {
         const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
         if (isAnalyzing || !Analysis.complete(result)) return;
         result.reviewed = true;
-        if (reviewFeedback) reviewFeedback.textContent = 'Image review confirmed. Subsequent point or boundary edits require confirmation again.';
+        if (reviewFeedback) reviewFeedback.textContent = 'Image review confirmed. Subsequent box, marker, or boundary edits require confirmation again.';
         refreshReviewState();
     });
     const finishEditorAction = function () {
         closeContextMenu();
-        renderPointList();
+        renderMarkerSummary();
         const result = activeResult();
         if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
     };
@@ -1279,7 +1225,7 @@ const describeCoverageClass = function (code) {
         const hints = {
             select: 'Click a box to select it, or use the selector. Hand tool moves and resizes.',
             quadrat: 'Drag the quadrat or its corners. Drag empty space to draw a replacement boundary.',
-            markers: 'Drag a numbered marker within the quadrat. Its class will need review again.',
+            markers: 'Drag a marker within its assigned region. Box edits regenerate all ten markers.',
             hand: 'Select, move, or resize boxes directly. Smaller coral boxes take priority in overlaps.',
             hard: 'Drag on the image to draw a Hard Coral box.', soft: 'Drag on the image to draw a Soft Coral box.'
         };
@@ -1420,11 +1366,6 @@ const describeCoverageClass = function (code) {
         }
         if (quadratCanvas) { quadratCanvas.style.cursor = 'default'; }
         if (quadratWrap) { quadratWrap.classList.remove('is-point-zoomed'); }
-        if (pointList) {
-            pointList.querySelectorAll('.point-row.is-zoomed').forEach(function (r) {
-                r.classList.remove('is-zoomed');
-            });
-        }
         if (wasZoomed) { redrawPoints(); }   // clear the highlight
         updatePointNavLabel();
     };
@@ -1476,18 +1417,6 @@ const describeCoverageClass = function (code) {
         redrawPoints();   // draw the highlight ring on the active point
         if (quadratCanvas) { quadratCanvas.style.cursor = 'zoom-out'; }
         if (quadratWrap) { quadratWrap.classList.add('is-point-zoomed'); }
-        if (pointList) {
-            pointList.querySelectorAll('.point-row.is-zoomed').forEach(function (r) {
-                r.classList.remove('is-zoomed');
-            });
-            const sel = pointList.querySelector('.point-class-select[data-index="' + index + '"]');
-            const row = sel ? sel.closest('.point-row') : null;
-            if (row) {
-                row.classList.add('is-zoomed');
-                // Bring the highlighted row into view in the scrolling panel.
-                row.scrollIntoView({ block: 'nearest' });
-            }
-        }
         updatePointNavLabel();
     };
 
@@ -1613,7 +1542,7 @@ const describeCoverageClass = function (code) {
             if (quadratImageLabel) {
                 quadratImageLabel.textContent = 'Select an image';
             }
-            renderPointList();
+            renderMarkerSummary();
             return;
         }
 
@@ -1624,7 +1553,7 @@ const describeCoverageClass = function (code) {
         const results = aiResultsByFileKey[getFileKey(activeFile)];
         if (quadratPointsCount) {
             if (results) {
-                quadratPointsCount.textContent = Analysis.reviewed(results) ? 'Image reviewed' : `${results.points.filter(p => p.class).length}/10 points classified`;
+                quadratPointsCount.textContent = Analysis.reviewed(results) ? 'Image reviewed' : `${results.points.length}/10 representative markers`;
             } else {
                 quadratPointsCount.textContent = 'Analysis pending';
             }
@@ -1646,13 +1575,13 @@ const describeCoverageClass = function (code) {
                 analysisErrors[previewKey] = 'Image orientation could not be matched. Export an upright image and retry.';
                 delete aiResultsByFileKey[previewKey];
                 quadratCanvas.getContext('2d').clearRect(0, 0, quadratCanvas.width, quadratCanvas.height);
-                renderPointList();
+                renderMarkerSummary();
                 return;
             }
             const ctx = quadratCanvas.getContext('2d');
             if (current) drawQuadratAndPoints(current.quadrat_bbox, current.points);
             else if (ctx) ctx.clearRect(0, 0, quadratCanvas.width, quadratCanvas.height);
-            renderPointList();
+            renderMarkerSummary();
             syncInlinePanelHeight();
         };
         quadratImage.src = activeImageUrl;
@@ -1979,20 +1908,6 @@ const describeCoverageClass = function (code) {
 
     }
 
-    if (pointList) {
-        pointList.addEventListener('click', function (event) {
-            // In fullscreen, clicking a point row zooms the image to that point.
-            const pointRow = event.target.closest('.point-row');
-            if (pointRow && isFullscreen()) {
-                const sel = pointRow.querySelector('.point-class-select');
-                const idx = sel ? parseInt(sel.getAttribute('data-index'), 10) : NaN;
-                if (!isNaN(idx)) {
-                    zoomToPoint(idx);
-                }
-            }
-        });
-    }
-
     if (analyzeAllBtn) {
         analyzeAllBtn.addEventListener('click', function () {
             runAnalyzeAll();
@@ -2203,10 +2118,10 @@ const describeCoverageClass = function (code) {
     }
 
     // ---- Fullscreen image review ----
-    // Relocates the existing image viewer and point-classification panel into a
+    // Relocates the existing image viewer and review panel into a
     // large blurred-backdrop modal, then moves them back on close. Reusing the
     // real DOM (not a copy) keeps the canvas overlay, prev/next arrows, loupe,
-    // and live CPCE dropdowns fully working with zero duplicated state.
+    // and representative markers fully working with zero duplicated state.
     const fsModal = document.getElementById('quadrat-fs');
     const fsClose = document.getElementById('quadrat-fs-close');
     const fsStage = document.getElementById('quadrat-fs-stage');
@@ -2332,7 +2247,7 @@ const describeCoverageClass = function (code) {
             if (!isReadyToAnalyze()) {
                 event.preventDefault();
                 console.warn('Form submission blocked: AI analysis not complete for all images');
-                alert('Confirm each quadrat, classify all ten points, and confirm every image review before uploading.');
+                alert('Verify each quadrat, coral boxes, and representative markers, then confirm every image review before uploading.');
                 updateSubmitState();
                 return;
             }

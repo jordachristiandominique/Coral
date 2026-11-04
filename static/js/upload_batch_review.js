@@ -31,7 +31,7 @@
         e.redo = []; r.reviewed = false;
         return true;
     }
-    function change(r, action) { const before = snapshot(r); action(); commit(r, before); }
+    function change(r, action) { const before = snapshot(r); action(); Analysis.regenerate(r); commit(r, before); }
     function undo(r) {
         const e = ensure(r);
         if (!e.undo.length) return false;
@@ -94,7 +94,7 @@
         else {
             const d = coral(r).find(d => d.id === id);
             if (!d) return;
-            d.box = { ...box }; r.reviewed = false;
+            d.box = { ...box }; Analysis.regenerate(r);
         }
     }
     function add(r, box, name) {
@@ -124,8 +124,7 @@
     }
     function marker(r, index, point) {
         if (!r.points[index] || !r.quadrat_bbox) return;
-        r.points[index] = { x: Math.max(0, Math.min(1, point.x)), y: Math.max(0, Math.min(1, point.y)), class: '' };
-        r.reviewed = false;
+        Analysis.moveMarker(r, index, point);
     }
     return { ensure, snapshot, restore, commit, change, undo, redo, coral, selected, label, hit, contains,
         clamp, move, resize, square, isSquare, setBox, add, remove, rename, marker };
