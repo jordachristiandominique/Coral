@@ -27,7 +27,7 @@ test('same-class overlaps count once, clipping excludes outside boxes, and mixed
     let points = R.calculate(q,[region('Hard Coral',half),region('Hard Coral',half),
         region('Soft Coral',{x:0,y:0,w:.05,h:.05})]);
     assert.equal(points.filter(p=>p.class==='Hard Coral').length,5);
-    assert.equal(points.filter(p=>p.class==='Non-Coral').length,5);
+    assert.equal(points.filter(p=>p.class==='Other Substrate').length,5);
     points = R.calculate(q,[region('Hard Coral',half),region('Soft Coral',q)]);
     assert.equal(points.filter(p=>p.class==='Hard Coral').length,5);
     assert.equal(points.filter(p=>p.class==='Soft Coral').length,5);

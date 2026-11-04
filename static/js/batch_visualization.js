@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeVisualization();
 });
 
-// Saved classes and the representative Non-Coral remainder.
+// Saved classes and the representative Other Substrate remainder.
 // Primary colors match the upload review and dashboard composition charts.
 const CORAL_CLASSES = {
     'Hard Coral': { hex: '#a44cff', label: 'HC' },
@@ -49,8 +49,7 @@ const CORAL_CLASSES = {
     'Algae Assemblage': { hex: '#1baf7a', label: 'AA' },
     'Abiotic': { hex: '#eb6834', label: 'AB' },
     'Other Biota': { hex: '#4a3aa7', label: 'OB' },
-    'Non-Coral': { hex: '#d9a321', label: 'NC' },
-    'Unclassified': { hex: '#7a8d96', label: '--' }
+    'Other Substrate': { hex: '#d9a321', label: 'OS' }
 };
 
 // Shared accents for Hard/Soft Coral and marker totals.
@@ -140,9 +139,12 @@ function mapShortNameToFullName(shortName) {
         'AB': 'Abiotic',
         'Other Biota': 'Other Biota',
         'OB': 'Other Biota',
-        'Non-Coral': 'Non-Coral',
-        'NC': 'Non-Coral',
-        'Unclassified': 'Unclassified'
+        'Other Substrate': 'Other Substrate',
+        'OS': 'Other Substrate',
+        'Non-Coral': 'Other Substrate',
+        'Non-Corals': 'Other Substrate',
+        'NC': 'Other Substrate',
+        'Unclassified': 'Other Substrate'
     };
     return mapping[shortName] || null;
 }

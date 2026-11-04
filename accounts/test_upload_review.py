@@ -40,18 +40,19 @@ def representative_payload():
             'points': ([{'x': .25, 'y': (i + 1) / 6} for i in range(5)]
                        + [{'x': .625, 'y': (i + 1) / 4} for i in range(3)]
                        + [{'x': .875, 'y': (i + 1) / 3} for i in range(2)]),
-            'point_classes': ['Hard Coral'] * 5 + ['Soft Coral'] * 3 + ['Non-Coral'] * 2,
+            'point_classes': ['Hard Coral'] * 5 + ['Soft Coral'] * 3 + ['Other Substrate'] * 2,
             'review': {'version': 2, 'confirmed': True}, 'analysis': analysis}
 
 
 class ReviewPayloadTests(SimpleTestCase):
-    def test_older_representative_remainder_labels_are_normalized_to_nc(self):
-        payload = representative_payload()
-        payload['point_classes'] = ['Unclassified' if name == 'Non-Coral' else name
-                                    for name in payload['point_classes']]
-        saved = validate_quadrat_payload(payload)
-        self.assertEqual(saved['point_classes'].count('Non-Coral'), 2)
-        self.assertNotIn('Unclassified', saved['point_classes'])
+    def test_older_representative_remainder_labels_are_normalized_to_other_substrate(self):
+        for alias in ('Non-Coral', 'NC', 'Unclassified'):
+            payload = representative_payload()
+            payload['point_classes'] = [alias if name == 'Other Substrate' else name
+                                        for name in payload['point_classes']]
+            saved = validate_quadrat_payload(payload)
+            self.assertEqual(saved['point_classes'].count('Other Substrate'), 2)
+            self.assertNotIn(alias, saved['point_classes'])
 
     def test_representative_counts_round_like_demo_and_deduplicate_overlapping_boxes(self):
         quadrat = {'x': .1, 'y': .1, 'w': .8, 'h': .8}
@@ -63,7 +64,7 @@ class ReviewPayloadTests(SimpleTestCase):
         counts = representative_counts(quadrat, [
             {'class_name': 'Hard Coral', 'box': {**quadrat, 'w': .4}},
             {'class_name': 'Soft Coral', 'box': quadrat}])
-        self.assertEqual(counts, {'Hard Coral': 5, 'Soft Coral': 5, 'Non-Coral': 0})
+        self.assertEqual(counts, {'Hard Coral': 5, 'Soft Coral': 5, 'Other Substrate': 0})
 
     def test_representative_payload_requires_matching_boxes_counts_positions_and_method(self):
         payload = representative_payload()
@@ -118,7 +119,7 @@ class ReviewPayloadTests(SimpleTestCase):
                            ('points', [{'x': 2, 'y': .5}] * 10),
                            ('points', [{'x': True, 'y': .5}] * 10),
                            ('point_classes', ['Unclassified'] * 10),
-                           ('point_classes', ['Non-Coral'] * 10),
+                           ('point_classes', ['Other Substrate'] * 10),
                            ('review', {'version': 1, 'confirmed': False})]:
             payload = reviewed_payload()
             payload[key] = value
@@ -173,9 +174,12 @@ class ReviewedUploadTests(TestCase):
         self.assertEqual(image.analysis_review['method'], 'box_representative_v1')
         self.assertEqual(image.coverage_percent, 50)
         self.assertEqual(image.coverage_category, 'A')
+        # Earlier saved labels must export into the current remainder row.
+        legacy_classes = ['NC' if name == 'Other Substrate' else name for name in image.point_classes]
+        SurveyImage.objects.filter(pk=image.pk).update(point_classes=legacy_classes)
         workbook = load_workbook(build_batch_coverage_workbook(image.batch), data_only=True)
         rows = {row[0].value: row for row in workbook.active.iter_rows()}
-        self.assertEqual(rows['NON-CORAL (NC)'][1].value, 20)
+        self.assertEqual(rows['OTHER SUBSTRATE (OS)'][1].value, 20)
         self.assertEqual(rows['Sum (excluding tape+shadow+wand)'][1].value, 100)
         self.assertEqual(Transect.objects.get().coverage_percent, 50)
 

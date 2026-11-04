@@ -401,3 +401,21 @@ the shared composition summary, include NC, and handle a full 100% single-class
 ring. Browser checks covered these pages and their empty/mobile states. The final
 suite passed 43 Django tests on PostgreSQL and 44 JavaScript tests. Screenshots
 are ignored under output/playwright.
+
+
+## 17. Other Substrate remainder label (2026-11-04)
+
+The current representative remainder is **Other Substrate (OS)**. It covers the
+area outside accepted HC/SC boxes and does not identify an individual substrate
+or coral condition. Upload review, marker labels, magnifier, the standalone demo,
+dashboards, repository details, map popups, annotated-image codes, and new Excel
+exports use this wording. Prior remainder wording in sections 15–16 is historical.
+
+`accounts/representative_points.py::normalize_marker_class` maps earlier remainder
+labels to Other Substrate. It is used for version-2 uploads and saved-data display
+and exports. Compatibility aliases remain internal and never become separate
+chart series. Canonical CPCE classes and the detector's class names are retained.
+The display-code extension maps Other Substrate to OS. This is a JSON label
+normalization and requires no schema migration. A transactional local PostgreSQL
+normalization found zero image labels requiring updates. Future submissions and
+older databases are normalized through the shared reader/validator.

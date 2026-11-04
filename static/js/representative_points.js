@@ -5,12 +5,12 @@
     else root.RepresentativePoints = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
-    const names = ['Hard Coral', 'Soft Coral', 'Non-Coral'];
+    const names = ['Hard Coral', 'Soft Coral', 'Other Substrate'];
 
     function classAt(boxes, point) {
         const hits = boxes.filter(region => point.x >= region.box.x && point.x <= region.box.x + region.box.w &&
             point.y >= region.box.y && point.y <= region.box.y + region.box.h);
-        return names.find(name => hits.some(region => region.class_name === name)) || 'Non-Coral';
+        return names.find(name => hits.some(region => region.class_name === name)) || 'Other Substrate';
     }
 
     function cellsFor(quadrat, boxes) {
@@ -77,7 +77,7 @@
         const counts = [hard, soft, 10 - hard - soft];
         // When rounded coral quotas occupy nine slots but cover the whole quadrat,
         // the remaining slot belongs to Soft Coral rather than an empty remainder.
-        if (counts[2] && !cells.some(cell => cell.class === 'Non-Coral')) {
+        if (counts[2] && !cells.some(cell => cell.class === 'Other Substrate')) {
             counts[1] += counts[2]; counts[2] = 0;
         }
         return names.flatMap((name, index) => allocate(cells.filter(cell => cell.class === name), counts[index]))

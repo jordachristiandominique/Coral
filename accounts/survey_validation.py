@@ -4,7 +4,7 @@ import math
 import re
 
 from .models import CPCE_CODES
-from .representative_points import MARKER_CLASSES, METHOD, validate_representative_points
+from .representative_points import MARKER_CLASSES, METHOD, normalize_marker_class, validate_representative_points
 
 
 def validate_quadrat_payload(payload):
@@ -29,8 +29,8 @@ def validate_quadrat_payload(payload):
     review = payload.get('review')
     representative = isinstance(review, dict) and type(review.get('version')) is int and review['version'] == 2
     if representative:
-        # Accept remainder labels from pages opened before the NC label update.
-        classes = ['Non-Coral' if value == 'Unclassified' else value for value in classes]
+        # Normalize submissions from pages opened before the label update.
+        classes = [normalize_marker_class(value) for value in classes]
         payload['point_classes'] = classes
     allowed_classes = MARKER_CLASSES if representative else CPCE_CODES
     if any(not isinstance(value, str) or value not in allowed_classes for value in classes):

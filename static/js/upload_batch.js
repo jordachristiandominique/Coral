@@ -685,7 +685,7 @@ const describeCoverageClass = function (code) {
                     ctx.stroke();
                     ctx.restore();
                 }
-                drawCpcePoint(ctx, x, y, point.class === 'Non-Coral' ? `NC ${index + 1}` : index + 1, {
+                drawCpcePoint(ctx, x, y, point.class === 'Other Substrate' ? `OS ${index + 1}` : index + 1, {
                     arm: 7,
                     color: point.class === 'Hard Coral' ? '#d5a4ff' : point.class === 'Soft Coral' ? '#60f0d1' : '#ffd147',
                     lineWidth: 1.5,
@@ -1065,7 +1065,7 @@ const describeCoverageClass = function (code) {
         }
         if (result) syncEditorControls(result);
         if (markerSummary && result && result.quadrat_bbox) {
-            markerSummary.textContent = Analysis.classes.map(name => `${name === 'Non-Coral' ? 'Non-Coral (NC)' : name} ${result.points.filter(point => point.class === name).length}`).join(' · ');
+            markerSummary.textContent = Analysis.classes.map(name => `${name === 'Other Substrate' ? 'Other Substrate (OS)' : name} ${result.points.filter(point => point.class === name).length}`).join(' · ');
         }
         if (quadratPointsCount) quadratPointsCount.textContent = result
             ? Analysis.reviewed(result) ? 'Image reviewed' : `${result.points.length}/10 representative markers`
@@ -1137,7 +1137,7 @@ const describeCoverageClass = function (code) {
             refreshReviewState();
             return;
         }
-        const counts = Analysis.classes.map(name => `${name === 'Non-Coral' ? 'Non-Coral (NC)' : name} ${result.points.filter(point => point.class === name).length}`);
+        const counts = Analysis.classes.map(name => `${name === 'Other Substrate' ? 'Other Substrate (OS)' : name} ${result.points.filter(point => point.class === name).length}`);
         markerSummary.textContent = counts.join(' · ');
         refreshReviewState();
     };
@@ -1505,7 +1505,7 @@ const describeCoverageClass = function (code) {
                 if (p.x < -20 || p.y < -20 || p.x > LOUPE_SIZE + 20 || p.y > LOUPE_SIZE + 20) {
                     return; // outside the magnified view
                 }
-                drawCpcePoint(ctx, p.x, p.y, point.class === 'Non-Coral' ? `NC ${index + 1}` : index + 1, {
+                drawCpcePoint(ctx, p.x, p.y, point.class === 'Other Substrate' ? `OS ${index + 1}` : index + 1, {
                     arm: 12,
                     lineWidth: 2,
                     font: 'bold 14px "Inter", "Segoe UI", Arial, sans-serif'

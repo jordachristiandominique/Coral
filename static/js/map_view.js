@@ -198,7 +198,7 @@ class CoralSenseMap {
     createDonutChart(breakdown) {
         /**
          * Creates an SVG donut chart from class breakdown percentages
-         * Shows saved HC/SC/NC composition and recorded historical classes
+         * Shows saved HC/SC/OS composition and recorded historical classes
          */
         const colors = {
             'Hard Coral': '#a44cff',
@@ -208,8 +208,7 @@ class CoralSenseMap {
             'Algae Assemblage': '#a8d5a8',
             'Abiotic': '#b0b0b0',
             'Other Biota': '#4a3aa7',
-            'Non-Coral': '#d9a321',
-            'Unclassified': '#7a8d96'
+            'Other Substrate': '#d9a321'
         };
 
         // Prepare data - only show classes with > 0.5%

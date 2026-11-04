@@ -414,12 +414,12 @@
             reviewed = false;
             status.textContent = 'Needs review - demonstration only; no real detection has run.';
             document.getElementById('area-demo-coverage').textContent = result.percent.toFixed(2) + '%';
-            document.getElementById('area-demo-count').textContent = result.hardCount + ' Hard Coral + ' + (10 - result.hardCount) + ' unclassified remainder';
+            document.getElementById('area-demo-count').textContent = result.hardCount + ' Hard Coral + ' + (10 - result.hardCount) + ' Other Substrate (OS)';
             document.getElementById('area-demo-formula').textContent =
                 'Accepted box union / quadrat interior = ' + result.percent.toFixed(2) + '%. ' +
                 'Representative allocation: ' + result.hardCount + '/10; marker counts do not change this raw area estimate.';
             document.getElementById('area-demo-marker-list').textContent = result.points.map((p, i) =>
-                (i + 1) + ': ' + (p.hard ? 'Hard Coral region' : 'Unclassified remainder')).join(' | ');
+                (i + 1) + ': ' + (p.hard ? 'Hard Coral region' : 'Other Substrate (OS)')).join(' | ');
             draw();
         }
         function fields() {

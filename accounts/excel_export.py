@@ -6,11 +6,12 @@ column, and every cell is that category's mean percentage across the transect's
 images. MEAN, STD. DEV. (sample, n-1) and STD. ERROR columns summarize across
 the transects.
 
-Uses the project's benthic classes and the Non-Coral remainder. The
+Uses the project's benthic classes and the Other Substrate remainder. The
 "Total points (minus tape+wand+shadow)" row and the Subcategories section from
 the original CPCE sheet are intentionally out of scope for now.
 """
 from io import BytesIO
+
 from statistics import mean as _mean, stdev as _stdev
 import math
 import re
@@ -19,11 +20,13 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from .representative_points import normalize_marker_class
+
 # Benthic categories and the derived remainder, shown in the CPCE style
 # (UPPER CASE with the code in parentheses) to match the sample sheet.
 CLASS_ORDER = [
     'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-    'Algae Assemblage', 'Abiotic', 'Other Biota', 'Non-Coral',
+    'Algae Assemblage', 'Abiotic', 'Other Biota', 'Other Substrate',
 ]
 CATEGORY_DISPLAY = {
     'Hard Coral': 'HARD CORAL (HC)',
@@ -33,7 +36,7 @@ CATEGORY_DISPLAY = {
     'Algae Assemblage': 'ALGAE ASSEMBLAGE (AA)',
     'Abiotic': 'ABIOTIC (AB)',
     'Other Biota': 'OTHER BIOTA (OB)',
-    'Non-Coral': 'NON-CORAL (NC)',
+    'Other Substrate': 'OTHER SUBSTRATE (OS)',
 }
 
 # ---- Styling ----
@@ -63,7 +66,7 @@ def _pct_series(images):
     series = {name: [] for name in CLASS_ORDER}
     totals = []
     for image in images:
-        pcs = image.point_classes or []
+        pcs = [normalize_marker_class(name) for name in image.point_classes or []]
         total = len(pcs)
         totals.append(total)
         for name in CLASS_ORDER:
@@ -95,7 +98,7 @@ def _transect_series(batch):
         per_image = {name: [] for name in CLASS_ORDER}
         total_points = 0
         for image in images:
-            pcs = image.point_classes or []
+            pcs = [normalize_marker_class(name) for name in image.point_classes or []]
             total = len(pcs)
             total_points += total
             for name in CLASS_ORDER:
@@ -210,7 +213,7 @@ def build_batch_coverage_workbook(batch):
         cell(r, se_col, se, align=_CENTER, fmt=NUM_FMT, fill=zebra, border=True)
         r += 1
 
-    # ---- Sum row includes the Non-Coral remainder. ----
+    # ---- Sum row includes the Other Substrate remainder. ----
     cell(r, 1, 'Sum (excluding tape+shadow+wand)', font=_LABEL, border=True)
     for i in range(n):
         col_sum = sum(series[name][i] for name in CLASS_ORDER)

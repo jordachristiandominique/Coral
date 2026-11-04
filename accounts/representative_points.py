@@ -4,15 +4,21 @@ from collections import Counter
 import math
 
 
-MARKER_CLASSES = ('Hard Coral', 'Soft Coral', 'Non-Coral')
+MARKER_CLASSES = ('Hard Coral', 'Soft Coral', 'Other Substrate')
 METHOD = 'box_representative_v1'
+
+
+def normalize_marker_class(name):
+    """Read earlier remainder labels using the current Other Substrate name."""
+    aliases = ('Non-Coral', 'Non-Corals', 'NC', 'Unclassified', 'unclassified', 'OS')
+    return 'Other Substrate' if isinstance(name, str) and name in aliases else name
 
 
 def class_at(boxes, x, y):
     hits = {region['class_name'] for region in boxes
             if region['box']['x'] <= x <= region['box']['x'] + region['box']['w']
             and region['box']['y'] <= y <= region['box']['y'] + region['box']['h']}
-    return next((name for name in MARKER_CLASSES if name in hits), 'Non-Coral')
+    return next((name for name in MARKER_CLASSES if name in hits), 'Other Substrate')
 
 
 def representative_counts(quadrat, boxes):
@@ -46,10 +52,10 @@ def representative_counts(quadrat, boxes):
     hard = rounded_count('Hard Coral')
     soft = min(10 - hard, rounded_count('Soft Coral'))
     remainder = 10 - hard - soft
-    if remainder and not areas['Non-Coral']:
+    if remainder and not areas['Other Substrate']:
         soft += remainder
         remainder = 0
-    return {'Hard Coral': hard, 'Soft Coral': soft, 'Non-Coral': remainder}
+    return {'Hard Coral': hard, 'Soft Coral': soft, 'Other Substrate': remainder}
 
 
 def validate_representative_points(quadrat, boxes, points, classes):

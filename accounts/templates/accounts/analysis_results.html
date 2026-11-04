@@ -174,7 +174,7 @@
         <section class="analysis-section" aria-labelledby="composition-title">
             <div class="section-header">
                 <h2 id="composition-title">HCC Categories and Marker Composition</h2>
-                <p class="section-description">Category counts and reviewed Hard Coral, Soft Coral, and Non-Coral markers</p>
+                <p class="section-description">Category counts and reviewed Hard Coral, Soft Coral, and Other Substrate markers</p>
             </div>
             <div class="analysis-charts" aria-label="Composition charts">
             <article class="surface-card chart-card compact-chart">
@@ -187,7 +187,7 @@
             <article class="surface-card chart-card compact-chart">
                 <div class="card-header">
                     <h2>Reviewed Marker Composition by Site</h2>
-                    <span class="chart-sub">Percentage of saved markers · HC / SC / NC</span>
+                    <span class="chart-sub">Percentage of saved markers · HC / SC / OS</span>
                 </div>
                 <div class="analysis-chart-plot"><canvas id="analysisSiteBenthicChart" height="150"></canvas></div>
             </article>
@@ -360,5 +360,5 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="{% static 'js/researcher_dashboard.js' %}"></script>
-<script src="{% static 'js/analysis_results.js' %}?v=10"></script>
+<script src="{% static 'js/analysis_results.js' %}?v=11"></script>
 {% endblock %}

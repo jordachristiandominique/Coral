@@ -1,6 +1,6 @@
-const PRIMARY_CLASSES = ['Hard Coral', 'Soft Coral', 'Non-Coral'];
+const PRIMARY_CLASSES = ['Hard Coral', 'Soft Coral', 'Other Substrate'];
 const CLASS_COLORS = {
-    'Hard Coral': '#a44cff', 'Soft Coral': '#2a8793', 'Non-Coral': '#d9a321',
+    'Hard Coral': '#a44cff', 'Soft Coral': '#2a8793', 'Other Substrate': '#d9a321',
     'Macroalgae': '#e87ba4', 'Halimeda': '#eda100', 'Algae Assemblage': '#1baf7a',
     'Abiotic': '#eb6834', 'Other Biota': '#4a3aa7'
 };

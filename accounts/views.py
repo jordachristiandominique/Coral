@@ -32,6 +32,7 @@ from .report_generator import ReportGenerator
 from .image_annotator import render_annotated_bytes
 from . import yolo_inference
 from .survey_validation import validate_quadrat_payload
+from .representative_points import normalize_marker_class
 from .visualization_data import composition_summary, COMPOSITION_COLORS
 
 
@@ -1327,8 +1328,8 @@ def batch_detail(request, batch_id):
         image.point_rows = [
             {
                 'number': index,
-                'code': POINT_CLASS_CODES.get(class_name, '--'),
-                'name': class_name or 'Unclassified',
+                'code': POINT_CLASS_CODES.get(normalize_marker_class(class_name), '--'),
+                'name': normalize_marker_class(class_name) or 'Other Substrate',
             }
             for index, class_name in enumerate(image.point_classes or [], start=1)
         ]
@@ -1359,7 +1360,7 @@ def batch_detail(request, batch_id):
         'avg_coverage': site['site_percent'],
         'coverage_class': site['coverage_class'],
         'site_hcc': site,
-        'point_classes_json': json.dumps({f'image-{img.id}': img.point_classes for img in images}),
+        'point_classes_json': json.dumps({f'image-{img.id}': [normalize_marker_class(name) for name in img.point_classes or []] for img in images}),
         'coral_coverage': coral_coverage,
         'batch_coverage': batch_coverage,
     }

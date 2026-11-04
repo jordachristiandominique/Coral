@@ -224,7 +224,7 @@ const initializeAnalysisResults = function () {
         });
 
         if (benthicSites.length) {
-            const primaryLabels = ['Hard Coral', 'Soft Coral', 'Non-Coral'];
+            const primaryLabels = ['Hard Coral', 'Soft Coral', 'Other Substrate'];
             const recordedLabels = [...new Set(benthicSites.flatMap(row => Object.keys(row.benthic)))];
             const classLabels = primaryLabels.concat(recordedLabels.filter(label => !primaryLabels.includes(label)));
             const payload = JSON.parse(chartScript.textContent || '{}');
