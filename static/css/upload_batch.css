@@ -536,6 +536,11 @@ body.modal-open {
     overflow: hidden;
 }
 
+body.analysis-progress-open .researcher-navbar {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .quadrat-fs {
     position: fixed;
     inset: 0;

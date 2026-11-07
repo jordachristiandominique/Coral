@@ -886,6 +886,7 @@ const describeCoverageClass = function (code) {
         analyzeModal.classList.add('is-visible');
         analyzeModal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
+        document.body.classList.add('analysis-progress-open');
     };
 
     const closeAnalyzeModal = function () {
@@ -895,6 +896,7 @@ const describeCoverageClass = function (code) {
         analyzeModal.classList.remove('is-visible');
         analyzeModal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('modal-open');
+        document.body.classList.remove('analysis-progress-open');
     };
 
     const openAnalyzeConfirm = function () {
