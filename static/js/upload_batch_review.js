@@ -56,6 +56,7 @@
     const contains = (b, p) => b && p.x >= b.x && p.y >= b.y && p.x <= b.x + b.w && p.y <= b.y + b.h;
     function hit(r, p, preferSelected = false) {
         const e = ensure(r);
+        if (r.quadrat_bbox && !contains(r.quadrat_bbox, p)) return null;
         if (preferSelected && contains(selected(r), p)) return e.selected;
         const hits = coral(r).filter(d => contains(d.box, p)).sort((a, b) => a.box.w * a.box.h - b.box.w * b.box.h);
         return hits[0]?.id || (contains(r.quadrat_bbox, p) ? 'quadrat' : null);

@@ -222,8 +222,13 @@ const initializeUploadBatch = function () {
     const uploadForm = document.getElementById('upload-batch-form');
     const Analysis = window.UploadBatchAnalysis;
     const Editor = window.UploadBatchReview;
-    let reviewTool = 'select';
+    let reviewTool = 'hand';
     let reviewDrag = null;
+    const syncReviewCursor = function () {
+        if (!quadratCanvas) return;
+        quadratCanvas.style.cursor = ['hand', 'markers'].includes(reviewTool)
+            ? reviewDrag ? 'grabbing' : 'grab' : 'crosshair';
+    };
     if (!Analysis || !Editor) throw new Error('Image review tools did not load. Reload the page.');
     const analysisErrors = {};
     const retryAnalysisBtn = document.getElementById('retry-analysis-btn');
@@ -610,16 +615,32 @@ const describeCoverageClass = function (code) {
         const file = getActiveFile();
         const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
         if (result) Editor.ensure(result);
+        const rectPx = quadratBbox ? {
+            x: offsetX + quadratBbox.x * displayWidth,
+            y: offsetY + quadratBbox.y * displayHeight,
+            w: quadratBbox.w * displayWidth,
+            h: quadratBbox.h * displayHeight
+        } : null;
+        const clipCoralOverlay = function () {
+            if (!rectPx) return;
+            ctx.beginPath();
+            ctx.rect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
+            ctx.clip();
+        };
         if (result && showFill.checked && quadratBbox) {
             ctx.fillStyle = 'rgba(80, 161, 220, .16)';
             ctx.fillRect(offsetX + quadratBbox.x * displayWidth, offsetY + quadratBbox.y * displayHeight,
                 quadratBbox.w * displayWidth, quadratBbox.h * displayHeight);
         }
         if (result && showDetectionBoxes.checked) {
+            ctx.save();
+            clipCoralOverlay();
             result.detections.forEach(function (d) {
                 if (d.class_name === 'quadrat_area') return;
                 const x = offsetX + d.box.x * displayWidth, y = offsetY + d.box.y * displayHeight;
                 const w = d.box.w * displayWidth, h = d.box.h * displayHeight;
+                if (rectPx && (x + w <= rectPx.x || y + h <= rectPx.y
+                    || x >= rectPx.x + rectPx.w || y >= rectPx.y + rectPx.h)) return;
                 const color = d.class_name === 'Hard Coral' ? '#b56aff' : d.class_name === 'Soft Coral' ? '#32e0bf' : '#75baff';
                 ctx.save();
                 if (showFill.checked && d.class_name !== 'quadrat_area') {
@@ -634,32 +655,28 @@ const describeCoverageClass = function (code) {
                 const label = d.class_name === 'quadrat_area' ? 'Q' : Editor.label(result, d.id);
                 ctx.font = 'bold 11px Inter, sans-serif';
                 const labelWidth = ctx.measureText(label).width + 8;
-                const labelX = Math.max(offsetX, Math.min(x, offsetX + displayWidth - labelWidth));
-                const labelY = Math.max(offsetY + 14, y);
+                const labelBounds = rectPx || { x: offsetX, y: offsetY, w: displayWidth, h: displayHeight };
+                const labelX = Math.max(labelBounds.x, Math.min(x, labelBounds.x + labelBounds.w - labelWidth));
+                const labelY = Math.max(labelBounds.y + 14, Math.min(y, labelBounds.y + labelBounds.h - 2));
                 ctx.fillStyle = '#12313c'; ctx.fillRect(labelX, labelY - 14, labelWidth, 16);
                 ctx.fillStyle = color; ctx.fillText(label, labelX + 4, labelY - 2);
                 ctx.restore();
             });
+            ctx.restore();
         }
         const selectedRect = result ? Editor.selected(result) : null;
         if (selectedRect && (result.editor.selected === 'quadrat' || showDetectionBoxes.checked)) {
             const px = { x: offsetX + selectedRect.x * displayWidth, y: offsetY + selectedRect.y * displayHeight,
                 w: selectedRect.w * displayWidth, h: selectedRect.h * displayHeight };
-            ctx.save(); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1c5f6d'; ctx.lineWidth = 1.5;
+            ctx.save();
+            if (result.editor.selected !== 'quadrat') clipCoralOverlay();
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1c5f6d'; ctx.lineWidth = 1.5;
             Object.values(getHandles(px)).forEach(h => {
                 ctx.fillRect(h.x - 5, h.y - 5, 10, 10); ctx.strokeRect(h.x - 5, h.y - 5, 10, 10);
             });
             ctx.restore();
         }
         if (!quadratBbox) return;
-
-        // Scale quadrat from natural image coordinates to display coordinates
-        const rectPx = {
-            x: offsetX + quadratBbox.x * displayWidth,
-            y: offsetY + quadratBbox.y * displayHeight,
-            w: quadratBbox.w * displayWidth,
-            h: quadratBbox.h * displayHeight
-        };
 
         ctx.strokeStyle = '#ff8a3d';
         ctx.lineWidth = 2;
@@ -1118,6 +1135,7 @@ const describeCoverageClass = function (code) {
 
     const finishEditorAction = function () {
         closeContextMenu();
+        syncReviewCursor();
         renderMarkerSummary();
         const result = activeResult();
         if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
@@ -1157,7 +1175,6 @@ const describeCoverageClass = function (code) {
         resetPointZoom(true); closeContextMenu();
         document.querySelectorAll('[data-review-tool]').forEach(b => b.setAttribute('aria-pressed', String(b === this)));
         const hints = {
-            select: 'Click a box on the image to select it. Hand tool moves and resizes.',
             quadrat: 'Drag the quadrat or its corners. Drag empty space to draw a replacement boundary.',
             markers: 'Drag a marker within its assigned region. Box edits regenerate all ten markers.',
             hand: 'Select, move, or resize boxes directly. Smaller coral boxes take priority in overlaps.',
@@ -1298,7 +1315,7 @@ const describeCoverageClass = function (code) {
                 if (el) { el.style.transition = ''; }
             });
         }
-        if (quadratCanvas) { quadratCanvas.style.cursor = 'default'; }
+        syncReviewCursor();
         if (quadratWrap) { quadratWrap.classList.remove('is-point-zoomed'); }
         if (wasZoomed) { redrawPoints(); }   // clear the highlight
         updatePointNavLabel();
@@ -1897,6 +1914,9 @@ const describeCoverageClass = function (code) {
         const handleAt = function (result, event) {
             const rect = Editor.selected(result), geo = getImageDisplayGeometry();
             if (!rect || !geo || (result.editor.selected !== 'quadrat' && !showDetectionBoxes.checked)) return null;
+            const point = pointOnImage(event);
+            if (result.editor.selected !== 'quadrat' && result.quadrat_bbox
+                && (!point || !Editor.contains(result.quadrat_bbox, point))) return null;
             return getHandleHit({ x: geo.offsetX + rect.x * geo.displayWidth, y: geo.offsetY + rect.y * geo.displayHeight,
                 w: rect.w * geo.displayWidth, h: rect.h * geo.displayHeight }, getPointerPos(event));
         };
@@ -1933,6 +1953,7 @@ const describeCoverageClass = function (code) {
             reviewDrag = { result, before, start: point, mode, handle, marker, pointer: event.pointerId,
                 rect: Editor.selected(result) ? { ...Editor.selected(result) } : null, id: e.selected, moved: false };
             isDraggingQuadrat = true; hideLoupe();
+            syncReviewCursor();
             quadratCanvas.setPointerCapture(event.pointerId);
             event.preventDefault();
             renderDetectionReview(result);
@@ -1941,7 +1962,7 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('pointermove', function (event) {
             const result = activeResult(), p = pointOnImage(event, true);
             if (!result || !p || !reviewDrag) {
-                quadratCanvas.style.cursor = ['hard', 'soft', 'quadrat', 'markers'].includes(reviewTool) ? 'crosshair' : reviewTool === 'hand' ? 'grab' : 'default';
+                if (zoomedPointIndex < 0) syncReviewCursor();
                 return;
             }
             const drag = reviewDrag, geo = getImageDisplayGeometry();
@@ -1952,6 +1973,13 @@ const describeCoverageClass = function (code) {
                 drag.draft = { x: Math.min(drag.start.x, p.x), y: Math.min(drag.start.y, p.y), w: Math.abs(dx), h: Math.abs(dy) };
                 drawQuadratAndPoints(result.quadrat_bbox, result.points);
                 const ctx = quadratCanvas.getContext('2d'); ctx.save(); ctx.strokeStyle = reviewTool === 'quadrat' ? '#ff8a3d' : reviewTool === 'hard' ? '#b56aff' : '#32e0bf';
+                if (reviewTool !== 'quadrat' && result.quadrat_bbox) {
+                    const b = result.quadrat_bbox;
+                    ctx.beginPath();
+                    ctx.rect(geo.offsetX + b.x * geo.displayWidth, geo.offsetY + b.y * geo.displayHeight,
+                        b.w * geo.displayWidth, b.h * geo.displayHeight);
+                    ctx.clip();
+                }
                 ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
                 ctx.strokeRect(geo.offsetX + drag.draft.x * geo.displayWidth, geo.offsetY + drag.draft.y * geo.displayHeight,
                     drag.draft.w * geo.displayWidth, drag.draft.h * geo.displayHeight); ctx.restore();
@@ -2033,7 +2061,7 @@ const describeCoverageClass = function (code) {
     // Detection overlays remain aligned with the editable sampling boundary.
     if (quadratCanvas) {
         // Prevent default interactions on canvas
-        quadratCanvas.style.cursor = 'default';
+        syncReviewCursor();
     }
 
     if (quadratImage) {

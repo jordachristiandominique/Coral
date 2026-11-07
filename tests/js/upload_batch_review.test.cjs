@@ -17,6 +17,15 @@ test('hand selection prioritizes smaller coral boxes before the quadrat, with se
     assert.equal(E.hit(r, { x: .25, y: .25 }, true), 'large');
     assert.equal(E.hit(r, { x: .9, y: .9 }), 'quadrat');
 });
+
+test('hidden coral portions outside the quadrat cannot be selected', () => {
+    const r = sample();
+    A.setQuadrat(r, { x: .3, y: .3, w: .5, h: .5 });
+    E.ensure(r).selected = 'large';
+    assert.equal(E.hit(r, { x: .15, y: .15 }), null);
+    assert.equal(E.hit(r, { x: .15, y: .15 }, true), null);
+    assert.equal(E.hit(r, { x: .4, y: .4 }), 'large');
+});
 test('drawing, selecting, changing class and deleting boxes supports undo and redo', () => {
     const r = sample();
     E.add(r, { x: .6, y: .6, w: .1, h: .1 }, 'Hard Coral');
