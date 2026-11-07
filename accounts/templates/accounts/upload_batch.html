@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=26">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=27">
 {% endblock %}
 
 {% block content %}
@@ -285,30 +285,32 @@
                         </div>
 
                         <div class="analysis-results-panel" aria-label="Box review and representative markers">
-                            <section class="detection-review" id="detection-review" aria-label="Detection review" hidden>
-                                <p id="detection-model" class="detection-model"></p>
-                                <p id="detection-warning" class="detection-warning" role="status"></p>
-                                <div class="review-toolbox" role="group" aria-label="Image review tools">
-                                    <button type="button" data-review-tool="hand" aria-pressed="true">Hand tool</button>
-                                    <button type="button" data-review-tool="quadrat" aria-pressed="false">Edit quadrat</button>
-                                    <button type="button" data-review-tool="markers" aria-pressed="false">Edit markers</button>
-                                    <button type="button" data-review-tool="hard" aria-pressed="false">HC box</button>
-                                    <button type="button" data-review-tool="soft" aria-pressed="false">SC box</button>
-                                    <button type="button" id="review-undo" disabled>Undo</button>
-                                    <button type="button" id="review-redo" disabled>Redo</button>
-                                </div>
-                                <p id="review-tool-hint" class="panel-head-hint">Select a box directly on the image to move or resize it.</p>
-                                <div class="review-visibility" role="group" aria-label="Overlay visibility">
-                                    <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Boxes</label>
-                                    <label class="review-check"><input type="checkbox" id="show-review-markers" checked> Markers</label>
-                                    <label class="review-check"><input type="checkbox" id="show-review-fill"> Color fill</label>
-                                    <label class="review-check"><input type="checkbox" id="show-estimated-area" checked>  Area labels</label>
-                                </div>
-                                <p id="review-feedback" class="detection-warning" role="status"></p>
-                            </section>
-                            <div class="panel-head">
-                                <h4>Ten representative markers</h4>
-                                <p class="panel-head-hint">Markers update with the accepted boxes. Purple represents Hard Coral, teal represents Soft Coral, and yellow represents Other Substrate (OS). Review all boxes before accepting the OS remainder.</p>
+                            <div class="review-panel-content">
+                                <section class="detection-review" id="detection-review" aria-label="Detection review" hidden>
+                                    <p id="detection-model" class="detection-model"></p>
+                                    <p id="detection-warning" class="detection-warning" role="status"></p>
+                                    <div class="review-toolbox" role="group" aria-label="Image review tools">
+                                        <button type="button" data-review-tool="hand" aria-pressed="true">Hand tool</button>
+                                        <button type="button" data-review-tool="quadrat" aria-pressed="false">Edit quadrat</button>
+                                        <button type="button" data-review-tool="markers" aria-pressed="false">Edit markers</button>
+                                        <button type="button" data-review-tool="hard" aria-pressed="false">HC box</button>
+                                        <button type="button" data-review-tool="soft" aria-pressed="false">SC box</button>
+                                        <button type="button" id="review-undo" disabled>Undo</button>
+                                        <button type="button" id="review-redo" disabled>Redo</button>
+                                        <button type="button" id="review-fit-image">Fit image</button>
+                                    </div>
+                                    <div class="review-visibility" role="group" aria-label="Overlay visibility">
+                                        <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Boxes</label>
+                                        <label class="review-check"><input type="checkbox" id="show-review-markers" checked> Markers</label>
+                                        <label class="review-check"><input type="checkbox" id="show-review-fill"> Color fill</label>
+                                        <label class="review-check"><input type="checkbox" id="show-estimated-area" checked>  Area labels</label>
+                                    </div>
+                                    <label class="review-check"><input type="checkbox" id="review-square-lock" disabled> Lock quadrat 1:1 ratio</label>
+                                    <p id="review-feedback" class="detection-warning" role="status"></p>
+                                </section>
+                               
+                            </div>
+                            <div class="review-panel-bottom">
                                 <!-- Step through / zoom to each point (fullscreen only, shown via CSS) -->
                                 <div class="point-zoom-nav" id="point-zoom-nav" aria-label="Zoom through points">
                                     <button type="button" class="point-zoom-btn" id="point-zoom-prev"
@@ -323,16 +325,15 @@
                                             class="point-zoom-icon">
                                     </button>
                                 </div>
-                            </div>
-
-                            <div class="panel-head-hint" id="representative-summary" role="status">
-                                <!-- Representative marker counts appear here. -->
-                            </div>
-                            <div class="ai-actions">
-                                <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
-                                    <i data-lucide="refresh-cw"></i>
-                                    Re-analyze
-                                </button>
+                                <div class="panel-head-hint" id="representative-summary" role="status">
+                                    <!-- Representative marker counts appear here. -->
+                                </div>
+                                <div class="ai-actions">
+                                    <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
+                                        <i data-lucide="refresh-cw"></i>
+                                        Re-analyze
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -453,8 +454,8 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'js/representative_points.js' %}?v=4"></script>
 <script src="{% static 'js/upload_batch_analysis.js' %}?v=7"></script>
-<script src="{% static 'js/upload_batch_review.js' %}?v=3"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=43"></script>
+<script src="{% static 'js/upload_batch_review.js' %}?v=4"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=45"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

@@ -237,6 +237,7 @@ const initializeUploadBatch = function () {
     const showMarkers = document.getElementById('show-review-markers');
     const showFill = document.getElementById('show-review-fill');
     const showEstimatedArea = document.getElementById('show-estimated-area');
+    const squareLock = document.getElementById('review-square-lock');
     const showDetectionBoxes = document.getElementById('show-detection-boxes');
     const reviewFeedback = document.getElementById('review-feedback');
     const quadratInputs = document.getElementById('quadrat-inputs');
@@ -725,9 +726,10 @@ const describeCoverageClass = function (code) {
 
     const getPointerPos = function (event) {
         const bounds = quadratCanvas.getBoundingClientRect();
+        // Convert the zoomed screen position back to the canvas layout coordinates.
         return {
-            x: event.clientX - bounds.left,
-            y: event.clientY - bounds.top
+            x: (event.clientX - bounds.left) * quadratCanvas.clientWidth / bounds.width,
+            y: (event.clientY - bounds.top) * quadratCanvas.clientHeight / bounds.height
         };
     };
 
@@ -1102,6 +1104,8 @@ const describeCoverageClass = function (code) {
         const e = Editor.ensure(result);
         document.getElementById('review-undo').disabled = isAnalyzing || !e.undo.length;
         document.getElementById('review-redo').disabled = isAnalyzing || !e.redo.length;
+        squareLock.checked = e.square;
+        squareLock.disabled = isAnalyzing || !result.quadrat_bbox || Boolean(result.boundary_draft);
     };
     const renderDetectionReview = function (result) {
         if (!detectionReview) return;
@@ -1154,7 +1158,7 @@ const describeCoverageClass = function (code) {
     const historyAction = function (redo) {
         const result = activeResult(); if (!result || isAnalyzing || reviewDrag) return;
         if (analyzeModal.classList.contains('is-visible') || analyzeConfirmModal.classList.contains('is-visible')) return;
-        (redo ? Editor.redo : Editor.undo)(result); resetPointZoom(true); finishEditorAction();
+        (redo ? Editor.redo : Editor.undo)(result); finishEditorAction();
     };
     document.getElementById('review-undo').addEventListener('click', () => historyAction(false));
     document.getElementById('review-redo').addEventListener('click', () => historyAction(true));
@@ -1176,15 +1180,8 @@ const describeCoverageClass = function (code) {
     document.querySelectorAll('[data-review-tool]').forEach(button => button.addEventListener('click', function () {
         if (isAnalyzing || reviewDrag) return;
         reviewTool = this.dataset.reviewTool;
-        resetPointZoom(true); closeContextMenu();
+        closeContextMenu();
         document.querySelectorAll('[data-review-tool]').forEach(b => b.setAttribute('aria-pressed', String(b === this)));
-        const hints = {
-            quadrat: 'Drag the quadrat or its corners. Drag empty space to draw a replacement boundary.',
-            markers: 'Drag a marker within its assigned region. Box edits regenerate all ten markers.',
-            hand: 'Select, move, or resize boxes directly. Smaller coral boxes take priority in overlaps.',
-            hard: 'Drag on the image to draw a Hard Coral box.', soft: 'Drag on the image to draw a Soft Coral box.'
-        };
-        document.getElementById('review-tool-hint').textContent = hints[reviewTool];
         if (['hard', 'soft'].includes(reviewTool)) showDetectionBoxes.checked = true;
         if (reviewTool === 'markers') showMarkers.checked = true;
         const result = activeResult();
@@ -1194,6 +1191,27 @@ const describeCoverageClass = function (code) {
     [showDetectionBoxes, showMarkers, showFill, showEstimatedArea].forEach(control => control.addEventListener('change', function () {
         const result = activeResult(); if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
     }));
+    document.getElementById('review-fit-image').addEventListener('click', function () {
+        if (reviewDrag) return;
+        resetPointZoom(true);
+        hideLoupe();
+    });
+    squareLock.addEventListener('change', function () {
+        const result = activeResult();
+        if (!result || isAnalyzing || reviewDrag || !result.quadrat_bbox) return;
+        try {
+            const locked = this.checked;
+            Editor.change(result, () => {
+                if (locked) Analysis.setQuadrat(result, Editor.square(result.quadrat_bbox, result.image));
+                Editor.ensure(result).square = locked;
+                Editor.ensure(result).selected = 'quadrat';
+            });
+            reviewFeedback.textContent = '';
+        } catch (error) {
+            reviewFeedback.textContent = error.message;
+        }
+        finishEditorAction();
+    });
 
     const updateImageNav = function () {
         const total = selectedFiles.length;
@@ -1333,21 +1351,38 @@ const describeCoverageClass = function (code) {
             el.style.transformOrigin = '0 0';
             el.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale})`;
         });
-        quadratCanvas.style.cursor = 'zoom-out';
+        syncReviewCursor();
         quadratWrap.classList.add('is-point-zoomed');
+    };
+
+    const freezeImageZoom = function () {
+        if (imageZoom.scale === 1) return;
+        const matrix = new DOMMatrix(getComputedStyle(quadratCanvas).transform);
+        imageZoom = { scale: matrix.a, x: matrix.e, y: matrix.f };
+        applyImageZoom(true);
     };
 
     if (quadratWrap) quadratWrap.addEventListener('wheel', function (event) {
         // Chromium reports a touchpad pinch as a Ctrl+wheel event.
-        if (!event.ctrlKey) return;
+        if (!event.ctrlKey && imageZoom.scale === 1) return;
         event.preventDefault();
-        if (!getActiveFile() || isAnalyzing || reviewDrag || !event.deltaY) return;
+        if (!getActiveFile() || isAnalyzing || reviewDrag) return;
+        freezeImageZoom();
         const size = getCanvasSize();
         if (!size.width || !size.height) return;
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? size.height : 1;
+        if (!event.ctrlKey) {
+            imageZoom.x = Math.max((1 - imageZoom.scale) * size.width, Math.min(0, imageZoom.x - event.deltaX * unit));
+            imageZoom.y = Math.max((1 - imageZoom.scale) * size.height, Math.min(0, imageZoom.y - event.deltaY * unit));
+            hideLoupe();
+            applyImageZoom(true);
+            return;
+        }
+        if (!event.deltaY) return;
         const bounds = quadratWrap.getBoundingClientRect();
         const x = event.clientX - bounds.left - quadratWrap.clientLeft;
         const y = event.clientY - bounds.top - quadratWrap.clientTop;
-        const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? size.height : 1);
+        const delta = event.deltaY * unit;
         const scale = Math.max(1, Math.min(6, imageZoom.scale * Math.exp(-delta * .01)));
         if (scale === 1) { resetPointZoom(true); return; }
         const ratio = scale / imageZoom.scale;
@@ -1400,7 +1435,6 @@ const describeCoverageClass = function (code) {
         applyImageZoom();
         zoomedPointIndex = index;
         redrawPoints();   // draw the highlight ring on the active point
-        if (quadratCanvas) { quadratCanvas.style.cursor = 'zoom-out'; }
         if (quadratWrap) { quadratWrap.classList.add('is-point-zoomed'); }
         updatePointNavLabel();
     };
@@ -1910,15 +1944,6 @@ const describeCoverageClass = function (code) {
         });
     }
 
-    // Click the (zoomed) image to zoom back out.
-    if (quadratCanvas) {
-        quadratCanvas.addEventListener('click', function () {
-            if (imageZoom.scale > 1) {
-                resetPointZoom();
-            }
-        });
-    }
-
     // On-image point stepper (fullscreen): jump/zoom to previous/next point.
     const pointZoomPrev = document.getElementById('point-zoom-prev');
     const pointZoomNext = document.getElementById('point-zoom-next');
@@ -1955,8 +1980,11 @@ const describeCoverageClass = function (code) {
                 w: rect.w * geo.displayWidth, h: rect.h * geo.displayHeight }, getPointerPos(event));
         };
         quadratCanvas.addEventListener('pointerdown', function (event) {
-            const result = activeResult(), point = pointOnImage(event);
-            if (!result || !point || isAnalyzing || event.button !== 0 || imageZoom.scale > 1) return;
+            const result = activeResult();
+            if (!result || isAnalyzing || event.button !== 0) return;
+            freezeImageZoom();
+            const point = pointOnImage(event);
+            if (!point) return;
             closeContextMenu();
             const e = Editor.ensure(result), before = Editor.snapshot(result);
             let mode = null, handle = null, marker = null;
@@ -1964,7 +1992,7 @@ const describeCoverageClass = function (code) {
             else if (reviewTool === 'markers') {
                 if (!result.quadrat_bbox || !showMarkers.checked) return;
                 const geo = getImageDisplayGeometry(), b = result.quadrat_bbox;
-                let distance = 18;
+                let distance = 18 / imageZoom.scale;
                 result.points.forEach((p, i) => {
                     const d = Math.hypot((b.x + p.x * b.w - point.x) * geo.displayWidth,
                         (b.y + p.y * b.h - point.y) * geo.displayHeight);
@@ -1996,7 +2024,7 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('pointermove', function (event) {
             const result = activeResult(), p = pointOnImage(event, true);
             if (!result || !p || !reviewDrag) {
-                if (imageZoom.scale === 1) syncReviewCursor();
+                syncReviewCursor();
                 return;
             }
             const drag = reviewDrag, geo = getImageDisplayGeometry();
@@ -2038,8 +2066,10 @@ const describeCoverageClass = function (code) {
                 const b = drag.draft;
                 if (b && geo && b.w * geo.displayWidth >= 4 && b.h * geo.displayHeight >= 4) {
                     if (reviewTool === 'quadrat') {
-                        const next = Editor.ensure(result).square ? Editor.square(b, result.image) : b;
-                        Analysis.setQuadrat(result, next); Editor.ensure(result).selected = 'quadrat'; Editor.commit(result, drag.before);
+                        try {
+                            const next = Editor.ensure(result).square ? Editor.square(b, result.image) : b;
+                            Analysis.setQuadrat(result, next); Editor.ensure(result).selected = 'quadrat'; Editor.commit(result, drag.before);
+                        } catch (error) { reviewFeedback.textContent = error.message; }
                     } else {
                         try { Editor.add(result, b, reviewTool === 'hard' ? 'Hard Coral' : 'Soft Coral'); }
                         catch (error) { reviewFeedback.textContent = error.message; }
@@ -2053,7 +2083,7 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('pointercancel', finishPointer);
         quadratCanvas.addEventListener('contextmenu', function (event) {
             const result = activeResult(), p = pointOnImage(event);
-            if (!result || !p || isAnalyzing || reviewDrag || imageZoom.scale > 1) return;
+            if (!result || !p || isAnalyzing || reviewDrag) return;
             const id = showDetectionBoxes.checked ? Editor.hit(result, p, true) : Editor.contains(result.quadrat_bbox, p) ? 'quadrat' : null;
             if (!id) return;
             event.preventDefault(); Editor.ensure(result).selected = id;

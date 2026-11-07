@@ -80,6 +80,18 @@ test('square locking and corner resizing use image pixels and stay inside non-sq
     const r = sample(); r.quadrat_bbox = { x: 0, y: 0, w: .5, h: .5 };
     assert.equal(E.isSquare(r), false); r.quadrat_bbox = b; assert.equal(E.isSquare(r), true);
 });
+
+test('enabling square lock adjusts width while preserving height and vertical position', () => {
+    const image = { width: 1200, height: 800 };
+    for (const rect of [{x:.1,y:.2,w:.8,h:.6}, {x:.8,y:.2,w:.1,h:.6}]) {
+        const locked = E.square(rect, image);
+        assert.equal(locked.h, rect.h);
+        assert.equal(locked.y, rect.y);
+        assert.equal(locked.w, .4);
+        assert(A.validRect(locked));
+    }
+    assert.throws(() => E.square({x:.1,y:.1,w:.5,h:.8}, {width:800,height:1600}), /Reduce the quadrat height/);
+});
 test('image-edge moves and resizes retain positive boxes; canceled gestures restore original approval', () => {
     const r = sample(); E.ensure(r).selected = 'large'; r.reviewed = true;
     const before = E.snapshot(r);

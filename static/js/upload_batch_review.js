@@ -80,9 +80,9 @@
         return { x: west ? anchorX - w : anchorX, y: north ? anchorY - h : anchorY, w, h };
     }
     function square(b, image) {
-        const side = Math.min(Math.max(b.w * image.width, b.h * image.height), image.width, image.height);
-        return clamp({ x: b.x + b.w / 2 - side / image.width / 2, y: b.y + b.h / 2 - side / image.height / 2,
-            w: side / image.width, h: side / image.height });
+        const width = b.h * image.height / image.width;
+        if (width > 1) throw new Error('Reduce the quadrat height before locking 1:1 so the square fits inside the image.');
+        return { ...b, x: Math.max(0, Math.min(1 - width, b.x + (b.w - width) / 2)), w: width };
     }
     function isSquare(r) {
         if (!r.quadrat_bbox) return false;

@@ -760,7 +760,7 @@ body.analysis-progress-open .researcher-navbar {
     }
 
     .quadrat-fs-side {
-        max-height: 34vh;
+        max-height: 44vh;
     }
 }
 
@@ -815,9 +815,23 @@ body.analysis-progress-open .researcher-navbar {
     border-radius: 12px;
     background: #ffffff;
     padding: 12px;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     align-content: start;
+}
+
+.review-panel-content {
+    min-height: 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.review-panel-bottom {
+    display: grid;
+    gap: 10px;
+    margin-top: auto;
+    flex-shrink: 0;
 }
 
 /* In the side-by-side layout, keep the panel from pushing the image off-screen */
