@@ -226,7 +226,7 @@ const initializeUploadBatch = function () {
     let reviewDrag = null;
     const syncReviewCursor = function () {
         if (!quadratCanvas) return;
-        quadratCanvas.style.cursor = ['hand', 'markers'].includes(reviewTool)
+        quadratCanvas.style.cursor = ['hand', 'markers', 'quadrat'].includes(reviewTool)
             ? reviewDrag ? 'grabbing' : 'grab' : 'crosshair';
     };
     if (!Analysis || !Editor) throw new Error('Image review tools did not load. Reload the page.');
@@ -236,6 +236,7 @@ const initializeUploadBatch = function () {
     const contextMenu = document.getElementById('review-context-menu');
     const showMarkers = document.getElementById('show-review-markers');
     const showFill = document.getElementById('show-review-fill');
+    const showEstimatedArea = document.getElementById('show-estimated-area');
     const showDetectionBoxes = document.getElementById('show-detection-boxes');
     const reviewFeedback = document.getElementById('review-feedback');
     const quadratInputs = document.getElementById('quadrat-inputs');
@@ -292,6 +293,7 @@ const describeCoverageClass = function (code) {
     // Index of the point currently zoomed/highlighted in the fullscreen view
     // (-1 = none). Declared here so drawQuadratAndPoints can highlight it.
     let zoomedPointIndex = -1;
+    let imageZoom = { scale: 1, x: 0, y: 0 };
     let aiResultsByFileKey = {};
     let isAnalyzing = false;
     // Quadrat editing (drag corners to resize / drag inside to move) after analysis.
@@ -627,11 +629,6 @@ const describeCoverageClass = function (code) {
             ctx.rect(rectPx.x, rectPx.y, rectPx.w, rectPx.h);
             ctx.clip();
         };
-        if (result && showFill.checked && quadratBbox) {
-            ctx.fillStyle = 'rgba(80, 161, 220, .16)';
-            ctx.fillRect(offsetX + quadratBbox.x * displayWidth, offsetY + quadratBbox.y * displayHeight,
-                quadratBbox.w * displayWidth, quadratBbox.h * displayHeight);
-        }
         if (result && showDetectionBoxes.checked) {
             ctx.save();
             clipCoralOverlay();
@@ -653,7 +650,7 @@ const describeCoverageClass = function (code) {
                 ctx.strokeRect(x, y, w, h);
                 ctx.setLineDash([]);
                 let label = Editor.label(result, d.id);
-                if (rectPx) {
+                if (rectPx && showEstimatedArea.checked) {
                     const insideWidth = Math.min(x + w, rectPx.x + rectPx.w) - Math.max(x, rectPx.x);
                     const insideHeight = Math.min(y + h, rectPx.y + rectPx.h) - Math.max(y, rectPx.y);
                     const percent = insideWidth * insideHeight / (rectPx.w * rectPx.h) * 100;
@@ -1063,11 +1060,12 @@ const describeCoverageClass = function (code) {
         }
         const hard = result.points.filter(point => point.class === 'Hard Coral').length;
         const percent = getCoralCoveragePercent(result.points);
+        const estimatedPercent = Analysis.estimatedCoverage(result);
         const category = getCoverageClass(percent);
-        coveragePercentEl.textContent = `${percent}%`;
+        coveragePercentEl.textContent = `${estimatedPercent.toFixed(2)}% → ${percent}%`;
         coverageClassEl.textContent = `Category ${category}`;
         coverageClassEl.className = `coverage-metric-badge class-${category.toLowerCase()}`;
-        substitutionEl.textContent = `${hard} Hard Coral markers ÷ 10 × 100 = ${percent}% · Active image${Analysis.complete(result) ? ' ready' : ' incomplete'}`;
+        substitutionEl.textContent = `${estimatedPercent.toFixed(2)}% estimated HC area → ${hard} Hard Coral markers ÷ 10 × 100 = ${percent}% HCC · Active image${Analysis.complete(result) ? ' ready' : ' incomplete'}`;
     };
 
     const refreshReviewState = function () {
@@ -1193,7 +1191,7 @@ const describeCoverageClass = function (code) {
         if (result && reviewTool === 'quadrat') Editor.ensure(result).selected = 'quadrat';
         finishEditorAction();
     }));
-    [showDetectionBoxes, showMarkers, showFill].forEach(control => control.addEventListener('change', function () {
+    [showDetectionBoxes, showMarkers, showFill, showEstimatedArea].forEach(control => control.addEventListener('change', function () {
         const result = activeResult(); if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
     }));
 
@@ -1307,11 +1305,12 @@ const describeCoverageClass = function (code) {
     const resetPointZoom = function (instant) {
         const wasZoomed = zoomedPointIndex >= 0;
         zoomedPointIndex = -1;
+        imageZoom = { scale: 1, x: 0, y: 0 };
         [quadratImage, quadratCanvas].forEach(function (el) {
             if (!el) { return; }
             // Instant reset (used when switching images) skips the zoom-out
             // animation so the next image never inherits a lingering transform.
-            if (instant) { el.style.transition = 'none'; }
+            el.style.transition = instant ? 'none' : '';
             el.style.transformOrigin = '';
             el.style.transform = '';
         });
@@ -1326,6 +1325,43 @@ const describeCoverageClass = function (code) {
         if (wasZoomed) { redrawPoints(); }   // clear the highlight
         updatePointNavLabel();
     };
+
+    const applyImageZoom = function (instant = false) {
+        [quadratImage, quadratCanvas].forEach(function (el) {
+            if (!el) return;
+            el.style.transition = instant ? 'none' : '';
+            el.style.transformOrigin = '0 0';
+            el.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale})`;
+        });
+        quadratCanvas.style.cursor = 'zoom-out';
+        quadratWrap.classList.add('is-point-zoomed');
+    };
+
+    if (quadratWrap) quadratWrap.addEventListener('wheel', function (event) {
+        // Chromium reports a touchpad pinch as a Ctrl+wheel event.
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        if (!getActiveFile() || isAnalyzing || reviewDrag || !event.deltaY) return;
+        const size = getCanvasSize();
+        if (!size.width || !size.height) return;
+        const bounds = quadratWrap.getBoundingClientRect();
+        const x = event.clientX - bounds.left - quadratWrap.clientLeft;
+        const y = event.clientY - bounds.top - quadratWrap.clientTop;
+        const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? size.height : 1);
+        const scale = Math.max(1, Math.min(6, imageZoom.scale * Math.exp(-delta * .01)));
+        if (scale === 1) { resetPointZoom(true); return; }
+        const ratio = scale / imageZoom.scale;
+        imageZoom = {
+            scale,
+            x: Math.max((1 - scale) * size.width, Math.min(0, x - (x - imageZoom.x) * ratio)),
+            y: Math.max((1 - scale) * size.height, Math.min(0, y - (y - imageZoom.y) * ratio))
+        };
+        zoomedPointIndex = -1;
+        hideLoupe();
+        applyImageZoom(true);
+        redrawPoints();
+        updatePointNavLabel();
+    }, { passive: false });
 
     // Step to the next/previous point (wraps around), zooming to it.
     const stepPoint = function (delta) {
@@ -1360,16 +1396,8 @@ const describeCoverageClass = function (code) {
         const pt = results.points[index];
         const px = geo.offsetX + (bbox.x + pt.x * bbox.w) * geo.displayWidth;
         const py = geo.offsetY + (bbox.y + pt.y * bbox.h) * geo.displayHeight;
-        const fx = Math.max(0, Math.min(1, px / size.width));
-        const fy = Math.max(0, Math.min(1, py / size.height));
-        const origin = (fx * 100).toFixed(2) + '% ' + (fy * 100).toFixed(2) + '%';
-
-        [quadratImage, quadratCanvas].forEach(function (el) {
-            if (el) {
-                el.style.transformOrigin = origin;
-                el.style.transform = 'scale(' + POINT_ZOOM + ')';
-            }
-        });
+        imageZoom = { scale: POINT_ZOOM, x: (1 - POINT_ZOOM) * px, y: (1 - POINT_ZOOM) * py };
+        applyImageZoom();
         zoomedPointIndex = index;
         redrawPoints();   // draw the highlight ring on the active point
         if (quadratCanvas) { quadratCanvas.style.cursor = 'zoom-out'; }
@@ -1388,7 +1416,7 @@ const describeCoverageClass = function (code) {
             return;
         }
         // The hover magnifier shouldn't fight click-to-zoom or quadrat editing.
-        if (zoomedPointIndex >= 0 || isDraggingQuadrat) {
+        if (imageZoom.scale > 1 || isDraggingQuadrat) {
             hideLoupe();
             return;
         }
@@ -1885,7 +1913,7 @@ const describeCoverageClass = function (code) {
     // Click the (zoomed) image to zoom back out.
     if (quadratCanvas) {
         quadratCanvas.addEventListener('click', function () {
-            if (isFullscreen() && zoomedPointIndex >= 0) {
+            if (imageZoom.scale > 1) {
                 resetPointZoom();
             }
         });
@@ -1928,7 +1956,7 @@ const describeCoverageClass = function (code) {
         };
         quadratCanvas.addEventListener('pointerdown', function (event) {
             const result = activeResult(), point = pointOnImage(event);
-            if (!result || !point || isAnalyzing || event.button !== 0 || zoomedPointIndex >= 0) return;
+            if (!result || !point || isAnalyzing || event.button !== 0 || imageZoom.scale > 1) return;
             closeContextMenu();
             const e = Editor.ensure(result), before = Editor.snapshot(result);
             let mode = null, handle = null, marker = null;
@@ -1968,7 +1996,7 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('pointermove', function (event) {
             const result = activeResult(), p = pointOnImage(event, true);
             if (!result || !p || !reviewDrag) {
-                if (zoomedPointIndex < 0) syncReviewCursor();
+                if (imageZoom.scale === 1) syncReviewCursor();
                 return;
             }
             const drag = reviewDrag, geo = getImageDisplayGeometry();
@@ -2025,7 +2053,7 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('pointercancel', finishPointer);
         quadratCanvas.addEventListener('contextmenu', function (event) {
             const result = activeResult(), p = pointOnImage(event);
-            if (!result || !p || isAnalyzing || reviewDrag || zoomedPointIndex >= 0) return;
+            if (!result || !p || isAnalyzing || reviewDrag || imageZoom.scale > 1) return;
             const id = showDetectionBoxes.checked ? Editor.hit(result, p, true) : Editor.contains(result.quadrat_bbox, p) ? 'quadrat' : null;
             if (!id) return;
             event.preventDefault(); Editor.ensure(result).selected = id;
@@ -2095,6 +2123,8 @@ const describeCoverageClass = function (code) {
     const fsStage = document.getElementById('quadrat-fs-stage');
     const fsSide = document.getElementById('quadrat-fs-side');
     const analysisPanel = document.querySelector('.analysis-results-panel');
+    const coverageSummary = document.querySelector('.coverage-summary');
+    const coverageMetrics = document.querySelector('.coverage-summary-metrics');
     const quadratBody = quadratWrap ? quadratWrap.parentElement : null;
 
     if (fsModal && fsBtn && fsStage && fsSide && quadratWrap && analysisPanel && quadratBody) {
@@ -2117,8 +2147,10 @@ const describeCoverageClass = function (code) {
             if (fsIsOpen) {
                 return;
             }
+            resetPointZoom(true);
             fsStage.appendChild(quadratWrap);
             fsSide.appendChild(analysisPanel);
+            if (coverageMetrics) analysisPanel.prepend(coverageMetrics);
             // Drop the inline height used to balance the two-column layout so the
             // panel can fill the fullscreen side column.
             analysisPanel.style.height = '';
@@ -2145,6 +2177,7 @@ const describeCoverageClass = function (code) {
             // Restore original order inside .quadrat-body: image wrap, then panel.
             quadratBody.appendChild(quadratWrap);
             quadratBody.appendChild(analysisPanel);
+            if (coverageMetrics && coverageSummary) coverageSummary.prepend(coverageMetrics);
             fsModal.classList.remove('is-visible');
             fsModal.setAttribute('aria-hidden', 'true');
             fsModal.hidden = true;

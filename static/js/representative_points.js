@@ -65,11 +65,19 @@
         })));
     }
 
+    function areaPercent(cells, quadrat, name) {
+        const area = cells.filter(cell => cell.class === name).reduce((sum, cell) => sum + cell.w * cell.h, 0);
+        return Number((area / (quadrat.w * quadrat.h) * 100).toFixed(12));
+    }
+
+    function hardCoralPercent(quadrat, boxes) {
+        return areaPercent(cellsFor(quadrat, boxes), quadrat, 'Hard Coral');
+    }
+
     function calculate(quadrat, boxes) {
         const cells = cellsFor(quadrat, boxes);
         const countFor = name => {
-            const area = cells.filter(cell => cell.class === name).reduce((sum, cell) => sum + cell.w * cell.h, 0);
-            const percent = Number((area / (quadrat.w * quadrat.h) * 100).toFixed(12));
+            const percent = areaPercent(cells, quadrat, name);
             return Math.min(10, Math.max(0, Math.floor(percent / 10 + .5 + 1e-10)));
         };
         const hard = countFor('Hard Coral');
@@ -84,5 +92,5 @@
             .map(point => ({ x: (point.x - quadrat.x) / quadrat.w,
                 y: (point.y - quadrat.y) / quadrat.h, class: point.class }));
     }
-    return { calculate, classAt };
+    return { calculate, classAt, hardCoralPercent };
 }));

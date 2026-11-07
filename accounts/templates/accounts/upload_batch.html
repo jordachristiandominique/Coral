@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=24">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=26">
 {% endblock %}
 
 {% block content %}
@@ -242,8 +242,9 @@
                             <div class="coverage-metric">
                                 <span class="coverage-metric-label">Active Image Hard Coral Cover (HCC)</span>
                                 <span class="coverage-metric-value" id="coral-coverage-percent">--%</span>
+                                <!-- <span class="panel-head-hint">Estimated HC area → point-based HCC</span> -->
                             </div>
-                            <div class="coverage-metric">
+                            <div class="coverage-metric coverage-category-metric">
                                 <span class="coverage-metric-label">HCC Category</span>
                                 <span class="coverage-metric-badge class-pending" id="coverage-class">Pending</span>
                             </div>
@@ -301,6 +302,7 @@
                                     <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Boxes</label>
                                     <label class="review-check"><input type="checkbox" id="show-review-markers" checked> Markers</label>
                                     <label class="review-check"><input type="checkbox" id="show-review-fill"> Color fill</label>
+                                    <label class="review-check"><input type="checkbox" id="show-estimated-area" checked>  Area labels</label>
                                 </div>
                                 <p id="review-feedback" class="detection-warning" role="status"></p>
                             </section>
@@ -449,10 +451,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/representative_points.js' %}?v=3"></script>
-<script src="{% static 'js/upload_batch_analysis.js' %}?v=6"></script>
+<script src="{% static 'js/representative_points.js' %}?v=4"></script>
+<script src="{% static 'js/upload_batch_analysis.js' %}?v=7"></script>
 <script src="{% static 'js/upload_batch_review.js' %}?v=3"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=38"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=43"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

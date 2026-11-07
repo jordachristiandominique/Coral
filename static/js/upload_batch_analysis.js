@@ -11,6 +11,8 @@
     const complete = r => Boolean(r && !r.boundary_draft && validRect(r.quadrat_bbox) &&
         r.points.length === 10 && r.points.every(p => classes.includes(p.class)));
     const coverage = r => complete(r) ? Math.round(r.points.filter(p => p.class === 'Hard Coral').length / 10 * 100) : null;
+    const estimatedCoverage = r => r && validRect(r.quadrat_bbox)
+        ? Representative.hardCoralPercent(r.quadrat_bbox, r.detections.filter(d => d.class_name !== 'quadrat_area')) : null;
 
     function transect(results) {
         const accepted = results.filter(complete);
@@ -113,5 +115,5 @@
         } finally { clearTimeout(timer); }
     }
 
-    return { classes, validRect, complete, coverage, transect, setQuadrat, fromResponse, regenerate, moveMarker, payload, request };
+    return { classes, validRect, complete, coverage, estimatedCoverage, transect, setQuadrat, fromResponse, regenerate, moveMarker, payload, request };
 }));

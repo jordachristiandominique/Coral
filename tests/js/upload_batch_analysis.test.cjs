@@ -21,6 +21,20 @@ function reviewed(hard = 5) {
 const file = () => new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
 const http = (data, status = 200) => ({ ok: status === 200, status, redirected: false, json: async () => data });
 
+test('estimated HCC area precedes marker rounding and counts overlapping HC once', () => {
+    const data = response();
+    const hard = {id:'hc', class_name:'Hard Coral', confidence:.8,
+        box:{...box, w:box.w * .5423}};
+    data.detections.push(hard, {...hard, id:'overlap'},
+        {id:'soft', class_name:'Soft Coral', confidence:.8, box});
+    const r = A.fromResponse(data);
+    assert.equal(A.estimatedCoverage(r), 54.23);
+    assert.equal(A.coverage(r), 50);
+    A.setQuadrat(r, {...box, w:box.w * .5423});
+    assert.equal(A.estimatedCoverage(r), 100);
+    assert.equal(A.estimatedCoverage(A.fromResponse(response([]))), null);
+});
+
 test('a quadrat without coral boxes generates ten unclassified representative markers', () => {
     const r = A.fromResponse(response());
     assert.equal(r.points.length, 10);
