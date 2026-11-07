@@ -438,3 +438,18 @@ Retirement verification passed 48 Django tests on PostgreSQL, system checks and
 migration consistency checks. An isolated browser followed the old Reports URL
 to repositories, downloaded a real .xlsx workbook, confirmed generation returns
 404, and checked the repository page at 390px without horizontal overflow.
+
+## 19. Simplified upload review (2026-11-07)
+
+The upload review removes the selected-box dropdown/inspector, boundary verification
+checkbox and per-image confirmation button. Canvas selection, drawing, moving,
+resizing, right-click deletion, undo/redo and marker tools remain. Valid quadrats
+with ten generated representatives are ready to save without separate approval.
+Missing boundaries, failed inference and unfinished boundary gestures still block
+saving. HCC and marker allocation formulas are unchanged.
+
+New payloads use review version 3 with mode `on_submit` and do not claim explicit
+per-image confirmation. Server validation retains geometry, class, count, model
+reference and box-allocation checks, with legacy version 1/2 payload support.
+The navbar is hidden while the analysis progress dialog is visible and restored
+when that dialog closes.

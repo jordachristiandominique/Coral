@@ -27,7 +27,7 @@ def validate_quadrat_payload(payload):
         if (not isinstance(point, dict) or not all(number(point.get(k)) and 0 <= point[k] <= 1 for k in ('x', 'y'))):
             raise ValueError('Sampling points must stay inside the quadrat.')
     review = payload.get('review')
-    representative = isinstance(review, dict) and type(review.get('version')) is int and review['version'] == 2
+    representative = isinstance(review, dict) and type(review.get('version')) is int and review['version'] in (2, 3)
     if representative:
         # Normalize submissions from pages opened before the label update.
         classes = [normalize_marker_class(value) for value in classes]
@@ -38,8 +38,10 @@ def validate_quadrat_payload(payload):
     if 'review' in payload:
         review = payload['review']
         if (not isinstance(review, dict) or type(review.get('version')) is not int
-                or review['version'] not in (1, 2) or review.get('confirmed') is not True or len(points) != 10):
-            raise ValueError('AI-assisted uploads require confirmed review of ten sampling points.')
+                or review['version'] not in (1, 2, 3) or len(points) != 10
+                or (review['version'] in (1, 2) and review.get('confirmed') is not True)
+                or (review['version'] == 3 and review.get('mode') != 'on_submit')):
+            raise ValueError('AI-assisted uploads require ten valid sampling points and a supported review mode.')
     if representative and ('analysis' not in payload or not isinstance(payload['analysis'], dict)
                            or payload['analysis'].get('method') != METHOD):
         raise ValueError('Representative markers require their accepted coral boxes and allocation method.')
@@ -69,7 +71,7 @@ def validate_quadrat_payload(payload):
             identifiers.add(region['id'])
             accepted.append({'id': region['id'], 'class_name': region['class_name'],
                              'box': {k: b[k] for k in ('x', 'y', 'w', 'h')}, 'source': region['source']})
-        # A researcher-confirmed model reference, not an independent inference attestation.
+        # A client-supplied model reference, not an independent inference attestation.
         payload['analysis'] = {'version': 1, 'model': {k: model[k] for k in ('id', 'sha256', 'dataset_version')},
                                'square_lock': analysis['square_lock'], 'boxes': accepted}
         if representative:

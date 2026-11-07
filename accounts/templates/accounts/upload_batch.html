@@ -297,27 +297,12 @@
                                     <button type="button" id="review-undo" disabled>Undo</button>
                                     <button type="button" id="review-redo" disabled>Redo</button>
                                 </div>
-                                <p id="review-tool-hint" class="panel-head-hint">Select a box on the image or use the selector below.</p>
+                                <p id="review-tool-hint" class="panel-head-hint">Select a box directly on the image to move or resize it.</p>
                                 <div class="review-visibility" role="group" aria-label="Overlay visibility">
                                     <label class="review-check"><input type="checkbox" id="show-detection-boxes" checked> Boxes</label>
                                     <label class="review-check"><input type="checkbox" id="show-review-markers" checked> Markers</label>
                                     <label class="review-check"><input type="checkbox" id="show-review-fill"> Color fill</label>
                                 </div>
-                                <label class="selected-box-label" for="review-box-selection">Edit quadrat and accepted boxes</label>
-                                <select id="review-box-selection" aria-label="Selected box"><option value="">No box selected</option></select>
-                                <section class="selected-box-editor" id="selected-box-editor" hidden>
-                                    <strong id="selected-box-title"></strong>
-                                    <label id="selected-class-label" hidden>Coral class
-                                        <select id="selected-box-class"><option>Hard Coral</option><option>Soft Coral</option></select>
-                                    </label>
-                                    <p id="quadrat-shape" class="panel-head-hint"></p>
-                                    <label class="review-check" id="square-lock-label" hidden><input type="checkbox" id="review-square-lock"> Lock square in image pixels</label>
-                                    <button type="button" class="action-outline" id="review-delete-box">Delete selected box</button>
-                                </section>
-                                <label class="review-check" id="quadrat-candidate-label" hidden>Detected boundary
-                                    <select id="review-quadrat-candidate" aria-label="Detected quadrat candidate"></select>
-                                </label>
-                                <label class="review-check"><input type="checkbox" id="confirm-quadrat"> I verified the quadrat and accepted coral boxes</label>
                                 <p id="review-feedback" class="detection-warning" role="status"></p>
                             </section>
                             <div class="panel-head">
@@ -343,7 +328,6 @@
                                 <!-- Representative marker counts appear here. -->
                             </div>
                             <div class="ai-actions">
-                                <button type="button" class="primary-btn" id="confirm-image-review" disabled>Confirm image review</button>
                                 <button type="button" class="secondary-btn" id="reanalyze-btn" disabled>
                                     <i data-lucide="refresh-cw"></i>
                                     Re-analyze
@@ -388,11 +372,11 @@
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
                     <p><strong>This Transect's Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
                     <p><strong>This Transect's HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
-                    <p><strong>Review:</strong> <span id="summary-review">Awaiting image review</span></p>
+                    <p><strong>Analysis:</strong> <span id="summary-review">Awaiting image analysis</span></p>
                 </div>
                 <p class="summary-box-note">This transect uses the mean HCC of its reviewed images. Each image uses ten representative markers; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.</p>
 
-                <p class="submit-hint" id="submit-hint">Choose images, run AI detection, and confirm the review of every image before saving.
+                <p class="submit-hint" id="submit-hint">Choose images, run AI detection, and review the results before saving.
                 </p>
 
                 <div class="submit-actions">
@@ -467,9 +451,9 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'js/representative_points.js' %}?v=3"></script>
-<script src="{% static 'js/upload_batch_analysis.js' %}?v=5"></script>
+<script src="{% static 'js/upload_batch_analysis.js' %}?v=6"></script>
 <script src="{% static 'js/upload_batch_review.js' %}?v=2"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=34"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=35"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

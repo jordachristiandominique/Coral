@@ -228,12 +228,9 @@ const initializeUploadBatch = function () {
     const analysisErrors = {};
     const retryAnalysisBtn = document.getElementById('retry-analysis-btn');
     const detectionReview = document.getElementById('detection-review');
-    const boxSelection = document.getElementById('review-box-selection');
     const contextMenu = document.getElementById('review-context-menu');
     const showMarkers = document.getElementById('show-review-markers');
     const showFill = document.getElementById('show-review-fill');
-    const confirmQuadrat = document.getElementById('confirm-quadrat');
-    const confirmImageReview = document.getElementById('confirm-image-review');
     const showDetectionBoxes = document.getElementById('show-detection-boxes');
     const reviewFeedback = document.getElementById('review-feedback');
     const quadratInputs = document.getElementById('quadrat-inputs');
@@ -340,7 +337,7 @@ const describeCoverageClass = function (code) {
             const t = computeTransectCoverage();
             const reviewCount = t.imgCount;
             const summaryReview = document.getElementById('summary-review');
-            if (summaryReview) summaryReview.textContent = `${reviewCount}/${selectedFiles.length} images reviewed`;
+            if (summaryReview) summaryReview.textContent = `${reviewCount}/${selectedFiles.length} images ready`;
             if (!t.total || reviewCount !== selectedFiles.length) {
                 summaryCoverage.textContent = '--';
                 summaryClass.textContent = 'Pending';
@@ -411,7 +408,7 @@ const describeCoverageClass = function (code) {
 
     const isReadyToAnalyze = function () {
         return !isAnalyzing && !reviewDrag && selectedFiles.length > 0 && selectedFiles.every(file =>
-            Analysis.reviewed(aiResultsByFileKey[getFileKey(file)]) && !analysisErrors[getFileKey(file)]);
+            Analysis.complete(aiResultsByFileKey[getFileKey(file)]) && !analysisErrors[getFileKey(file)]);
     };
 
     const isReadyForAutoAnalyze = function () {
@@ -459,10 +456,10 @@ const describeCoverageClass = function (code) {
 
         if (submitHint) {
             if (ready) {
-                submitHint.textContent = 'All images reviewed. Upload to save this transect and its point-based HCC.';
+                submitHint.textContent = 'All images ready. Upload to save this transect and its point-based HCC.';
                 submitHint.style.color = '#2a8793';
             } else {
-                submitHint.textContent = 'Run detection, verify each quadrat and coral boxes, and confirm every image review.';
+                submitHint.textContent = 'Run detection for all images and supply any missing quadrat boundaries.';
                 submitHint.style.color = '';
             }
         }
@@ -832,7 +829,7 @@ const describeCoverageClass = function (code) {
             analyzeAllBtn.textContent = 'Re-analyze all images';
             if (analyzeStatus) analyzeStatus.textContent = failed
                 ? `${failed} image(s) failed. Review successful results and retry failed images.`
-                : 'Detection finished. Confirm boundaries and review all sampling points.';
+                : 'Detection finished. Review the boxes and representative markers before saving.';
             if (analyzeModal) {
                 analyzeModal.classList.toggle('is-complete', failed === 0);
                 analyzeModal.classList.toggle('is-error', failed > 0);
@@ -870,7 +867,7 @@ const describeCoverageClass = function (code) {
             const key = card.getAttribute('data-file-key'), result = aiResultsByFileKey[key];
             const target = card.querySelector('[data-point-status]');
             if (target) target.textContent = analysisErrors[key] ? 'Detection failed - retry'
-                : Analysis.reviewed(result) ? `Reviewed: ${Analysis.coverage(result)}% HCC`
+                : Analysis.complete(result) ? `Ready: ${Analysis.coverage(result)}% HCC`
                 : result ? `Review: ${result.points.filter(p => p.class).length}/10 points` : 'Detection pending';
         });
     };
@@ -1047,22 +1044,14 @@ const describeCoverageClass = function (code) {
         coveragePercentEl.textContent = `${percent}%`;
         coverageClassEl.textContent = `Category ${category}`;
         coverageClassEl.className = `coverage-metric-badge class-${category.toLowerCase()}`;
-        substitutionEl.textContent = `${hard} Hard Coral markers ÷ 10 × 100 = ${percent}% · Active image${Analysis.reviewed(result) ? ' reviewed' : ' awaiting confirmation'}`;
+        substitutionEl.textContent = `${hard} Hard Coral markers ÷ 10 × 100 = ${percent}% · Active image${Analysis.complete(result) ? ' ready' : ' incomplete'}`;
     };
 
     const refreshReviewState = function () {
         const file = getActiveFile();
         const result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        if (confirmQuadrat) {
-            confirmQuadrat.checked = Boolean(result && result.quadrat_confirmed);
-            confirmQuadrat.disabled = isAnalyzing || !result || !result.quadrat_bbox || result.boundary_draft;
-        }
-        if (confirmImageReview) {
-            confirmImageReview.disabled = isAnalyzing || !Analysis.complete(result) || Analysis.reviewed(result);
-            confirmImageReview.textContent = Analysis.reviewed(result) ? 'Image review confirmed' : 'Confirm image review';
-        }
         if (result) {
-            result.coverage_percent = Analysis.reviewed(result) ? Analysis.coverage(result) : null;
+            result.coverage_percent = Analysis.complete(result) ? Analysis.coverage(result) : null;
             result.coverage_class = result.coverage_percent === null ? null : getCoverageClass(result.coverage_percent);
         }
         if (result) syncEditorControls(result);
@@ -1070,7 +1059,7 @@ const describeCoverageClass = function (code) {
             markerSummary.textContent = Analysis.classes.map(name => `${name === 'Other Substrate' ? 'Other Substrate (OS)' : name} ${result.points.filter(point => point.class === name).length}`).join(' · ');
         }
         if (quadratPointsCount) quadratPointsCount.textContent = result
-            ? Analysis.reviewed(result) ? 'Image reviewed' : `${result.points.length}/10 representative markers`
+            ? Analysis.complete(result) ? 'Analysis ready' : `${result.points.length}/10 representative markers`
             : 'Detection pending';
         updateThumbPointsStatus();
         renderImageCoverageSummary();
@@ -1089,16 +1078,7 @@ const describeCoverageClass = function (code) {
     };
     const syncEditorControls = function (result) {
         if (!result) return;
-        const e = Editor.ensure(result), rect = Editor.selected(result);
-        const selected = result.detections.find(d => d.id === e.selected);
-        document.getElementById('selected-box-editor').hidden = !rect;
-        document.getElementById('selected-box-title').textContent = Editor.label(result, e.selected);
-        document.getElementById('selected-class-label').hidden = !selected || selected.class_name === 'quadrat_area';
-        if (selected && selected.class_name !== 'quadrat_area') document.getElementById('selected-box-class').value = selected.class_name;
-        document.getElementById('square-lock-label').hidden = e.selected !== 'quadrat' || !rect;
-        document.getElementById('review-square-lock').checked = e.square;
-        document.getElementById('quadrat-shape').textContent = e.selected === 'quadrat' && rect
-            ? Editor.isSquare(result) ? 'Square boundary in image pixels' : 'Rectangular boundary in image pixels' : '';
+        const e = Editor.ensure(result);
         document.getElementById('review-undo').disabled = isAnalyzing || !e.undo.length;
         document.getElementById('review-redo').disabled = isAnalyzing || !e.redo.length;
     };
@@ -1108,16 +1088,8 @@ const describeCoverageClass = function (code) {
         if (!result) { closeContextMenu(); return; }
         const e = Editor.ensure(result);
         document.getElementById('detection-model').textContent = `Model: ${result.model.id}`;
-        const warnings = result.quadrat_confirmed ? [] : result.warnings.map(w => w.message || '').filter(Boolean);
+        const warnings = result.warnings.map(w => w.message || '').filter(Boolean);
         document.getElementById('detection-warning').textContent = warnings.join(' ');
-        boxSelection.innerHTML = '<option value="">No box selected</option>' +
-            (result.quadrat_bbox ? '<option value="quadrat">Quadrat</option>' : '') +
-            Editor.coral(result).map(d => `<option value="${escapeHtml(d.id)}">${Editor.label(result, d.id)}</option>`).join('');
-        boxSelection.value = e.selected || '';
-        const candidates = result.detections.filter(d => d.class_name === 'quadrat_area');
-        document.getElementById('quadrat-candidate-label').hidden = candidates.length < 2;
-        document.getElementById('review-quadrat-candidate').innerHTML = '<option value="">Choose detected boundary</option>' +
-            candidates.map((d, i) => `<option value="${escapeHtml(d.id)}">Boundary ${i + 1}</option>`).join('');
         syncEditorControls(result);
         refreshReviewState();
     };
@@ -1144,56 +1116,16 @@ const describeCoverageClass = function (code) {
         refreshReviewState();
     };
 
-    if (confirmQuadrat) confirmQuadrat.addEventListener('change', function () {
-        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        if (!result || isAnalyzing) return;
-        result.quadrat_confirmed = this.checked;
-        result.reviewed = false;
-        refreshReviewState();
-    });
-    if (confirmImageReview) confirmImageReview.addEventListener('click', function () {
-        const file = getActiveFile(), result = file ? aiResultsByFileKey[getFileKey(file)] : null;
-        if (isAnalyzing || !Analysis.complete(result)) return;
-        result.reviewed = true;
-        if (reviewFeedback) reviewFeedback.textContent = 'Image review confirmed. Subsequent box, marker, or boundary edits require confirmation again.';
-        refreshReviewState();
-    });
     const finishEditorAction = function () {
         closeContextMenu();
         renderMarkerSummary();
         const result = activeResult();
         if (result) drawQuadratAndPoints(result.quadrat_bbox, result.points);
     };
-    boxSelection.addEventListener('change', function () {
-        const result = activeResult(); if (!result || isAnalyzing) return;
-        Editor.ensure(result).selected = this.value || null;
-        if (this.value && this.value !== 'quadrat') showDetectionBoxes.checked = true;
-        resetPointZoom(true); finishEditorAction();
-    });
-    document.getElementById('selected-box-class').addEventListener('change', function () {
-        const result = activeResult(); if (!result || isAnalyzing) return;
-        Editor.rename(result, this.value); finishEditorAction();
-    });
-    document.getElementById('review-square-lock').addEventListener('change', function () {
-        const result = activeResult(); if (!result || isAnalyzing || !result.quadrat_bbox) return;
-        Editor.change(result, () => {
-            Editor.ensure(result).square = this.checked;
-            if (this.checked) Analysis.setQuadrat(result, Editor.square(result.quadrat_bbox, result.image));
-        });
-        finishEditorAction();
-    });
-    document.getElementById('review-quadrat-candidate').addEventListener('change', function () {
-        const result = activeResult(); if (!result || isAnalyzing) return;
-        const candidate = result.detections.find(d => d.id === this.value && d.class_name === 'quadrat_area');
-        if (!candidate) return;
-        Editor.change(result, () => { Analysis.setQuadrat(result, candidate.box); Editor.ensure(result).selected = 'quadrat'; Editor.ensure(result).square = false; });
-        finishEditorAction();
-    });
     const deleteSelectedBox = function () {
         const result = activeResult(); if (!result || isAnalyzing) return;
         Editor.remove(result); finishEditorAction();
     };
-    document.getElementById('review-delete-box').addEventListener('click', deleteSelectedBox);
     document.getElementById('review-context-delete').addEventListener('click', deleteSelectedBox);
     document.getElementById('review-context-cancel').addEventListener('click', closeContextMenu);
     document.addEventListener('pointerdown', event => { if (!contextMenu.contains(event.target)) closeContextMenu(); });
@@ -1225,7 +1157,7 @@ const describeCoverageClass = function (code) {
         resetPointZoom(true); closeContextMenu();
         document.querySelectorAll('[data-review-tool]').forEach(b => b.setAttribute('aria-pressed', String(b === this)));
         const hints = {
-            select: 'Click a box to select it, or use the selector. Hand tool moves and resizes.',
+            select: 'Click a box on the image to select it. Hand tool moves and resizes.',
             quadrat: 'Drag the quadrat or its corners. Drag empty space to draw a replacement boundary.',
             markers: 'Drag a marker within its assigned region. Box edits regenerate all ten markers.',
             hand: 'Select, move, or resize boxes directly. Smaller coral boxes take priority in overlaps.',
@@ -1555,7 +1487,7 @@ const describeCoverageClass = function (code) {
         const results = aiResultsByFileKey[getFileKey(activeFile)];
         if (quadratPointsCount) {
             if (results) {
-                quadratPointsCount.textContent = Analysis.reviewed(results) ? 'Image reviewed' : `${results.points.length}/10 representative markers`;
+                quadratPointsCount.textContent = Analysis.complete(results) ? 'Analysis ready' : `${results.points.length}/10 representative markers`;
             } else {
                 quadratPointsCount.textContent = 'Analysis pending';
             }
@@ -1623,7 +1555,7 @@ const describeCoverageClass = function (code) {
             }
 
             const results = aiResultsByFileKey[fileKey];
-            const statusText = Analysis.reviewed(results) ? `${Analysis.coverage(results)}% HCC` : 'Review pending';
+            const statusText = Analysis.complete(results) ? `${Analysis.coverage(results)}% HCC` : 'Analysis incomplete';
 
             card.innerHTML = `
                 <div class="thumb-card-head">
@@ -2249,7 +2181,7 @@ const describeCoverageClass = function (code) {
             if (!isReadyToAnalyze()) {
                 event.preventDefault();
                 console.warn('Form submission blocked: AI analysis not complete for all images');
-                alert('Verify each quadrat, coral boxes, and representative markers, then confirm every image review before uploading.');
+                alert('Complete detection and supply a valid quadrat with ten representative markers for every image before uploading.');
                 updateSubmitState();
                 return;
             }

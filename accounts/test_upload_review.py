@@ -45,6 +45,19 @@ def representative_payload():
 
 
 class ReviewPayloadTests(SimpleTestCase):
+    def test_submit_mode_requires_complete_consistent_representatives(self):
+        payload = representative_payload()
+        payload['review'] = {'version': 3, 'mode': 'on_submit'}
+        self.assertEqual(validate_quadrat_payload(deepcopy(payload)), payload)
+        for mutate in (lambda p: p['review'].update(mode='unknown'),
+                       lambda p: p['points'].pop(),
+                       lambda p: p.pop('analysis'),
+                       lambda p: p['point_classes'].__setitem__(0, 'Soft Coral')):
+            invalid = deepcopy(payload)
+            mutate(invalid)
+            with self.assertRaises(ValueError):
+                validate_quadrat_payload(invalid)
+
     def test_older_representative_remainder_labels_are_normalized_to_other_substrate(self):
         for alias in ('Non-Coral', 'NC', 'Unclassified'):
             payload = representative_payload()
@@ -167,6 +180,7 @@ class ReviewedUploadTests(TestCase):
 
     def test_representative_upload_saves_method_counts_and_canonical_hcc(self):
         payload = representative_payload()
+        payload['review'] = {'version': 3, 'mode': 'on_submit'}
         self.assertEqual(self.submit(payload).status_code, 302)
         image = SurveyImage.objects.get()
         self.assertEqual(image.point_classes, payload['point_classes'])
@@ -190,10 +204,13 @@ class ReviewedUploadTests(TestCase):
         for model in (DataRepository, Transect, SurveyImage):
             self.assertFalse(model.objects.exists())
 
-    def test_upload_page_exposes_endpoint_and_explicit_review_controls(self):
+    def test_upload_page_exposes_endpoint_and_direct_image_review(self):
         response = self.client.get(reverse('upload_batch'))
         self.assertContains(response, 'data-analyze-url="' + reverse('analyze_survey_image') + '"')
-        self.assertContains(response, 'id="confirm-image-review"')
+        self.assertNotContains(response, 'id="confirm-image-review"')
+        self.assertNotContains(response, 'id="confirm-quadrat"')
+        self.assertNotContains(response, 'id="review-box-selection"')
+        self.assertNotContains(response, 'id="selected-box-editor"')
         self.assertContains(response, 'id="retry-analysis-btn"')
         self.assertContains(response, 'js/upload_batch_analysis.js')
         self.assertNotContains(response, 'Point Classifications')

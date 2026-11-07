@@ -25,8 +25,8 @@ test('a quadrat without coral boxes generates ten unclassified representative ma
     const r = A.fromResponse(response());
     assert.equal(r.points.length, 10);
     assert(r.points.every(p => p.class === 'Other Substrate' && p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1));
-    assert.equal(A.coverage(r), null);
-    assert.equal(A.reviewed(r), false);
+    assert.equal(A.coverage(r), 0);
+    assert.equal(A.complete(r), true);
 });
 test('missing quadrat stays empty until a manual boundary is supplied', () => {
     const r = A.fromResponse(response([]));
@@ -37,17 +37,16 @@ test('missing quadrat stays empty until a manual boundary is supplied', () => {
     assert.equal(r.points.length, 10);
     assert.equal(r.quadrat_confirmed, false);
 });
-test('box representatives require explicit review and save versioned allocation metadata', () => {
+test('complete box representatives save without a separate confirmation', () => {
     const r = reviewed(); r.reviewed = false;
-    assert.equal(A.complete(r), true); assert.throws(() => A.payload(r));
-    r.reviewed = true;
+    assert.equal(A.complete(r), true);
     const payload = A.payload(r);
-    assert.deepEqual(payload.review, {version:2, confirmed:true});
+    assert.deepEqual(payload.review, {version:3, mode:'on_submit'});
     assert.equal(payload.analysis.method, 'box_representative_v1');
     assert.equal(payload.point_classes.length, 10);
     assert.equal(payload.point_classes.filter(c => c === 'Hard Coral').length, 5);
     assert.equal(A.coverage(r), 50);
-    r.quadrat_confirmed = false; assert.throws(() => A.payload(r));
+    r.quadrat_confirmed = false; assert.doesNotThrow(() => A.payload(r));
     r.quadrat_confirmed = true; r.boundary_draft = true; assert.throws(() => A.payload(r));
 });
 test('box edits regenerate markers and invalidate approval, including a coral-free result', () => {
@@ -78,9 +77,9 @@ test('mixed overlaps use Hard Coral priority and outside boxes receive no marker
     r.detections=[{id:'outside',class_name:'Hard Coral',box:{x:0,y:0,w:.01,h:.01}}];
     A.regenerate(r); assert(r.points.every(p=>p.class==='Other Substrate'));
 });
-test('transect HCC excludes Soft Coral and unreviewed images, with canonical mean rounding', () => {
+test('transect HCC excludes Soft Coral and incomplete images, with canonical mean rounding', () => {
     assert.equal(A.transect([reviewed(0), reviewed(10)]).pct, 50);
-    assert.equal(A.transect([reviewed(5), A.fromResponse(response())]).imgCount, 1);
+    assert.equal(A.transect([reviewed(5), A.fromResponse(response([]))]).imgCount, 1);
     const sixteen = Array.from({ length: 16 }, () => reviewed(0));
     sixteen[0] = reviewed(1);
     assert.equal(A.transect(sixteen).pct, .62); // Python round(10/16, 2)

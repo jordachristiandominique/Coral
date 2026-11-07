@@ -8,13 +8,12 @@
     const classes = ['Hard Coral', 'Soft Coral', 'Other Substrate'];
     const validRect = r => Boolean(r && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(r[k])) &&
         r.x >= 0 && r.y >= 0 && r.w > 0 && r.h > 0 && r.x + r.w <= 1.000001 && r.y + r.h <= 1.000001);
-    const complete = r => Boolean(r && !r.boundary_draft && validRect(r.quadrat_bbox) && r.quadrat_confirmed &&
+    const complete = r => Boolean(r && !r.boundary_draft && validRect(r.quadrat_bbox) &&
         r.points.length === 10 && r.points.every(p => classes.includes(p.class)));
-    const reviewed = r => Boolean(complete(r) && r.reviewed === true);
     const coverage = r => complete(r) ? Math.round(r.points.filter(p => p.class === 'Hard Coral').length / 10 * 100) : null;
 
     function transect(results) {
-        const accepted = results.filter(reviewed);
+        const accepted = results.filter(complete);
         const hc = accepted.reduce((n, r) => n + r.points.filter(p => p.class === 'Hard Coral').length, 0);
         // Exact rational ties-to-even rounding, matching Python's two-place mean.
         const scaled = hc * 1000, n = accepted.length;
@@ -70,9 +69,9 @@
     }
 
     function payload(result) {
-        if (!reviewed(result)) throw new Error('Verify the quadrat and representative markers, then confirm image review.');
+        if (!complete(result)) throw new Error('Supply a valid quadrat and ten representative markers before saving.');
         const submitted = { rect: { ...result.quadrat_bbox }, points: result.points.map(p => ({ x: p.x, y: p.y })),
-            point_classes: result.points.map(p => p.class), review: { version: 2, confirmed: true } };
+            point_classes: result.points.map(p => p.class), review: { version: 3, mode: 'on_submit' } };
         submitted.analysis = {
             method: 'box_representative_v1',
             version: 1, model: { ...result.model }, square_lock: Boolean(result.editor?.square),
@@ -114,5 +113,5 @@
         } finally { clearTimeout(timer); }
     }
 
-    return { classes, validRect, complete, reviewed, coverage, transect, setQuadrat, fromResponse, regenerate, moveMarker, payload, request };
+    return { classes, validRect, complete, coverage, transect, setQuadrat, fromResponse, regenerate, moveMarker, payload, request };
 }));
