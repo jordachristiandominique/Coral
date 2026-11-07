@@ -652,7 +652,13 @@ const describeCoverageClass = function (code) {
                 if (d.class_name === 'quadrat_area') ctx.setLineDash([5, 4]);
                 ctx.strokeRect(x, y, w, h);
                 ctx.setLineDash([]);
-                const label = d.class_name === 'quadrat_area' ? 'Q' : Editor.label(result, d.id);
+                let label = Editor.label(result, d.id);
+                if (rectPx) {
+                    const insideWidth = Math.min(x + w, rectPx.x + rectPx.w) - Math.max(x, rectPx.x);
+                    const insideHeight = Math.min(y + h, rectPx.y + rectPx.h) - Math.max(y, rectPx.y);
+                    const percent = insideWidth * insideHeight / (rectPx.w * rectPx.h) * 100;
+                    label += ` | ~${percent.toFixed(2)}%`;
+                }
                 ctx.font = 'bold 11px Inter, sans-serif';
                 const labelWidth = ctx.measureText(label).width + 8;
                 const labelBounds = rectPx || { x: offsetX, y: offsetY, w: displayWidth, h: displayHeight };
