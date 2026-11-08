@@ -7,27 +7,34 @@ import importlib.metadata
 import json
 import os
 from pathlib import Path
+import sys
 import time
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ARTIFACT_DIR = PROJECT_ROOT / 'model_artifacts' / 'yolov8s-v4-3x'
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from coral_app.settings import YOLO_ARTIFACT_DIR
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--image', type=Path, required=True)
+    parser.add_argument('--artifact-dir', type=Path, default=YOLO_ARTIFACT_DIR)
     parser.add_argument('--output', type=Path, default=PROJECT_ROOT / 'backups' / 'inference-smoke')
     args = parser.parse_args()
     image = args.image.resolve(strict=True)
-    artifact = json.loads((ARTIFACT_DIR / 'artifact.json').read_text(encoding='utf-8'))
-    checkpoint = ARTIFACT_DIR / artifact['checkpoint']
-    metadata = json.loads((ARTIFACT_DIR / artifact['metadata']).read_text(encoding='utf-8'))
+    artifact_dir = args.artifact_dir.resolve(strict=True)
+    artifact = json.loads((artifact_dir / 'artifact.json').read_text(encoding='utf-8'))
+    checkpoint = artifact_dir / artifact['checkpoint']
+    metadata = json.loads((artifact_dir / artifact['metadata']).read_text(encoding='utf-8'))
     digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
     if digest != artifact['sha256']:
         raise ValueError('Checkpoint hash differs from the registered local artifact.')
     expected_names = ['Hard Coral', 'Soft Coral', 'quadrat_area']
-    if metadata['class_names'] != expected_names or metadata['model'] != 'yolov8s' or metadata['version'] != 4:
+    if (metadata['class_names'] != expected_names or metadata['model'] != 'yolov8s'
+            or type(metadata.get('version')) is not int or metadata['version'] < 1
+            or metadata['version'] != artifact.get('dataset_version', metadata['version'])):
         raise ValueError('Unexpected model metadata or class order.')
 
     # Keep library-created settings inside ignored workspace storage.

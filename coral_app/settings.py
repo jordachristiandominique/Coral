@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Optional local inference. Loading Django does not load Torch or the checkpoint.
 # Change the artifact directory and restart the process to select a new model.
-YOLO_ARTIFACT_DIR = BASE_DIR / 'model_artifacts' / 'yolov8s-v4-3x'
+YOLO_ARTIFACT_DIR = BASE_DIR / 'model_artifacts' / 'yolov8s-validator-v3'
 YOLO_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 YOLO_MAX_IMAGE_PIXELS = 25_000_000
 

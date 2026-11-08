@@ -453,3 +453,23 @@ per-image confirmation. Server validation retains geometry, class, count, model
 reference and box-allocation checks, with legacy version 1/2 payload support.
 The navbar is hidden while the analysis progress dialog is visible and restored
 when that dialog closes.
+
+## 20. Validator-reviewed model selection (2026-11-08)
+
+`coral_app/settings.py::YOLO_ARTIFACT_DIR` selects
+`model_artifacts/yolov8s-validator-v3/`. Its supplied metadata identifies
+`hard-coral-detection-with-validator`, dataset version 3, with display name
+`HC-SC-Quadrat-Validator-v3`. Its checkpoint SHA-256 matches the metadata value
+`d6525a5b9f548562d6b8bd5eafa33a33ea1db039b9beed35cbdea08a748f77bf`.
+The actual checkpoint and metadata agree on the Hard Coral, Soft Coral,
+quadrat_area class order. The local filenames are shorter than the original
+export name in the metadata. The manifest records local filenames and leaves
+the augmentation multiplier null because it is unspecified in the metadata.
+
+`scripts/check_yolo_inference.py` defaults to the configured artifact and accepts
+`--artifact-dir` for an explicit selection. Its metadata validation supports
+positive dataset version numbers and checks the manifest version when supplied.
+A real underwater image produced HC, SC and quadrat detections on local CPU.
+The authenticated upload endpoint returned the selected model ID and dataset
+version 3, and the review page displayed its real detections and representative
+HCC. System and migration checks passed, alongside 49 PostgreSQL tests.

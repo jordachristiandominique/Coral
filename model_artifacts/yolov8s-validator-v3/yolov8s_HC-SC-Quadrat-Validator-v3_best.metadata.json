@@ -1,0 +1,30 @@
+{
+  "workspace": "christian-dominique-l-jorda",
+  "project": "hard-coral-detection-with-validator",
+  "version": 3,
+  "class_names": [
+    "Hard Coral",
+    "Soft Coral",
+    "quadrat_area"
+  ],
+  "dataset_fingerprint": "7b4ca570c75aacb0a53ee3c5c658e7b3f249812ee9df034b56a98f3ae6294b6c",
+  "seed": 42,
+  "model": "yolov8s",
+  "hardware": "Tesla T4",
+  "augmentation": "Roboflow version transformations only; additional random training augmentation disabled",
+  "training": {
+    "epochs": 100,
+    "batch": 8,
+    "imgsz": 640,
+    "patience": 20,
+    "optimizer": "SGD",
+    "pretraining": "COCO detection",
+    "lr0": 0.01
+  },
+  "dataset_version_name": "HC-SC-Quadrat-Validator-v3",
+  "artifact_name": "yolov8s_HC-SC-Quadrat-Validator-v3_20261108-103708-625952-yolov8s_training_yolov8s_sgd-2_best.pt",
+  "checkpoint_source": "/content/drive/MyDrive/CoralSense/runs/20261108-103708-625952-yolov8s/training_yolov8s_sgd-2/weights/best.pt",
+  "checkpoint_sha256": "d6525a5b9f548562d6b8bd5eafa33a33ea1db039b9beed35cbdea08a748f77bf",
+  "training_run": "/content/drive/MyDrive/CoralSense/runs/20261108-103708-625952-yolov8s",
+  "training_folder": "training_yolov8s_sgd-2"
+}

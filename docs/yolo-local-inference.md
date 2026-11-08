@@ -1,22 +1,31 @@
 # Local YOLO inference preparation
 
-The current artifact is `yolov8s-v4-3x`, trained on Roboflow version 4 with
-Hard Coral, Soft Coral, and quadrat_area. It is prepared for local CPU inference;
-this step does not connect the upload page or change survey records.
+The selected artifact is `yolov8s-validator-v3`, trained on version 3 of
+`hard-coral-detection-with-validator`, named `HC-SC-Quadrat-Validator-v3`.
+Its classes are Hard Coral, Soft Coral, and quadrat_area. The upload analysis
+endpoint loads this local checkpoint on CPU through `YOLO_ARTIFACT_DIR` in
+`coral_app/settings.py`.
 
 ## Private files
 
-Keep these together in `model_artifacts/yolov8s-v4-3x/`:
+Keep these together in `model_artifacts/yolov8s-validator-v3/`:
 
-- `yolov8s_v4_3x_best.pt`: trusted trained weights, ignored by Git.
-- `yolov8s_v4_3x_best.metadata.json`: original training metadata, unchanged.
-- `artifact.json`: checkpoint SHA-256, multiplier, and provenance from Colab logs.
+- `yolov8s_HC-SC-Quadrat-Validator-v3_best.pt`: trained weights, ignored by Git.
+- `yolov8s_HC-SC-Quadrat-Validator-v3_best.metadata.json`: supplied training metadata.
+- `artifact.json`: local filenames, dataset identity, and checkpoint SHA-256.
+
+The weights hash matches `checkpoint_sha256` in the supplied metadata. Its
+`artifact_name` records the longer original export filename. The local manifest
+maps the shorter supplied filenames. The augmentation multiplier is unknown
+and recorded as null because the metadata does not specify it.
+
+The previous `model_artifacts/yolov8s-v4-3x/` artifact is available separately.
+The inference-check script defaults to the configured artifact and accepts
+`--artifact-dir` to test another directory.
 
 The directory is outside static and uploaded media and has no public URL. Do not
 publish its weights via Django static/media routes. Transfer weights separately
-when deploying; Git alone does not supply them. The root-level checkpoint files
-were moved into this directory, and their original staged additions were removed
-from the Git index to avoid committing the binary. No commit is created here.
+when deploying; Git alone does not supply them.
 
 Keep the original Drive run ZIP as backup. Its original `package_versions.json`
 has not been supplied; if available, place it here as

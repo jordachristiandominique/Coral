@@ -1,0 +1,11 @@
+{
+  "id": "yolov8s-validator-v3",
+  "checkpoint": "yolov8s_HC-SC-Quadrat-Validator-v3_best.pt",
+  "metadata": "yolov8s_HC-SC-Quadrat-Validator-v3_best.metadata.json",
+  "sha256": "d6525a5b9f548562d6b8bd5eafa33a33ea1db039b9beed35cbdea08a748f77bf",
+  "dataset_project": "hard-coral-detection-with-validator",
+  "dataset_version": 3,
+  "dataset_version_name": "HC-SC-Quadrat-Validator-v3",
+  "augmentation_multiplier": null,
+  "notes": "The supplied metadata checkpoint_sha256 matches these weights. Local filenames are shorter than the export name recorded in the original metadata. The original metadata is preserved. An augmentation multiplier is not recorded in the supplied metadata."
+}
