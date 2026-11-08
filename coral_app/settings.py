@@ -24,8 +24,7 @@ YOLO_ARTIFACT_DIR = BASE_DIR / 'model_artifacts' / 'yolov8s-validator-v3'
 YOLO_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 YOLO_MAX_IMAGE_PIXELS = 25_000_000
 
-# Only database settings are environment-driven here. Existing development
-# SECRET_KEY/DEBUG behavior is intentionally unchanged.
+# Database settings support local .env files. Railway configuration is opt-in.
 database_env = Config(RepositoryEnv(str(BASE_DIR / '.env'))) if (BASE_DIR / '.env').is_file() else Config({})
 
 
@@ -203,3 +202,52 @@ SOCIALACCOUNT_PROVIDERS = {
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+# The container enables hosted settings explicitly. Local defaults above remain
+# available when DJANGO_DEPLOYMENT is unset.
+RAILWAY_DEPLOYMENT = os.environ.get('DJANGO_DEPLOYMENT') == 'railway'
+if RAILWAY_DEPLOYMENT:
+    SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+    if len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-'):
+        raise ImproperlyConfigured('Set DJANGO_SECRET_KEY to a generated secret of at least 50 characters.')
+    if DB_ENGINE != 'postgresql':
+        raise ImproperlyConfigured('Railway requires DB_ENGINE=postgresql and the hosted database credentials.')
+
+    DEBUG = False
+    public_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '').strip()
+    ALLOWED_HOSTS = [host.strip() for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if host.strip()]
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
+    if public_domain:
+        ALLOWED_HOSTS.append(public_domain)
+    if '*' in ALLOWED_HOSTS:
+        raise ImproperlyConfigured('Use explicit hosted domains in DJANGO_ALLOWED_HOSTS.')
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
+    if public_domain:
+        CSRF_TRUSTED_ORIGINS.append(f'https://{public_domain}')
+
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 3600
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+    STATIC_URL = '/static/'
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
+    MEDIA_URL = '/uploads/'
+    MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', '/data/media'))
+    YOLO_ARTIFACT_DIR = Path(os.environ.get('YOLO_ARTIFACT_DIR', '/data/model_artifacts/yolov8s-validator-v3'))
+
+    EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', EMAIL_BACKEND)
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'webmaster@localhost')

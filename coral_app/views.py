@@ -1,7 +1,18 @@
 from django.shortcuts import render
+from django.db import connection, DatabaseError
+from django.http import JsonResponse
 
 from accounts.models import DataRepository, compute_site_hcc
 from accounts.visualization_data import composition_summary
+
+
+def health(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except DatabaseError:
+        return JsonResponse({'status': 'unavailable'}, status=503)
+    return JsonResponse({'status': 'ok'})
 
 def landing_page(request):
     """Render the landing page"""

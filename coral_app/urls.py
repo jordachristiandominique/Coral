@@ -19,8 +19,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from . import views
+from accounts.media_views import uploaded_media
 
 urlpatterns = [
+    path('healthz/', views.health, name='health'),
+    path('uploads/<path:path>', uploaded_media, name='uploaded_media'),
     path('', views.landing_page, name='landing_page'),
     path('public-dashboard/', views.public_dashboard, name='public_dashboard'),
     path('admin/', admin.site.urls),

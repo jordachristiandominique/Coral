@@ -473,3 +473,22 @@ A real underwater image produced HC, SC and quadrat detections on local CPU.
 The authenticated upload endpoint returned the selected model ID and dataset
 version 3, and the review page displayed its real detections and representative
 HCC. System and migration checks passed, alongside 49 PostgreSQL tests.
+
+## 21. Initial Railway deployment preparation (2026-11-08)
+
+The Dockerfile installs `requirements-deploy.txt` and launches
+`scripts/start_railway.py`. The single settings module enables hosted values
+only when `DJANGO_DEPLOYMENT=railway`. It requires a generated secret and
+PostgreSQL, configures explicit hosts, proxy HTTPS, secure cookies, WhiteNoise
+static assets, `/data/media`, and the version 3 model directory on `/data`.
+The startup script applies migrations and collects static assets before running
+one Gunicorn worker with four threads. `/healthz/` checks database connectivity.
+`/uploads/` serves authenticated media with survey/report ownership checks.
+
+Private weights are uploaded separately to the application volume. The Docker
+context excludes local credentials, uploads, backups and weights. Setup, service
+variables, administrator role initialization and model upload instructions live
+in `docs/railway-deployment.md`. Local production-profile checks verified HTTPS,
+secure cookies, hashed static delivery, upload-page rendering and protected media.
+All 55 Django tests passed on PostgreSQL. Docker was unavailable locally, so the
+Linux image build and Gunicorn process still require verification on Railway.
