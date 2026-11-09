@@ -372,8 +372,8 @@
                     <p><strong>Survey by:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
-                    <p><strong>This Transect's Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
-                    <p><strong>This Transect's HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
+                    <p><strong>Transect's Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
+                    <p><strong>Transect's HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
                     <p><strong>Analysis:</strong> <span id="summary-review">Awaiting image analysis</span></p>
                 </div>
                 <p class="summary-box-note">This transect uses the mean HCC of its reviewed images. Each image uses ten representative markers; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.</p>
@@ -442,8 +442,25 @@
 </div>
 
 <div id="review-context-menu" class="review-context-menu" role="menu" aria-label="Selected box actions" hidden>
-    <button type="button" id="review-context-delete" role="menuitem">Delete selected box</button>
-    <button type="button" id="review-context-cancel" role="menuitem">Cancel</button>
+    <button type="button" data-review-class="Hard Coral" role="menuitem">
+        <span class="review-class-dot review-class-dot--hard" aria-hidden="true"></span>
+        <span>Hard Coral</span>
+        <svg class="review-class-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+    </button>
+    <button type="button" data-review-class="Soft Coral" role="menuitem">
+        <span class="review-class-dot review-class-dot--soft" aria-hidden="true"></span>
+        <span>Soft Coral</span>
+        <svg class="review-class-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+    </button>
+    <div id="review-context-divider" class="review-menu-divider" role="separator"></div>
+    <button type="button" id="review-context-delete" role="menuitem">
+        <svg class="review-menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>
+        <span id="review-context-delete-label">Delete selected box</span>
+    </button>
+    <button type="button" id="review-context-cancel" role="menuitem">
+        <svg class="review-menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>
+        <span>Cancel</span>
+    </button>
 </div>
 
 {% endblock %}

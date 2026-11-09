@@ -234,6 +234,7 @@ const initializeUploadBatch = function () {
     const retryAnalysisBtn = document.getElementById('retry-analysis-btn');
     const detectionReview = document.getElementById('detection-review');
     const contextMenu = document.getElementById('review-context-menu');
+    const contextClassButtons = contextMenu.querySelectorAll('[data-review-class]');
     const showMarkers = document.getElementById('show-review-markers');
     const showFill = document.getElementById('show-review-fill');
     const showEstimatedArea = document.getElementById('show-estimated-area');
@@ -1153,6 +1154,12 @@ const describeCoverageClass = function (code) {
         Editor.remove(result); finishEditorAction();
     };
     document.getElementById('review-context-delete').addEventListener('click', deleteSelectedBox);
+    contextClassButtons.forEach(button => button.addEventListener('click', function () {
+        const result = activeResult();
+        if (!result || isAnalyzing || reviewDrag) return;
+        Editor.rename(result, this.dataset.reviewClass);
+        finishEditorAction();
+    }));
     document.getElementById('review-context-cancel').addEventListener('click', closeContextMenu);
     document.addEventListener('pointerdown', event => { if (!contextMenu.contains(event.target)) closeContextMenu(); });
     const historyAction = function (redo) {
@@ -2084,15 +2091,23 @@ const describeCoverageClass = function (code) {
         quadratCanvas.addEventListener('contextmenu', function (event) {
             const result = activeResult(), p = pointOnImage(event);
             if (!result || !p || isAnalyzing || reviewDrag) return;
-            const id = showDetectionBoxes.checked ? Editor.hit(result, p, true) : Editor.contains(result.quadrat_bbox, p) ? 'quadrat' : null;
+            const id = showDetectionBoxes.checked ? Editor.hit(result, p, Editor.ensure(result).selected !== 'quadrat')
+                : Editor.contains(result.quadrat_bbox, p) ? 'quadrat' : null;
             if (!id) return;
             event.preventDefault(); Editor.ensure(result).selected = id;
             finishEditorAction();
             (isFullscreen() ? document.getElementById('quadrat-fs') : document.body).appendChild(contextMenu);
-            document.getElementById('review-context-delete').textContent = `Delete ${Editor.label(result, id)}`;
-            contextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - 205)) + 'px';
-            contextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - 100)) + 'px';
+            const coral = Editor.coral(result).find(box => box.id === id);
+            contextClassButtons.forEach(button => {
+                button.hidden = !coral;
+                button.disabled = !coral || coral.class_name === button.dataset.reviewClass;
+            });
+            document.getElementById('review-context-divider').hidden = !coral;
+            document.getElementById('review-context-delete-label').textContent = `Delete ${Editor.label(result, id)}`;
             contextMenu.hidden = false;
+            const menuBounds = contextMenu.getBoundingClientRect();
+            contextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - menuBounds.width - 8)) + 'px';
+            contextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - menuBounds.height - 8)) + 'px';
             document.getElementById('review-context-delete').focus();
         });
     }

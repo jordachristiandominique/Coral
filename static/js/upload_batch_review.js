@@ -120,8 +120,12 @@
     }
     function rename(r, name) {
         const d = coral(r).find(d => d.id === ensure(r).selected);
-        if (!d || !['Hard Coral', 'Soft Coral'].includes(name)) return;
-        change(r, () => { d.class_name = name; });
+        if (!d || !['Hard Coral', 'Soft Coral'].includes(name) || d.class_name === name) return;
+        change(r, () => {
+            d.class_name = name;
+            d.class_id = name === 'Hard Coral' ? 0 : 1;
+            d.source = 'manual';
+        });
     }
     function marker(r, index, point) {
         if (!r.points[index] || !r.quadrat_bbox) return;

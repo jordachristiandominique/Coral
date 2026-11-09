@@ -54,6 +54,42 @@ test('box corrections regenerate representative counts and undo restores their p
     assert.equal(r.reviewed, false); assert.equal(A.coverage(r), 20);
     E.undo(r); assert.equal(r.reviewed, false); assert.equal(A.coverage(r), 30);
 });
+
+test('coral class changes update markers, HCC, saved labels and reversible manual provenance', () => {
+    const r = sample();
+    A.setQuadrat(r, { x: 0, y: 0, w: 1, h: 1 });
+    E.ensure(r).selected = 'large';
+    assert.equal(A.coverage(r), 30);
+    E.rename(r, 'Soft Coral');
+    assert.equal(A.coverage(r), 0);
+    assert.equal(r.points.length, 10);
+    assert(r.points.some(point => point.class === 'Soft Coral'));
+    const changed = r.detections.find(box => box.id === 'large');
+    assert.equal(changed.class_id, 1);
+    assert.equal(changed.source, 'manual');
+    assert.equal(A.payload(r).analysis.boxes[0].class_name, 'Soft Coral');
+    E.undo(r);
+    assert.equal(A.coverage(r), 30);
+    assert.equal(r.detections[0].class_name, 'Hard Coral');
+    assert.equal(r.detections[0].source, undefined);
+    E.redo(r);
+    assert.equal(A.coverage(r), 0);
+    E.rename(r, 'Hard Coral');
+    assert.equal(r.detections[0].class_id, 0);
+    assert.equal(A.coverage(r), 30);
+});
+
+test('unchanged classes, invalid classes and quadrat selection do not create class edits', () => {
+    const r = sample();
+    A.setQuadrat(r, { x: 0, y: 0, w: 1, h: 1 });
+    E.ensure(r).selected = 'large';
+    E.rename(r, 'Hard Coral');
+    E.rename(r, 'Other Substrate');
+    r.editor.selected = 'quadrat';
+    E.rename(r, 'Soft Coral');
+    assert.equal(r.editor.undo.length, 0);
+    assert.equal(r.detections[0].class_name, 'Hard Coral');
+});
 test('quadrat edits regenerate representatives; deleting and undo restore their geometry', () => {
     const r = sample(); A.setQuadrat(r, { x: .1, y: .1, w: .8, h: .8 }); E.ensure(r).selected = 'quadrat';
     E.change(r, () => E.setBox(r, 'quadrat', { x: .2, y: .2, w: .6, h: .6 }));

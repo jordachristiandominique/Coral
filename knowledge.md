@@ -524,3 +524,20 @@ request, representative review, save, canonical image/transect HCC, and reposito
 reopening passed. Existing frontend helpers generated a ten-marker payload from
 the real detections that passed the server validator. One warm inference took
 5.6 seconds with two Torch CPU threads. This is a runtime check on one image.
+
+## 23. Coral class correction menu (2026-11-09)
+
+The upload review context menu offers Hard Coral and Soft Coral class changes
+alongside Delete and Cancel. These options appear for coral boxes, with the
+current class disabled. Quadrat selection has only the existing delete/cancel
+actions. Right-click hit testing prioritizes coral boxes over a selected quadrat.
+Menu placement uses its measured dimensions in normal and fullscreen layouts.
+
+`UploadBatchReview.rename` updates the class name/ID and records manual provenance
+through the existing edit transaction. Representative markers and HCC regenerate,
+and undo/redo restore the prior allocation and class. Verification passed 49
+JavaScript tests, 58 SQLite Django tests, system/migration checks, and an isolated
+browser fixture using the actual menu markup and handlers in both layouts.
+The menu uses short coral names with matching violet/teal dots and a current-class
+checkmark. Delete has a red trash icon and its own text span for dynamic box labels.
+Cancel has a neutral outlined row and close icon. A separator groups the actions.
