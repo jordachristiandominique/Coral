@@ -1,0 +1,9 @@
+{
+  "id": "faster-rcnn-validator-v3",
+  "checkpoint": "faster_rcnn_v3_validator_best.pt",
+  "metadata": "faster_rcnn_v3_validator_best.metadata.json",
+  "sha256": "4c30e993d13548379565e8d2dbbdbf33b8a133ab95da099fb430a681f8663de2",
+  "dataset_project": "hard-coral-detection-with-validator",
+  "dataset_version": 3,
+  "augmentation_multiplier": null
+}

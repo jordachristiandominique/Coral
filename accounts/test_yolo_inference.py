@@ -1,4 +1,5 @@
 import hashlib
+from contextlib import nullcontext
 from io import BytesIO
 import json
 from pathlib import Path
@@ -145,6 +146,81 @@ class InferenceRuntimeTests(SimpleTestCase):
             with patch.dict('sys.modules', {'ultralytics': SimpleNamespace(YOLO=fake_yolo)}):
                 with self.assertRaises(inference.ModelUnavailable):
                     inference._load_runtime(directory)
+
+    def test_faster_rcnn_normalizes_classes_coordinates_and_filters_background(self):
+        def tensor(value):
+            return SimpleNamespace(item=lambda: value)
+
+        model = Mock(return_value=[{
+            'boxes': [SimpleNamespace(tolist=lambda: [-2., 4., 12., 12.])] * 5,
+            'scores': [tensor(value) for value in [.8, .7, .9, .99, .1]],
+            'labels': [tensor(value) for value in [1, 2, 3, 0, 1]],
+        }])
+        runtime = inference.Runtime(Path(settings.YOLO_ARTIFACT_DIR).resolve(), model,
+                                    {'id': 'faster-test', 'architecture': 'faster_rcnn'})
+        modules = {'torch': SimpleNamespace(inference_mode=nullcontext),
+                   'torchvision.transforms.functional': SimpleNamespace(to_tensor=lambda image: image)}
+        with patch.dict('sys.modules', modules), patch.object(inference, '_cached_runtime', runtime):
+            result = inference.analyze_image(self.image)
+        self.assertEqual([box['class_id'] for box in result['detections']], [0, 1, 2])
+        self.assertEqual(result['quadrat']['class_name'], 'quadrat_area')
+        self.assertEqual(result['detections'][0]['box'], {'x': 0., 'y': .25, 'w': .5, 'h': .5})
+        self.assertEqual(result['parameters']['min_size'], 800)
+        self.assertNotIn('imgsz', result['parameters'])
+
+    def test_faster_rcnn_loader_validates_sidecar_hash_before_deserialization(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary).resolve()
+            (directory / 'weights.pt').write_bytes(b'trusted fixture')
+            digest = hashlib.sha256(b'trusted fixture').hexdigest()
+            metadata = {'class_names': inference.CLASS_NAMES, 'model': 'faster_rcnn',
+                        'version': 3, 'checkpoint_sha256': digest}
+            artifact = {'id': 'faster-test', 'checkpoint': 'weights.pt', 'metadata': 'metadata.json',
+                        'sha256': digest, 'dataset_version': 3, 'augmentation_multiplier': None}
+            (directory / 'artifact.json').write_text(json.dumps(artifact))
+            (directory / 'metadata.json').write_text(json.dumps(metadata))
+            with patch.object(inference, '_load_faster_rcnn') as load:
+                runtime = inference._load_runtime(directory)
+                self.assertEqual(runtime.provenance['architecture'], 'faster_rcnn')
+                load.assert_called_once_with(directory / 'weights.pt', metadata)
+                load.reset_mock()
+                metadata['checkpoint_sha256'] = 'wrong hash'
+                (directory / 'metadata.json').write_text(json.dumps(metadata))
+                with self.assertRaises(inference.ModelUnavailable):
+                    inference._load_runtime(directory)
+                load.assert_not_called()
+
+    def test_faster_rcnn_reconstructs_saved_head_and_rejects_metadata_mismatch(self):
+        metadata = {'model': 'faster_rcnn', 'architecture': 'fasterrcnn_resnet50_fpn',
+                    'class_names': inference.CLASS_NAMES, 'num_classes': 4,
+                    'checkpoint_epoch': 10, 'background_label': 0, 'label_offset': 1}
+        saved = {'metadata': {'model': 'faster_rcnn', 'class_names': inference.CLASS_NAMES},
+                 'class_names': inference.CLASS_NAMES, 'num_classes': 4,
+                 'epoch': 10, 'model_state_dict': {'trusted': 'weights'}}
+        model = Mock()
+        model.roi_heads.box_predictor.cls_score.in_features = 1024
+        constructor = Mock(return_value=model)
+        predictor = Mock()
+        load = Mock(return_value=saved)
+        modules = {
+            'torch': SimpleNamespace(load=load),
+            'torchvision.models.detection': SimpleNamespace(fasterrcnn_resnet50_fpn=constructor),
+            'torchvision.models.detection.faster_rcnn': SimpleNamespace(FastRCNNPredictor=predictor),
+        }
+        with patch.dict('sys.modules', modules):
+            inference._load_faster_rcnn(Path('trusted.pt'), metadata)
+            load.assert_called_once_with(Path('trusted.pt'), map_location='cpu', weights_only=False)
+            constructor.assert_called_once_with(weights=None, weights_backbone=None, min_size=800,
+                                                max_size=1333, box_score_thresh=.25,
+                                                box_detections_per_img=100)
+            predictor.assert_called_once_with(1024, 4)
+            model.load_state_dict.assert_called_once_with(saved['model_state_dict'], strict=True)
+            model.eval.assert_called_once()
+            constructor.reset_mock()
+            for field, value in [('class_names', []), ('checkpoint_epoch', 11), ('label_offset', 0)]:
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    inference._load_faster_rcnn(Path('trusted.pt'), {**metadata, field: value})
+            constructor.assert_not_called()
 
 
 class InferenceEndpointTests(TestCase):

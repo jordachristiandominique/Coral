@@ -1,25 +1,26 @@
-# Local YOLO inference preparation
+# Local detection inference
 
-The selected artifact is `yolov8s-validator-v3`, trained on version 3 of
-`hard-coral-detection-with-validator`, named `HC-SC-Quadrat-Validator-v3`.
+The local selected artifact is `faster-rcnn-validator-v3`, trained on version 3 of
+`hard-coral-detection-with-validator`, with selected checkpoint epoch 10.
 Its classes are Hard Coral, Soft Coral, and quadrat_area. The upload analysis
 endpoint loads this local checkpoint on CPU through `YOLO_ARTIFACT_DIR` in
 `coral_app/settings.py`.
 
 ## Private files
 
-Keep these together in `model_artifacts/yolov8s-validator-v3/`:
+Keep these together in `model_artifacts/faster-rcnn-validator-v3/`.
 
-- `yolov8s_HC-SC-Quadrat-Validator-v3_best.pt`: trained weights, ignored by Git.
-- `yolov8s_HC-SC-Quadrat-Validator-v3_best.metadata.json`: supplied training metadata.
+- `faster_rcnn_v3_validator_best.pt`: trained checkpoint, ignored by Git.
+- `faster_rcnn_v3_validator_best.metadata.json`: supplied training metadata.
 - `artifact.json`: local filenames, dataset identity, and checkpoint SHA-256.
 
-The weights hash matches `checkpoint_sha256` in the supplied metadata. Its
-`artifact_name` records the longer original export filename. The local manifest
-maps the shorter supplied filenames. The augmentation multiplier is unknown
+The weights hash matches `checkpoint_sha256` in the supplied metadata. The loader
+also compares the checkpoint's embedded training metadata with this sidecar.
+The augmentation multiplier is unknown
 and recorded as null because the metadata does not specify it.
 
-The previous `model_artifacts/yolov8s-v4-3x/` artifact is available separately.
+The YOLOv8 artifacts remain available in `model_artifacts/yolov8s-validator-v3/`
+and `model_artifacts/yolov8s-v4-3x/`.
 The inference-check script defaults to the configured artifact and accepts
 `--artifact-dir` to test another directory.
 
@@ -55,10 +56,14 @@ Colab T4 speed does not describe this computer.
 ```
 
 The script checks the weights hash, metadata, checkpoint class order, image
-decoding, and one CPU prediction at size 640, confidence 0.25, maximum 100 boxes.
+decoding, and one CPU prediction with confidence 0.25 and maximum 100 boxes.
+Faster R-CNN uses its native transform with minimum side 800 and maximum side
+1333, matching the training notebook. YOLO uses image size 640. The historical
+script and setting names are retained for compatibility.
 It writes JSON detections in original-image coordinates (after EXIF orientation),
 a box-only preview, and local dependency versions to ignored
-`backups/inference-smoke/`. Its first-call timing includes prediction setup and
+`backups/inference-smoke/`. Its first-call timing includes checkpoint validation,
+loading, and prediction setup and
 is not a steady-state benchmark. Zero detections are possible and are not an
 inference error. No source image or database record is modified.
 
@@ -98,7 +103,7 @@ Successful JSON contains:
 - `model`: artifact ID, architecture, SHA-256, dataset version, augmentation
   multiplier, and class names; no local filesystem paths.
 - `image`: upright width/height and `orientation: "exif_transposed"`.
-- `parameters`: fixed CPU, image size 640, confidence 0.25, maximum 100 boxes.
+- `parameters`: CPU, confidence 0.25, maximum 100 boxes, and model-specific resize settings.
 - `detections`: stable-within-response IDs, class IDs/names, confidence, and
   `box: {x, y, w, h}` normalized to the complete upright image. Detections outside
   the quadrat are retained; no box is silently clipped into the sampling area.

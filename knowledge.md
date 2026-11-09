@@ -492,3 +492,35 @@ in `docs/railway-deployment.md`. Local production-profile checks verified HTTPS,
 secure cookies, hashed static delivery, upload-page rendering and protected media.
 All 55 Django tests passed on PostgreSQL. Docker was unavailable locally, so the
 Linux image build and Gunicorn process still require verification on Railway.
+
+## 22. Local Faster R-CNN inference (2026-11-09)
+
+The local default in `coral_app/settings.py::YOLO_ARTIFACT_DIR` selects
+`model_artifacts/faster-rcnn-validator-v3/`. The supplied epoch-10 checkpoint
+matches its metadata SHA-256, dataset version 3, and HC/SC/quadrat class order.
+Both local artifact filenames now use `faster_rcnn_v3_validator_best`.
+The manifest pins the checkpoint hash. The original metadata is preserved.
+
+`accounts/yolo_inference.py` supports Faster R-CNN ResNet50-FPN and existing
+YOLOv8 artifacts through the same endpoint. It validates the Faster R-CNN
+embedded metadata before reconstructing the four-class head, loads weights
+strictly on CPU, and uses evaluation/inference mode. Native resize is 800/1333,
+review confidence is 0.25, and the maximum detection count is 100. Background
+is omitted and labels 1–3 become API IDs 0–2. Original-image pixel boxes become
+normalized boxes before the shared validation and review response construction.
+Lazy caching, serialized inference, image validation, and role guards are retained.
+The frontend reads the artifact ID dynamically. Representative points, Other
+Substrate, HCC calculations, and historical records use their existing logic.
+
+`scripts/check_yolo_inference.py` now exercises the shared runtime for either
+architecture and writes a Pillow box preview. The hosted default remains the
+YOLOv8 artifact until a separate deployment selects and uploads Faster R-CNN.
+The existing optional inference requirements already include Torchvision.
+
+Verification passed system/migration checks and 58 Django tests on temporary
+SQLite. Real-image CPU inference produced 22 HC, 3 SC and 2 quadrat detections,
+including a multiple-quadrat warning. An isolated authenticated CSRF-protected
+request, representative review, save, canonical image/transect HCC, and repository
+reopening passed. Existing frontend helpers generated a ten-marker payload from
+the real detections that passed the server validator. One warm inference took
+5.6 seconds with two Torch CPU threads. This is a runtime check on one image.

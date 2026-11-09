@@ -845,11 +845,11 @@ def analyze_survey_image(request):
         response['Retry-After'] = '1'
         return response
     except yolo_inference.ModelUnavailable:
-        logger.exception('Local YOLO artifact could not be loaded.')
+        logger.exception('Local detection artifact could not be loaded.')
         return JsonResponse({'success': False, 'code': 'model_unavailable',
                              'error': 'Image analysis is unavailable. Contact the administrator.'}, status=503)
     except Exception:
-        logger.exception('YOLO image analysis failed.')
+        logger.exception('Image detection failed.')
         return JsonResponse({'success': False, 'code': 'inference_failed',
                              'error': 'Image analysis failed. Please retry.'}, status=500)
 

@@ -1,0 +1,30 @@
+{
+  "workspace": "christian-dominique-l-jorda",
+  "project": "hard-coral-detection-with-validator",
+  "version": 3,
+  "class_names": [
+    "Hard Coral",
+    "Soft Coral",
+    "quadrat_area"
+  ],
+  "dataset_fingerprint": "7b4ca570c75aacb0a53ee3c5c658e7b3f249812ee9df034b56a98f3ae6294b6c",
+  "seed": 42,
+  "model": "faster_rcnn",
+  "hardware": "Tesla T4",
+  "augmentation": "Roboflow version transformations only; additional random training augmentation disabled",
+  "training": {
+    "epochs": 100,
+    "batch": 4,
+    "optimizer": "SGD",
+    "pretraining": "COCO detection",
+    "resize": "torchvision native transform"
+  },
+  "artifact_name": "faster_rcnn_v3_validator_best.pt",
+  "architecture": "fasterrcnn_resnet50_fpn",
+  "checkpoint_source": "/content/drive/MyDrive/CoralSense/runs/20261109-000520-055112-faster_rcnn/best.pt",
+  "checkpoint_sha256": "4c30e993d13548379565e8d2dbbdbf33b8a133ab95da099fb430a681f8663de2",
+  "checkpoint_epoch": 10,
+  "num_classes": 4,
+  "background_label": 0,
+  "label_offset": 1
+}
