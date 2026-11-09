@@ -556,3 +556,14 @@ results toolbar above the cards. Smaller layouts wrap the filters in reading ord
 Verification passed 52 JavaScript tests, 58 SQLite
 Django tests, system/migration checks and an isolated browser check at desktop
 and 390px widths using the actual filter markup and script.
+
+## 25. Hosted Faster R-CNN model activation (2026-11-09)
+
+Railway's application volume contains the verified Faster R-CNN version-3
+checkpoint, metadata and manifest under `/data/model_artifacts/faster-rcnn-validator-v3`.
+The hosted `YOLO_ARTIFACT_DIR` variable selects this directory. The first hosted
+analysis triggered an OOM kill under the 1 GB container limit. The loader now uses
+`torch.load(mmap=True)` and `load_state_dict(assign=True)` to avoid eagerly loading
+unused training optimizer tensors and copying the selected weights. Local real-image
+detections are identical after this change. System/migration checks and 58 SQLite
+tests passed. Hosted inference must be checked after deploying this loader change.

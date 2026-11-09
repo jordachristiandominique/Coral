@@ -209,12 +209,12 @@ class InferenceRuntimeTests(SimpleTestCase):
         }
         with patch.dict('sys.modules', modules):
             inference._load_faster_rcnn(Path('trusted.pt'), metadata)
-            load.assert_called_once_with(Path('trusted.pt'), map_location='cpu', weights_only=False)
+            load.assert_called_once_with(Path('trusted.pt'), map_location='cpu', weights_only=False, mmap=True)
             constructor.assert_called_once_with(weights=None, weights_backbone=None, min_size=800,
                                                 max_size=1333, box_score_thresh=.25,
                                                 box_detections_per_img=100)
             predictor.assert_called_once_with(1024, 4)
-            model.load_state_dict.assert_called_once_with(saved['model_state_dict'], strict=True)
+            model.load_state_dict.assert_called_once_with(saved['model_state_dict'], strict=True, assign=True)
             model.eval.assert_called_once()
             constructor.reset_mock()
             for field, value in [('class_names', []), ('checkpoint_epoch', 11), ('label_offset', 0)]:

@@ -16,6 +16,9 @@ Keep these together in `model_artifacts/faster-rcnn-validator-v3/`.
 
 The weights hash matches `checkpoint_sha256` in the supplied metadata. The loader
 also compares the checkpoint's embedded training metadata with this sidecar.
+Faster R-CNN maps checkpoint tensor storage from disk and assigns the selected
+state directly to the model. This avoids eagerly loading unused optimizer tensors
+and copying the model state during hosted startup.
 The augmentation multiplier is unknown
 and recorded as null because the metadata does not specify it.
 

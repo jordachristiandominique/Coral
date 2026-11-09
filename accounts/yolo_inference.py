@@ -110,7 +110,8 @@ def _load_faster_rcnn(checkpoint, metadata):
     from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
     # The manifest hash is checked before unpickling the user's trusted export.
-    saved = torch.load(checkpoint, map_location='cpu', weights_only=False)
+    # Map training storage lazily so unused optimizer tensors stay on disk.
+    saved = torch.load(checkpoint, map_location='cpu', weights_only=False, mmap=True)
     if any(metadata.get(key) != value for key, value in saved['metadata'].items()):
         raise ValueError('Checkpoint metadata differs from its sidecar.')
     if (saved['class_names'] != CLASS_NAMES or saved['num_classes'] != len(CLASS_NAMES) + 1
@@ -126,7 +127,7 @@ def _load_faster_rcnn(checkpoint, metadata):
     model.roi_heads.box_predictor = FastRCNNPredictor(
         model.roi_heads.box_predictor.cls_score.in_features, saved['num_classes'],
     )
-    model.load_state_dict(saved['model_state_dict'], strict=True)
+    model.load_state_dict(saved['model_state_dict'], strict=True, assign=True)
     return model.eval()
 
 
