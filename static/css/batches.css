@@ -24,12 +24,13 @@
 
 .batches-filter-bar {
     display: grid;
-    grid-template-columns: minmax(260px, 1fr) 150px 140px 86px;
+    grid-template-columns: minmax(180px, 1.2fr) minmax(290px, 1.6fr) 140px 70px;
     gap: 10px;
-    align-items: stretch;
+    align-items: end;
 }
 
 .batch-filter-search {
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -83,6 +84,34 @@
     display: flex;
     align-items: stretch;
 }
+
+.batch-date-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.batch-results-toolbar { display: flex; justify-content: flex-end; }
+.batch-sort-control { width: 175px; max-width: 100%; }
+
+.batch-date-range label { display: grid; gap: 5px; min-width: 0; }
+.batch-date-range label span { color: #446b77; font-size: 12px; font-weight: 600; }
+.batch-date-range input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    padding: 6px 10px;
+    border: 1px solid rgba(28, 95, 109, 0.14);
+    border-radius: 8px;
+    background: rgba(248, 252, 252, 0.92);
+    color: #446b77;
+    font: inherit;
+    font-size: 13px;
+}
+.batch-date-range input:focus-visible { outline: 2px solid #2a8793; outline-offset: 2px; }
+.batch-filter-status { margin: 0; padding: 20px; color: #446b77; text-align: center; }
+.batch-filter-status[hidden] { display: none; }
 
 .batch-filter-select select {
     box-sizing: border-box;
@@ -422,7 +451,7 @@
         grid-column: 1 / -1;
     }
 
-    .filter-clear-btn {
+    .batch-date-range {
         grid-column: 1 / -1;
     }
 }
@@ -435,6 +464,7 @@
     .batches-filter-bar {
         grid-template-columns: 1fr;
     }
+    .batch-date-range { grid-template-columns: 1fr; }
 }
 /* Transect count shown beside the HCC badge on each site card. */
 .batch-transect-count {

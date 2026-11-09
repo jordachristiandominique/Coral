@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=8">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=10">
 {% endblock %}
 
 {% block content %}
@@ -107,14 +107,16 @@
                 <input id="batch-search" type="text" placeholder="Search data repositories...">
             </label>
 
-            <label class="batch-filter-select" for="batch-date-filter">
-                <span class="sr-only">Filter by date</span>
-                <select id="batch-date-filter" name="batch-date-filter">
-                    <option value="">Date</option>
-                    <option value="latest">Latest first</option>
-                    <option value="oldest">Oldest first</option>
-                </select>
-            </label>
+            <div class="batch-date-range" role="group" aria-label="Survey date range">
+                <label for="batch-date-from">
+                    <span>Survey date from</span>
+                    <input id="batch-date-from" type="date" name="date_from">
+                </label>
+                <label for="batch-date-to">
+                    <span>Survey date to</span>
+                    <input id="batch-date-to" type="date" name="date_to">
+                </label>
+            </div>
 
             <label class="batch-filter-select" for="batch-class-filter">
                 <span class="sr-only">Filter by HCC category</span>
@@ -129,6 +131,19 @@
 
             <button type="button" class="filter-clear-btn" id="batch-clear-btn">Clear</button>
         </section>
+
+        <div class="batch-results-toolbar" aria-label="Repository sorting">
+            <label class="batch-filter-select batch-sort-control" for="batch-date-filter">
+                <span class="sr-only">Sort by survey date</span>
+                <select id="batch-date-filter" name="batch-date-filter">
+                    <option value="">Sort by date</option>
+                    <option value="latest">Latest first</option>
+                    <option value="oldest">Oldest first</option>
+                </select>
+            </label>
+        </div>
+
+        <p id="batch-filter-status" class="batch-filter-status" role="status" hidden>No data repositories match these filters.</p>
 
         <section class="batches-grid" aria-label="Batch cards list">
             {% for batch in batches %}
@@ -199,5 +214,5 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/batches.js' %}?v=3"></script>
+<script src="{% static 'js/batches.js' %}?v=4"></script>
 {% endblock %}

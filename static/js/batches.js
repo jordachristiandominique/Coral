@@ -20,6 +20,9 @@ const initializeBatches = function () {
     const batchSearch = document.getElementById('batch-search');
     const batchDateFilter = document.getElementById('batch-date-filter');
     const batchClassFilter = document.getElementById('batch-class-filter');
+    const dateFrom = document.getElementById('batch-date-from');
+    const dateTo = document.getElementById('batch-date-to');
+    const filterStatus = document.getElementById('batch-filter-status');
     const batchCards = document.querySelectorAll('.batch-card');
 
     // Filter functionality
@@ -27,6 +30,16 @@ const initializeBatches = function () {
         const searchTerm = batchSearch.value.toLowerCase();
         const dateFilter = batchDateFilter.value;
         const classFilter = batchClassFilter.value;
+        const startDate = dateFrom.value;
+        const endDate = dateTo.value;
+        dateFrom.max = endDate;
+        dateTo.min = startDate;
+        dateTo.setCustomValidity(startDate && endDate && startDate > endDate
+            ? 'Choose an end date on or after the start date.' : '');
+        if (startDate && endDate && startDate > endDate) {
+            dateTo.reportValidity();
+            return;
+        }
 
         let visibleCards = [];
 
@@ -44,9 +57,16 @@ const initializeBatches = function () {
                 show = show && (card.dataset.category === classFilter.toLowerCase());
             }
 
+            // ISO date-only strings give inclusive bounds without timezone conversion.
+            const surveyDate = card.dataset.date || '';
+            if (startDate) show = show && surveyDate >= startDate;
+            if (endDate) show = show && Boolean(surveyDate) && surveyDate <= endDate;
+
             card.style.display = show ? '' : 'none';
             if (show) visibleCards.push(card);
         });
+
+        filterStatus.hidden = batchCards.length === 0 || visibleCards.length > 0;
 
         // Date sorting
         if (dateFilter && visibleCards.length > 0) {
@@ -78,14 +98,20 @@ const initializeBatches = function () {
         batchClassFilter.addEventListener('change', applyFilters);
     }
 
+    dateFrom.addEventListener('change', applyFilters);
+    dateTo.addEventListener('change', applyFilters);
+
     if (clearButton && batchSearch && batchDateFilter && batchClassFilter) {
         clearButton.addEventListener('click', function () {
             batchSearch.value = '';
             batchDateFilter.value = '';
             batchClassFilter.value = '';
+            dateFrom.value = '';
+            dateTo.value = '';
             applyFilters();
         });
     }
+    applyFilters();
 };
 
 // Initialize immediately if DOM is already loaded, otherwise wait for DOMContentLoaded

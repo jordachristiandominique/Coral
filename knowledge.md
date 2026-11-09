@@ -541,3 +541,18 @@ browser fixture using the actual menu markup and handlers in both layouts.
 The menu uses short coral names with matching violet/teal dots and a current-class
 checkmark. Delete has a red trash icon and its own text span for dynamic box labels.
 Cancel has a neutral outlined row and close icon. A separator groups the actions.
+
+## 24. Repository survey date range (2026-11-09)
+
+My Data Repositories and All Data Repositories include inclusive From/To survey
+date inputs. `static/js/batches.js` combines ISO date-only bounds with the existing
+client-side search/category filters and sorting. Either bound may be omitted.
+Reversed ranges show native validation feedback. Clear resets every filter, and
+an empty filtered result shows a status message. Both pages share responsive date
+styles in `static/css/batches.css`. Ownership queries and HCC calculations retain
+their existing implementation. The date range follows Search in the desktop filter
+bar, with Category and Clear at the end. Date sorting sits in a right-aligned
+results toolbar above the cards. Smaller layouts wrap the filters in reading order.
+Verification passed 52 JavaScript tests, 58 SQLite
+Django tests, system/migration checks and an isolated browser check at desktop
+and 390px widths using the actual filter markup and script.
