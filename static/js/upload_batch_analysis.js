@@ -89,9 +89,13 @@
         const fetcher = options.fetch || globalThis.fetch;
         const delay = options.delay || (ms => new Promise(resolve => setTimeout(resolve, ms)));
         const controller = new AbortController();
+        const cancel = () => controller.abort();
+        options.signal?.addEventListener('abort', cancel, { once: true });
         const timer = setTimeout(() => controller.abort(), options.timeout || 120000);
         try {
+            if (options.signal?.aborted) cancel();
             for (let attempt = 0; attempt < 3; attempt++) {
+                controller.signal.throwIfAborted();
                 const body = new FormData();
                 body.append('image', file, file.name);
                 const response = await fetcher(url, { method: 'POST', body, credentials: 'same-origin',
@@ -101,6 +105,7 @@
                 }
                 let data;
                 try { data = await response.json(); } catch (_) { throw new Error('The server did not return analysis data. Please retry.'); }
+                controller.signal.throwIfAborted();
                 if (response.status === 503 && data.code === 'inference_busy' && attempt < 2) {
                     await delay(1000);
                     continue;
@@ -109,10 +114,18 @@
                 return fromResponse(data);
             }
         } catch (error) {
+            if (options.signal?.aborted) {
+                const cancelled = new Error('Analysis cancelled. Retry this image to continue.');
+                cancelled.name = 'AbortError';
+                throw cancelled;
+            }
             if (error.name === 'AbortError') throw new Error('Analysis timed out. Wait briefly, then retry this image.');
             if (error instanceof TypeError) throw new Error('Cannot reach image analysis. Check your connection and retry.');
             throw error;
-        } finally { clearTimeout(timer); }
+        } finally {
+            clearTimeout(timer);
+            options.signal?.removeEventListener('abort', cancel);
+        }
     }
 
     return { classes, validRect, complete, coverage, estimatedCoverage, transect, setQuadrat, fromResponse, regenerate, moveMarker, payload, request };

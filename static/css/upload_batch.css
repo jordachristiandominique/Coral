@@ -1423,6 +1423,7 @@ body.analysis-progress-open .researcher-navbar {
 
 /* ===== Enhanced "Analysis in Progress" modal (scoped to #analyze-modal) ===== */
 .analyze-dialog {
+    position: relative;
     padding: 24px;
     border: none;
     border-radius: 18px;
@@ -1433,10 +1434,132 @@ body.analysis-progress-open .researcher-navbar {
     display: flex;
     align-items: center;
     gap: 14px;
+    padding-right: 26px;
 }
 
 .analyze-head-text {
     min-width: 0;
+    flex: 1;
+}
+
+.analyze-minimize-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    border: 1px solid #dbe8ec;
+    border-radius: 8px;
+    color: #355f6d;
+    background: #f5fafb;
+    cursor: pointer;
+}
+.analyze-minimize-btn:hover {
+    background: #e5f2f4;
+}
+.analyze-minimize-btn svg, .analysis-progress-dock > svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+#analyze-modal .process-actions {
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#analyze-cancel-btn {
+    color: #ad333b;
+    border-color: #e8c7ca;
+    background: white;
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+#analyze-cancel-btn:hover {
+    background: #fff1f2;
+}
+#analyze-cancel-btn[hidden] {
+    display: none;
+}
+.analysis-progress-dock {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 2200;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    width: min(310px, calc(100vw - 32px));
+    padding: 14px 16px;
+    border: 1px solid #bfd9df;
+    border-radius: 12px;
+    background: white;
+    color: #1c5f6d;
+    box-shadow: 0 8px 28px #12313c26;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.analysis-progress-dock[hidden] {
+    display: none;
+}
+.analysis-progress-dock.is-running {
+    border-left: 4px solid #2a8793;
+}
+.analysis-dock-copy {
+    display: grid;
+    gap: 4px;
+}
+.analysis-dock-copy strong {
+    font-size: 14px;
+}
+.analysis-dock-copy > span {
+    font-size: 12px;
+    color: #527782;
+    font-variant-numeric: tabular-nums;
+}
+.analyze-minimize-btn:focus-visible, .analysis-progress-dock:focus-visible, #analyze-cancel-btn:focus-visible {
+    outline: 3px solid #65b9c8;
+    outline-offset: 3px;
+}
+#analyze-modal.is-cancelled .analyze-status-icon::before {
+    content: '\2212';
+    border: 0;
+    animation: none;
+    color: #946120;
+    font-size: 24px;
+    text-align: center;
+}
+#analyze-modal.is-cancelled .progress-fill::after {
+    display: none;
+}
+.process-badge-cancelled {
+    color: #795a2c;
+    background: #f4e9d7;
+}
+@media (max-width: 480px) {
+    .analysis-progress-dock {
+        right: 16px;
+        bottom: 16px;
+    }
+    #analyze-modal .analyze-dialog {
+        padding: 18px;
+    }
+    #analyze-modal h2 {
+        font-size: 18px;
+    }
 }
 
 .analyze-dialog h2 {

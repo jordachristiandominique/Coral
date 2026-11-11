@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=27">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=30">
 {% endblock %}
 
 {% block content %}
@@ -409,8 +409,11 @@
             <span class="analyze-status-icon" aria-hidden="true"></span>
             <div class="analyze-head-text">
                 <h2 id="analyze-title">Analysis in Progress</h2>
-                <p class="process-sub" id="analyze-status">Running YOLO coral detection...</p>
+                <p class="process-sub" id="analyze-status">Analyzing coral images...</p>
             </div>
+            <button type="button" class="analyze-minimize-btn" id="analyze-minimize-btn" aria-label="Minimize analysis progress" title="Minimize">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+            </button>
         </div>
 
         <div class="progress-wrap" aria-label="Analyze progress">
@@ -423,12 +426,21 @@
         <ul class="process-list" id="analyze-progress-list"></ul>
 
         <div class="process-actions">
+            <button type="button" class="action-outline" id="analyze-cancel-btn">Cancel analysis</button>
             <button type="button" class="primary-btn" id="analyze-close-btn" disabled aria-disabled="true">
                 Review Results
             </button>
         </div>
     </div>
 </div>
+
+<button type="button" id="analyze-restore-btn" class="analysis-progress-dock" aria-controls="analyze-modal" aria-expanded="false" hidden>
+    <span class="analysis-dock-copy">
+        <strong id="analyze-dock-title">Analysis in Progress</strong>
+        <span id="analyze-dock-progress" aria-live="polite">0% (0/0)</span>
+    </span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg>
+</button>
 
 <div class="process-modal" id="analyze-confirm-modal" aria-hidden="true">
     <div class="process-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analyze-confirm-title">
@@ -470,9 +482,9 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'js/representative_points.js' %}?v=4"></script>
-<script src="{% static 'js/upload_batch_analysis.js' %}?v=7"></script>
+<script src="{% static 'js/upload_batch_analysis.js' %}?v=8"></script>
 <script src="{% static 'js/upload_batch_review.js' %}?v=4"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=45"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=46"></script>
 <script>
     // Auto-comma on Enter for surveyor names
     document.addEventListener('DOMContentLoaded', function () {

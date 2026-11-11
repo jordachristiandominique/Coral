@@ -567,3 +567,19 @@ analysis triggered an OOM kill under the 1 GB container limit. The loader now us
 unused training optimizer tensors and copying the selected weights. Local real-image
 detections are identical after this change. System/migration checks and 58 SQLite
 tests passed. Hosted inference must be checked after deploying this loader change.
+
+## 26. Analysis cancellation and minimized progress (2026-11-11)
+
+The upload analysis dialog includes Cancel analysis and a minimize button.
+Minimizing shows a floating progress control that restores the dialog and displays
+completion while minimized. Completed image badges use Done. Cancel aborts the
+browser request and stops the remaining client queue. Completed results are retained,
+and interrupted rows become Cancelled entries available through the existing retry
+action. A running server prediction can finish under the existing inference lock.
+`UploadBatchAnalysis.request` accepts an external AbortSignal, distinguishes user
+cancellation from timeouts, and discards late responses after cancellation.
+
+Verification passed 56 JavaScript tests, 58 SQLite Django tests, system/migration
+checks, and an isolated browser fixture using the actual queue and modal code.
+The ten-image simulation retained one completed result after cancellation, marked
+nine images for retry, completed those nine on retry, and updated minimized progress.

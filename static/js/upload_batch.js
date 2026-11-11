@@ -215,6 +215,9 @@ const initializeUploadBatch = function () {
     const analyzeProgressText = document.getElementById('analyze-progress-text');
     const analyzeProgressList = document.getElementById('analyze-progress-list');
     const analyzeCloseBtn = document.getElementById('analyze-close-btn');
+    const analyzeCancelBtn = document.getElementById('analyze-cancel-btn');
+    const analyzeMinimizeBtn = document.getElementById('analyze-minimize-btn');
+    const analyzeRestoreBtn = document.getElementById('analyze-restore-btn');
     const analyzeConfirmModal = document.getElementById('analyze-confirm-modal');
     const analyzeConfirmCancel = document.getElementById('analyze-confirm-cancel');
     const analyzeConfirmAccept = document.getElementById('analyze-confirm-accept');
@@ -298,6 +301,7 @@ const describeCoverageClass = function (code) {
     let imageZoom = { scale: 1, x: 0, y: 0 };
     let aiResultsByFileKey = {};
     let isAnalyzing = false;
+    let analysisController = null;
     // Quadrat editing (drag corners to resize / drag inside to move) after analysis.
     let isDraggingQuadrat = false;
 
@@ -822,6 +826,11 @@ const describeCoverageClass = function (code) {
         const files = selectedFiles.filter(file => !failedOnly || analysisErrors[getFileKey(file)]);
         if (!files.length) return;
         isAnalyzing = true;
+        analysisController = new AbortController();
+        files.forEach(file => {
+            delete aiResultsByFileKey[getFileKey(file)];
+            delete analysisErrors[getFileKey(file)];
+        });
         resetPointZoom(true);
         analyzeAllBtn.textContent = 'Detecting...';
         updateSubmitState();
@@ -829,6 +838,7 @@ const describeCoverageClass = function (code) {
         initAnalyzeProgressList(files);
         openAnalyzeModal();
         let failed = 0;
+        let cancelled = false;
         try {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i], key = getFileKey(file);
@@ -838,9 +848,19 @@ const describeCoverageClass = function (code) {
                 setAnalyzeProgress(i, files.length, file.name, false);
                 try {
                     const csrf = uploadForm.querySelector('[name=csrfmiddlewaretoken]').value;
-                    aiResultsByFileKey[key] = await Analysis.request(file, uploadForm.dataset.analyzeUrl, csrf);
+                    aiResultsByFileKey[key] = await Analysis.request(file, uploadForm.dataset.analyzeUrl, csrf,
+                        { signal: analysisController.signal });
                     markAnalyzeItemDone(key);
                 } catch (error) {
+                    if (error.name === 'AbortError') {
+                        cancelled = true;
+                        files.slice(i).forEach(pending => {
+                            const pendingKey = getFileKey(pending);
+                            analysisErrors[pendingKey] = error.message;
+                            markAnalyzeItemDone(pendingKey, error.message, true);
+                        });
+                        break;
+                    }
                     failed++;
                     analysisErrors[key] = error.message;
                     markAnalyzeItemDone(key, error.message);
@@ -849,15 +869,24 @@ const describeCoverageClass = function (code) {
             }
         } finally {
             isAnalyzing = false;
+            analysisController = null;
+            analyzeCancelBtn.hidden = true;
             analyzeAllBtn.textContent = 'Re-analyze all images';
-            if (analyzeStatus) analyzeStatus.textContent = failed
+            if (analyzeStatus) analyzeStatus.textContent = cancelled
+                ? 'Analysis cancelled. Retry interrupted images to continue.'
+                : failed
                 ? `${failed} image(s) failed. Review successful results and retry failed images.`
                 : 'Detection finished. Review the boxes and representative markers before saving.';
             if (analyzeModal) {
-                analyzeModal.classList.toggle('is-complete', failed === 0);
+                analyzeModal.classList.toggle('is-complete', !cancelled && failed === 0);
                 analyzeModal.classList.toggle('is-error', failed > 0);
+                analyzeModal.classList.toggle('is-cancelled', cancelled);
             }
-            document.getElementById('analyze-title').textContent = failed ? 'Detection needs attention' : 'Ready for review';
+            document.getElementById('analyze-title').textContent = cancelled ? 'Analysis cancelled'
+                : failed ? 'Detection needs attention' : 'Ready for review';
+            analyzeCloseBtn.textContent = hasAnyClassifications()
+                ? 'Review Results' : 'Close';
+            syncAnalyzeDock();
             if (analyzeCloseBtn) { analyzeCloseBtn.disabled = false; analyzeCloseBtn.setAttribute('aria-disabled', 'false'); }
             setActiveFileIndex(0);
             updateThumbPointsStatus();
@@ -889,7 +918,7 @@ const describeCoverageClass = function (code) {
         thumbGrid.querySelectorAll('.thumb-card[data-file-key]').forEach(function (card) {
             const key = card.getAttribute('data-file-key'), result = aiResultsByFileKey[key];
             const target = card.querySelector('[data-point-status]');
-            if (target) target.textContent = analysisErrors[key] ? 'Detection failed - retry'
+            if (target) target.textContent = analysisErrors[key] ? 'Retry analysis'
                 : Analysis.complete(result) ? `Ready: ${Analysis.coverage(result)}% HCC`
                 : result ? `Review: ${result.points.filter(p => p.class).length}/10 points` : 'Detection pending';
         });
@@ -904,20 +933,46 @@ const describeCoverageClass = function (code) {
             return;
         }
         analyzeModal.classList.add('is-visible');
+        analyzeRestoreBtn.hidden = true;
+        analyzeRestoreBtn.setAttribute('aria-expanded', 'true');
         analyzeModal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
         document.body.classList.add('analysis-progress-open');
     };
 
-    const closeAnalyzeModal = function () {
+    const closeAnalyzeModal = function (minimized = false) {
         if (!analyzeModal) {
             return;
         }
         analyzeModal.classList.remove('is-visible');
         analyzeModal.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('modal-open');
+        if (!document.querySelector('.process-modal.is-visible, .quadrat-fs.is-visible')) {
+            document.body.classList.remove('modal-open');
+        }
         document.body.classList.remove('analysis-progress-open');
+        analyzeRestoreBtn.hidden = !minimized;
+        analyzeRestoreBtn.setAttribute('aria-expanded', 'false');
     };
+
+    const syncAnalyzeDock = function () {
+        document.getElementById('analyze-dock-title').textContent = document.getElementById('analyze-title').textContent;
+        document.getElementById('analyze-dock-progress').textContent = analyzeProgressText.textContent;
+        analyzeRestoreBtn.classList.toggle('is-running', isAnalyzing);
+    };
+    analyzeMinimizeBtn.addEventListener('click', () => {
+        closeAnalyzeModal(true);
+        analyzeRestoreBtn.focus();
+    });
+    analyzeRestoreBtn.addEventListener('click', () => {
+        openAnalyzeModal();
+        analyzeMinimizeBtn.focus();
+    });
+    analyzeCancelBtn.addEventListener('click', () => {
+        if (!isAnalyzing || !analysisController) return;
+        analyzeCancelBtn.disabled = true;
+        analyzeCancelBtn.textContent = 'Cancelling…';
+        analysisController.abort();
+    });
 
     const openAnalyzeConfirm = function () {
         if (!analyzeConfirmModal) {
@@ -948,7 +1003,7 @@ const describeCoverageClass = function (code) {
             analyzeStatus.textContent = 'Preparing analysis...';
         }
         if (analyzeModal) {
-            analyzeModal.classList.remove('is-complete', 'is-error');
+            analyzeModal.classList.remove('is-complete', 'is-error', 'is-cancelled');
         }
         var analyzeTitleReset = document.getElementById('analyze-title');
         if (analyzeTitleReset) {
@@ -958,9 +1013,14 @@ const describeCoverageClass = function (code) {
             analyzeProgressList.innerHTML = '';
         }
         if (analyzeCloseBtn) {
+            analyzeCloseBtn.textContent = 'Review Results';
             analyzeCloseBtn.disabled = true;
             analyzeCloseBtn.setAttribute('aria-disabled', 'true');
         }
+        analyzeCancelBtn.hidden = false;
+        analyzeCancelBtn.disabled = false;
+        analyzeCancelBtn.textContent = 'Cancel analysis';
+        syncAnalyzeDock();
     };
 
     const initAnalyzeProgressList = function (files) {
@@ -995,9 +1055,10 @@ const describeCoverageClass = function (code) {
         if (analyzeStatus) {
             analyzeStatus.textContent = fileName ? `Analyzing ${fileName}...` : 'Analyzing images...';
         }
+        syncAnalyzeDock();
     };
 
-    const markAnalyzeItemDone = function (fileKey, error) {
+    const markAnalyzeItemDone = function (fileKey, error, cancelled = false) {
         if (!analyzeProgressList) {
             return;
         }
@@ -1008,10 +1069,10 @@ const describeCoverageClass = function (code) {
             }
             const badge = item.querySelector('.process-badge');
             if (badge) {
-                badge.textContent = error ? 'Failed' : 'Detected';
-                if (error) { item.title = error; item.classList.add('is-failed'); }
+                badge.textContent = cancelled ? 'Cancelled' : error ? 'Failed' : 'Done';
+                if (error) { item.title = error; item.classList.add(cancelled ? 'is-cancelled' : 'is-failed'); }
                 badge.classList.remove('process-badge-pending');
-                badge.classList.add(error ? 'process-badge-failed' : 'process-badge-done');
+                badge.classList.add(cancelled ? 'process-badge-cancelled' : error ? 'process-badge-failed' : 'process-badge-done');
             }
             item.classList.add('is-done');
         });

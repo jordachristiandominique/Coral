@@ -21,6 +21,51 @@ function reviewed(hard = 5) {
 const file = () => new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
 const http = (data, status = 200) => ({ ok: status === 200, status, redirected: false, json: async () => data });
 
+test('user cancellation aborts the active analysis request with a cancellation error', async () => {
+    const controller = new AbortController();
+    let activeSignal;
+    const pending = A.request(file(), '/analyze/', 'token', {
+        signal: controller.signal,
+        fetch: (_, options) => new Promise((resolve, reject) => {
+            activeSignal = options.signal;
+            options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        }),
+    });
+    controller.abort();
+    await assert.rejects(pending, error => error.name === 'AbortError' && /cancelled/.test(error.message));
+    assert.equal(activeSignal.aborted, true);
+});
+
+test('an already-cancelled run sends no analysis request', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let calls = 0;
+    await assert.rejects(A.request(file(), '/analyze/', 'token', {
+        signal: controller.signal,
+        fetch: async () => { calls++; return http(response()); },
+    }), /cancelled/);
+    assert.equal(calls, 0);
+});
+
+test('cancellation during a busy retry prevents the next request', async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    await assert.rejects(A.request(file(), '/analyze/', 'token', {
+        signal: controller.signal,
+        fetch: async () => { calls++; return http({ code: 'inference_busy' }, 503); },
+        delay: async () => controller.abort(),
+    }), /cancelled/);
+    assert.equal(calls, 1);
+});
+
+test('a response arriving after cancellation is discarded', async () => {
+    const controller = new AbortController();
+    await assert.rejects(A.request(file(), '/analyze/', 'token', {
+        signal: controller.signal,
+        fetch: async () => { controller.abort(); return http(response()); },
+    }), /cancelled/);
+});
+
 test('estimated HCC area precedes marker rounding and counts overlapping HC once', () => {
     const data = response();
     const hard = {id:'hc', class_name:'Hard Coral', confidence:.8,
