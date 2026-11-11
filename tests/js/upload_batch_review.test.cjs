@@ -2,6 +2,100 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const A = require('../../static/js/upload_batch_analysis.js');
 const E = require('../../static/js/upload_batch_review.js');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+test('area label visibility includes HC/SC numbers while fill and outlines use their own controls', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../../static/js/upload_batch.js'), 'utf8');
+    const start = source.indexOf('        if (result && showDetectionBoxes.checked)');
+    const end = source.indexOf('        const selectedRect', start);
+    assert(start >= 0 && end > start);
+    const result = sample();
+    E.ensure(result);
+    for (const labelsVisible of [true, false]) {
+        const labels = [], strokes = [], fills = [];
+        const ctx = {
+            save() {}, restore() {}, setLineDash() {},
+            measureText(text) { return { width: text.length * 6 }; },
+            strokeRect(...args) { strokes.push(args); },
+            fillRect(...args) { fills.push({ color: this.fillStyle, args }); },
+            fillText(text) { labels.push(text); },
+        };
+        vm.runInNewContext(source.slice(start, end), {
+            result, ctx, Editor: E, showDetectionBoxes: { checked: true },
+            showFill: { checked: true }, showEstimatedArea: { checked: labelsVisible },
+            rectPx: { x: 0, y: 0, w: 400, h: 300 },
+            offsetX: 0, offsetY: 0, displayWidth: 400, displayHeight: 300,
+            clipCoralOverlay() {},
+        });
+        assert.equal(strokes.length, 2);
+        assert.equal(fills.filter(fill => fill.color.startsWith('rgba')).length, 2);
+        if (labelsVisible) {
+            assert.match(labels[0], /^HC 1 \| ~/);
+            assert.match(labels[1], /^SC 1 \| ~/);
+        } else {
+            assert.equal(labels.length, 0);
+            assert.equal(fills.some(fill => fill.color === '#12313c'), false);
+        }
+    }
+});
+test('HCC summary updates representative counts on edits and undo and hides pending counts', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../../static/js/upload_batch.js'), 'utf8');
+    const start = source.indexOf('    const renderImageCoverageSummary = function ()');
+    const end = source.indexOf('    const refreshReviewState', start);
+    assert(start >= 0 && end > start);
+    const elements = Object.fromEntries([
+        'coverage-class', 'coral-coverage-percent', 'coverage-point-count', 'coverage-substitution',
+    ].map(id => [id, {}]));
+    let result = sample();
+    A.setQuadrat(result, { x: 0, y: 0, w: 1, h: 1 });
+    const render = vm.runInNewContext(`${source.slice(start, end)}\nrenderImageCoverageSummary;`, {
+        document: { getElementById: id => elements[id] },
+        activeResult: () => result, Analysis: A,
+        getCoralCoveragePercent: points => points.filter(point => point.class === 'Hard Coral').length * 10,
+        getCoverageClass: () => 'C',
+    });
+    render();
+    assert.equal(elements['coverage-point-count'].textContent, '3/10 HC points');
+    assert.equal(elements['coverage-point-count'].hidden, false);
+    assert.match(elements['coral-coverage-percent'].textContent, /→ 30%$/);
+    E.ensure(result).selected = 'large';
+    E.rename(result, 'Soft Coral');
+    render();
+    assert.equal(elements['coverage-point-count'].textContent, '0/10 HC points');
+    E.undo(result);
+    render();
+    assert.equal(elements['coverage-point-count'].textContent, '3/10 HC points');
+    result = sample();
+    render();
+    assert.equal(elements['coverage-point-count'].hidden, true);
+    assert.equal(elements['coverage-point-count'].textContent, '');
+    result = null;
+    render();
+    assert.equal(elements['coverage-point-count'].hidden, true);
+});
+
+test('review suppresses the multiple-quadrat sentence and preserves other warnings', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../../static/js/upload_batch.js'), 'utf8');
+    const start = source.indexOf('    const renderDetectionReview = function (result)');
+    const end = source.indexOf('    const renderMarkerSummary', start);
+    assert(start >= 0 && end > start);
+    const elements = { 'detection-model': {}, 'detection-warning': {} };
+    const render = vm.runInNewContext(`${source.slice(start, end)}\nrenderDetectionReview;`, {
+        detectionReview: {}, Editor: E,
+        document: { getElementById: id => elements[id] },
+        syncEditorControls() {}, refreshReviewState() {},
+    });
+    const result = sample();
+    result.warnings = [{ code: 'multiple_quadrats', message: 'Multiple quadrats detected.' }];
+    render(result);
+    assert.equal(elements['detection-warning'].textContent, '');
+    result.warnings.push({ code: 'missing_quadrat', message: 'Draw the sampling boundary.' });
+    render(result);
+    assert.equal(elements['detection-warning'].textContent, 'Draw the sampling boundary.');
+});
+
 function sample() {
     return A.fromResponse({ success: true, schema_version: 1,
         model: { id: 'yolov8s-v4-3x', sha256: 'a'.repeat(64), dataset_version: 4 },

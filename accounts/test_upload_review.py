@@ -215,6 +215,7 @@ class ReviewedUploadTests(TestCase):
         self.assertContains(response, 'id="analyze-cancel-btn"')
         self.assertContains(response, 'id="analyze-minimize-btn"')
         self.assertContains(response, 'id="analyze-restore-btn"')
+        self.assertContains(response, 'id="show-review-fill" checked')
         self.assertContains(response, 'js/upload_batch_analysis.js')
         self.assertContains(response, 'data-review-class="Hard Coral"')
         self.assertContains(response, 'data-review-class="Soft Coral"')

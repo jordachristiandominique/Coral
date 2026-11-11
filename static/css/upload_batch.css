@@ -907,6 +907,28 @@ body.analysis-progress-open .researcher-navbar {
     font-size: 26px;
 }
 
+.coverage-metric-reading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.coverage-point-count {
+    display: none;
+}
+
+.quadrat-fs .coverage-point-count:not([hidden]) {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(42, 135, 147, 0.12);
+    color: #1c5f6d;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .quadrat-fs .coverage-category-metric {
     display: none;
 }

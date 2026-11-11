@@ -583,3 +583,10 @@ Verification passed 56 JavaScript tests, 58 SQLite Django tests, system/migratio
 checks, and an isolated browser fixture using the actual queue and modal code.
 The ten-image simulation retained one completed result after cancellation, marked
 nine images for retry, completed those nine on retry, and updated minimized progress.
+Color fill defaults to checked for coral overlays. Area labels controls the complete
+HC/SC caption, including its number and estimated percentage. Box outlines use the
+existing Boxes control. Overlay checks passed in the browser and 57 JavaScript tests.
+Fullscreen review shows the active image's Hard Coral representative count beside
+the HCC percentage, for example `3/10 HC points`. It updates with review edits and
+undo and hides while results are pending. The review UI suppresses the
+`multiple_quadrats` sentence while retaining other warning messages.

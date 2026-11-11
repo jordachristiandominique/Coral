@@ -655,20 +655,22 @@ const describeCoverageClass = function (code) {
                 if (d.class_name === 'quadrat_area') ctx.setLineDash([5, 4]);
                 ctx.strokeRect(x, y, w, h);
                 ctx.setLineDash([]);
-                let label = Editor.label(result, d.id);
-                if (rectPx && showEstimatedArea.checked) {
-                    const insideWidth = Math.min(x + w, rectPx.x + rectPx.w) - Math.max(x, rectPx.x);
-                    const insideHeight = Math.min(y + h, rectPx.y + rectPx.h) - Math.max(y, rectPx.y);
-                    const percent = insideWidth * insideHeight / (rectPx.w * rectPx.h) * 100;
-                    label += ` | ~${percent.toFixed(2)}%`;
+                if (showEstimatedArea.checked) {
+                    let label = Editor.label(result, d.id);
+                    if (rectPx) {
+                        const insideWidth = Math.min(x + w, rectPx.x + rectPx.w) - Math.max(x, rectPx.x);
+                        const insideHeight = Math.min(y + h, rectPx.y + rectPx.h) - Math.max(y, rectPx.y);
+                        const percent = insideWidth * insideHeight / (rectPx.w * rectPx.h) * 100;
+                        label += ` | ~${percent.toFixed(2)}%`;
+                    }
+                    ctx.font = 'bold 11px Inter, sans-serif';
+                    const labelWidth = ctx.measureText(label).width + 8;
+                    const labelBounds = rectPx || { x: offsetX, y: offsetY, w: displayWidth, h: displayHeight };
+                    const labelX = Math.max(labelBounds.x, Math.min(x, labelBounds.x + labelBounds.w - labelWidth));
+                    const labelY = Math.max(labelBounds.y + 14, Math.min(y, labelBounds.y + labelBounds.h - 2));
+                    ctx.fillStyle = '#12313c'; ctx.fillRect(labelX, labelY - 14, labelWidth, 16);
+                    ctx.fillStyle = color; ctx.fillText(label, labelX + 4, labelY - 2);
                 }
-                ctx.font = 'bold 11px Inter, sans-serif';
-                const labelWidth = ctx.measureText(label).width + 8;
-                const labelBounds = rectPx || { x: offsetX, y: offsetY, w: displayWidth, h: displayHeight };
-                const labelX = Math.max(labelBounds.x, Math.min(x, labelBounds.x + labelBounds.w - labelWidth));
-                const labelY = Math.max(labelBounds.y + 14, Math.min(y, labelBounds.y + labelBounds.h - 2));
-                ctx.fillStyle = '#12313c'; ctx.fillRect(labelX, labelY - 14, labelWidth, 16);
-                ctx.fillStyle = color; ctx.fillText(label, labelX + 4, labelY - 2);
                 ctx.restore();
             });
             ctx.restore();
@@ -1113,10 +1115,13 @@ const describeCoverageClass = function (code) {
     const renderImageCoverageSummary = function () {
         const coverageClassEl = document.getElementById('coverage-class');
         const coveragePercentEl = document.getElementById('coral-coverage-percent');
+        const coveragePointsEl = document.getElementById('coverage-point-count');
         const substitutionEl = document.getElementById('coverage-substitution');
         const result = activeResult();
         if (!result || result.points.length !== 10) {
             coveragePercentEl.textContent = '--%';
+            coveragePointsEl.textContent = '';
+            coveragePointsEl.hidden = true;
             coverageClassEl.textContent = 'Pending';
             coverageClassEl.className = 'coverage-metric-badge class-pending';
             substitutionEl.textContent = 'Choose a quadrat to generate representative markers.';
@@ -1127,6 +1132,8 @@ const describeCoverageClass = function (code) {
         const estimatedPercent = Analysis.estimatedCoverage(result);
         const category = getCoverageClass(percent);
         coveragePercentEl.textContent = `${estimatedPercent.toFixed(2)}% → ${percent}%`;
+        coveragePointsEl.textContent = `${hard}/10 HC points`;
+        coveragePointsEl.hidden = false;
         coverageClassEl.textContent = `Category ${category}`;
         coverageClassEl.className = `coverage-metric-badge class-${category.toLowerCase()}`;
         substitutionEl.textContent = `${estimatedPercent.toFixed(2)}% estimated HC area → ${hard} Hard Coral markers ÷ 10 × 100 = ${percent}% HCC · Active image${Analysis.complete(result) ? ' ready' : ' incomplete'}`;
@@ -1175,7 +1182,9 @@ const describeCoverageClass = function (code) {
         if (!result) { closeContextMenu(); return; }
         const e = Editor.ensure(result);
         document.getElementById('detection-model').textContent = `Model: ${result.model.id}`;
-        const warnings = result.warnings.map(w => w.message || '').filter(Boolean);
+        const warnings = result.warnings
+            .filter(w => w.code !== 'multiple_quadrats')
+            .map(w => w.message || '').filter(Boolean);
         document.getElementById('detection-warning').textContent = warnings.join(' ');
         syncEditorControls(result);
         refreshReviewState();
