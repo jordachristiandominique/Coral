@@ -1,3 +1,4 @@
+import json
 import tempfile
 from datetime import date
 
@@ -142,3 +143,54 @@ class RepositoryDeletionTests(TestCase):
         page = self.client.get(reverse('batches')).content.decode()
         self.assertLess(page.index(reverse('account_settings')), page.index(reverse('repository_trash')))
         self.assertIn('Move to trash', page)
+
+    def test_map_visibility_persists_and_changes_map_data(self):
+        url = reverse('batch_map_visibility', args=[self.repository.pk])
+        self.assertTrue(self.repository.is_map_visible)
+        self.assertContains(self.client.get(reverse('batches')), 'Hide from map')
+        for _ in range(2):
+            self.assertRedirects(self.client.post(url, {'is_map_visible': 'false'}), reverse('batches'))
+        self.repository.refresh_from_db()
+        self.assertFalse(self.repository.is_map_visible)
+        map_page = self.client.get(reverse('map_view'))
+        self.assertEqual(json.loads(map_page.context['geojson_data'])['features'], [])
+        self.assertEqual(map_page.context['total_batches'], 0)
+        self.assertContains(self.client.get(reverse('batches')), 'Show on map')
+        public_rows = self.client.get(reverse('public_dashboard')).context['dashboard_surveys']
+        self.assertEqual(len(public_rows), 1)
+        self.assertFalse(public_rows[0]['mapVisible'])
+        self.assertEqual(self.client.get(reverse('researcher_dashboard')).context['total_images'], 1)
+        self.assertEqual(self.client.get(reverse('analysis_results')).context['total_batches'], 1)
+        self.client.post(url, {'is_map_visible': 'true'})
+        self.assertEqual(self.client.get(reverse('map_view')).context['total_batches'], 1)
+        self.assertContains(self.client.get(reverse('batches')), 'Hide from map')
+
+    def test_map_visibility_permissions_post_and_csrf(self):
+        url = reverse('batch_map_visibility', args=[self.repository.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.assertEqual(self.client.post(url, {'is_map_visible': 'invalid'}).status_code, 400)
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.owner)
+        self.assertEqual(csrf_client.post(url, {'is_map_visible': 'false'}).status_code, 403)
+        other = User.objects.create_user(username='map-outsider', role='researcher')
+        self.client.force_login(other)
+        self.assertEqual(self.client.post(url, {'is_map_visible': 'false'}).status_code, 404)
+        other.role = 'pending'
+        other.save(update_fields=['role'])
+        self.assertRedirects(self.client.post(url, {'is_map_visible': 'false'}), reverse('pending_approval'))
+        self.repository.refresh_from_db()
+        self.assertTrue(self.repository.is_map_visible)
+
+    def test_admin_can_control_visibility_and_trashed_repositories_are_excluded(self):
+        url = reverse('batch_map_visibility', args=[self.repository.pk])
+        admin = User.objects.create_user(username='map-admin', role='admin')
+        self.client.force_login(admin)
+        self.assertRedirects(self.client.post(url, {
+            'is_map_visible': 'false', 'return_to': 'all_batches',
+        }), reverse('all_batches'))
+        self.assertContains(self.client.get(reverse('all_batches')), 'Show on map')
+        self.client.post(self.url)
+        self.assertEqual(self.client.post(url, {'is_map_visible': 'true'}).status_code, 404)
+        self.client.post(reverse('repository_trash_action', args=[self.repository.pk]), {'action': 'restore'})
+        self.repository.refresh_from_db()
+        self.assertFalse(self.repository.is_map_visible)

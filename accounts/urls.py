@@ -22,6 +22,7 @@ urlpatterns = [
     path('researcher/trash/<int:batch_id>/', views.repository_trash_action, name='repository_trash_action'),
     path('researcher/batches/<int:batch_id>/', views.batch_detail, name='batch_detail'),
     path('researcher/batches/<int:batch_id>/delete/', views.batch_delete, name='batch_delete'),
+    path('researcher/batches/<int:batch_id>/map-visibility/', views.batch_map_visibility, name='batch_map_visibility'),
     path('researcher/batches/<int:batch_id>/export/excel/', views.batch_export_excel, name='batch_export_excel'),
     path('researcher/batch-images/<int:image_id>/annotated/', views.batch_image_annotated,
          name='batch_image_annotated'),

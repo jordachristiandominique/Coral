@@ -217,6 +217,7 @@ class DataRepository(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
     created_at = models.DateTimeField(auto_now_add=True)
     trashed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    is_map_visible = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['-created_at']

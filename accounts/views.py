@@ -1119,6 +1119,30 @@ def all_batches(request):
 
 @login_required(login_url='login')
 @require_http_methods(['POST'])
+def batch_map_visibility(request, batch_id):
+    """Set a repository's saved map visibility for its owner or an administrator."""
+    if request.user.is_pending():
+        return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+    visibility = request.POST.get('is_map_visible')
+    if visibility not in ('true', 'false'):
+        return HttpResponse('Choose a valid map visibility.', status=400)
+    repositories = DataRepository.objects.active()
+    if not request.user.is_admin():
+        repositories = repositories.filter(user=request.user)
+    with transaction.atomic():
+        repository = get_object_or_404(repositories.select_for_update(), pk=batch_id)
+        repository.is_map_visible = visibility == 'true'
+        repository.save(update_fields=['is_map_visible'])
+    state = 'shown on maps' if repository.is_map_visible else 'hidden from maps'
+    messages.success(request, f'Data repository "{repository.name}" is now {state}.')
+    destination = 'all_batches' if request.user.is_admin() and request.POST.get('return_to') == 'all_batches' else 'batches'
+    return redirect(destination)
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
 def batch_delete(request, batch_id):
     """Move a repository to Trash while preserving its images and results."""
     if request.user.is_pending():
@@ -1207,7 +1231,7 @@ def map_view(request):
         return redirect('pending_approval')
 
     # All users (admin and researchers) see all survey data
-    batches_qs = DataRepository.objects.active()
+    batches_qs = DataRepository.objects.active().filter(is_map_visible=True)
     
     batches_qs = batches_qs.annotate(image_count=Count('images'))
 
