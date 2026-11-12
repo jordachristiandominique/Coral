@@ -426,9 +426,9 @@
 .repository-actions-menu > summary:hover,
 .repository-actions-menu[open] > summary { background: #edf7f8; }
 .repository-actions-menu > summary:focus-visible,
-.repository-delete-form button:focus-visible { outline: 3px solid #2a8793; outline-offset: 3px; }
+.repository-menu-popover button:focus-visible { outline: 3px solid #2a8793; outline-offset: 3px; }
 
-.repository-delete-form {
+.repository-menu-popover {
     position: absolute;
     right: 0;
     bottom: calc(100% + 8px);
@@ -441,7 +441,8 @@
     box-shadow: 0 8px 24px rgba(13, 43, 58, 0.16);
 }
 
-.repository-delete-form button {
+.repository-menu-popover form { margin: 0; }
+.repository-menu-popover button {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -451,15 +452,17 @@
     border: 0;
     border-radius: 6px;
     background: #fff;
-    color: #b53030;
+    color: #1c5f6d;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
 }
 
-.repository-delete-form button:hover { background: #fff0f0; }
-.repository-delete-form button:disabled { opacity: .6; cursor: wait; }
-.repository-delete-form button svg { width: 16px; height: 16px; }
+.repository-menu-popover button:hover { background: #edf7f8; }
+.repository-menu-popover .repository-delete-form button { color: #b53030; }
+.repository-menu-popover .repository-delete-form button:hover { background: #fff0f0; }
+.repository-menu-popover button:disabled { opacity: .6; cursor: wait; }
+.repository-menu-popover button svg { width: 16px; height: 16px; }
 
 .trash-description { margin: 0; color: #527580; }
 .trash-restore-form, .trash-permanent-form { margin: 0; }

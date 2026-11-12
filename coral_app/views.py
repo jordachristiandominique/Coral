@@ -45,6 +45,7 @@ def public_dashboard(request):
                               for item in composition_summary(all_point_classes)}
 
         surveys.append({
+            'mapVisible': batch.is_map_visible,
             'area': batch.area_name,
             'surveyors': batch.surveyor_names or 'Not set',
             'lat': float(batch.latitude) if batch.latitude is not None else None,

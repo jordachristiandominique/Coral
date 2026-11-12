@@ -175,10 +175,9 @@ const initializePublicDashboard = function () {
         if (!markerLayer) return;
         markerLayer.clearLayers();
 
-        filtered.forEach(function (row) {
-            if (row.lat === null || row.lng === null || row.coverage === null) {
-                return;
-            }
+        const mapped = filtered.filter(row => row.mapVisible !== false
+            && row.lat !== null && row.lng !== null && row.coverage !== null);
+        mapped.forEach(function (row) {
             const coverageLabel = formatCoverage(row.coverage);
             const marker = L.circleMarker([row.lat, row.lng], {
                 radius: 8,
@@ -201,8 +200,8 @@ const initializePublicDashboard = function () {
             markerLayer.addLayer(marker);
         });
 
-        if (filtered.length) {
-            const bounds = L.latLngBounds(filtered.map(function (item) {
+        if (mapped.length) {
+            const bounds = L.latLngBounds(mapped.map(function (item) {
                 return [item.lat, item.lng];
             }));
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });

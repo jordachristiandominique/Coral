@@ -593,6 +593,15 @@ undo and hides while results are pending. The review UI suppresses the
 
 ## Repository Trash
 
+Repository action menus include Hide from map or Show on map, backed by the
+`DataRepository.is_map_visible` flag added in migration `0019`. Existing and new
+repositories default to visible. A CSRF-protected POST to `batch_map_visibility`
+sets an explicit boolean for an active repository owned by the user or managed by
+an administrator. Repeated submissions preserve the requested state. Surveyed
+Sites filters hidden repositories server-side. Public dashboard payloads carry
+`mapVisible`, which filters markers and map bounds while retaining survey data
+for dashboard statistics. Trash/restore preserves the visibility setting.
+
 Both repository lists include a bottom-right vertical three-dot menu with a
 Move to trash action. The profile menu links to Trash below Settings.
 `static/js/batches.js` closes menus on outside clicks or Escape. Move to trash
