@@ -211,11 +211,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
-<!-- Custom Global Script (profile menu, logout modal) -->
-<script src="{% static 'js/custom.js' %}?v=4"></script>
 <!-- Map View Script -->
 <script>
     window.mapData = JSON.parse('{{ geojson_data|default:"{\"type\":\"FeatureCollection\",\"features\":[]}"|escapejs }}');
 </script>
-<script src="{% static 'js/map_view.js' %}?v=9"></script>
+<script src="{% static 'js/map_view.js' %}?v=10"></script>
 {% endblock %}

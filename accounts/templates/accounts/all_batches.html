@@ -183,7 +183,7 @@
                     <a href="{% url 'batch_detail' batch.id %}" class="action-primary">View details</a>
                     <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline"><i data-lucide="plus"></i> Add transect</a>
                     <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline"><i data-lucide="download"></i> Excel</a>
-                    <a href="#" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
+                    <a href="{% url 'map_view' %}?site={{ batch.id }}" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
                     {% include 'accounts/partials/_repository_actions_menu.html' %}
                 </div>
             </article>

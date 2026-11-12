@@ -593,6 +593,12 @@ undo and hides while results are pending. The review UI suppresses the
 
 ## Repository Trash
 
+Repository Map buttons link to `map_view?site=<repository ID>` from both lists.
+`static/js/map_view.js` uses that ID after marker initialization to center at zoom
+15 and open the selected repository's popup. Missing, invalid or unavailable IDs
+use the existing overview of active sites. Popup content scrolls within the map's
+height. The map template uses the global script provided by `base.html`.
+
 Both repository lists include a bottom-right vertical three-dot menu with a
 Move to trash action. The profile menu links to Trash below Settings.
 `static/js/batches.js` closes menus on outside clicks or Escape. Move to trash

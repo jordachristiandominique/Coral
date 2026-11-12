@@ -41,3 +41,38 @@ test('a map popup with 100% OS renders a complete ring and its label', () => {
     assert.match(svg, /Other Substrate/);
     assert.match(svg, /100.0%/);
 });
+
+test('repository map links focus the selected marker after startup, with safe overview fallback', () => {
+    for (const search of ['?site=2', '', '?site=999', '?site=invalid']) {
+        const context = visualizationContext('map_view.js');
+        const timers = [], views = [], opened = [];
+        context.window.location = { search };
+        context.URLSearchParams = URLSearchParams;
+        context.setTimeout = callback => timers.push(callback);
+        const map = vm.runInContext('Object.create(CoralSenseMap.prototype)', context);
+        map.allBatches = [];
+        map.markers = new Map();
+        map.map = { setView(coordinates, zoom) { views.push({ coordinates, zoom }); } };
+        map.addMarker = batch => map.markers.set(batch.id, { openPopup() { opened.push(batch.id); } });
+        map.updateStats = () => {};
+        let overviewCalls = 0;
+        map.resetMapView = () => { overviewCalls++; };
+        // Co-located surveys must open the popup for the requested repository.
+        map.loadBatches([1, 2].map(id => ({
+            properties: { id, name: `Reef ${id}` },
+            geometry: { coordinates: [125.7, 7.1] },
+        })));
+        assert.equal(timers.length, 1);
+        timers[0]();
+        if (search === '?site=2') {
+            assert.deepEqual(opened, [2]);
+            assert.equal(views.length, 1);
+            assert.deepEqual(Array.from(views[0].coordinates), [7.1, 125.7]);
+            assert.equal(views[0].zoom, 15);
+            assert.equal(overviewCalls, 0);
+        } else {
+            assert.deepEqual(opened, []);
+            assert.equal(overviewCalls, 1);
+        }
+    }
+});

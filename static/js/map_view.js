@@ -160,7 +160,14 @@ class CoralSenseMap {
         this.updateStats();
 
         if (this.allBatches.length > 0) {
-            setTimeout(() => this.resetMapView(), 100);
+            const selectedSiteId = Number(new URLSearchParams(window.location.search).get('site'));
+            setTimeout(() => {
+                if (this.markers.has(selectedSiteId)) {
+                    this.highlightSurvey(selectedSiteId);
+                } else {
+                    this.resetMapView();
+                }
+            }, 100);
         }
     }
 
@@ -186,6 +193,7 @@ class CoralSenseMap {
 
         marker.bindPopup(this.createPopupContent(batch), {
             maxWidth: 280,
+            maxHeight: Math.max(160, this.map.getSize().y - 80),
             className: 'batch-popup'
         });
 
