@@ -29,6 +29,10 @@
     align-items: end;
 }
 
+.batches-filter-bar label {
+    margin: 0;
+}
+
 .batch-filter-search {
     box-sizing: border-box;
     display: flex;
@@ -151,6 +155,8 @@
 }
 
 .filter-clear-btn {
+    box-sizing: border-box;
+    margin: 0;
     height: 38px;
     width: 100%;
     border-radius: 8px;
