@@ -8,6 +8,7 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
 <link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=31">
+<link rel="stylesheet" href="{% static 'css/surveyor_tags.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -133,13 +134,17 @@
                         <span>Area Name</span>
                     </label>
 
-                    <label class="field-floating">
-                        <textarea id="surveyor-names" name="surveyor_names" placeholder=" " rows="2"
-                            {% if active_site %}readonly{% endif %} required>{% if active_site %}{{ active_site.surveyor_names }}{% else %}{{ user_full_name }}{% endif %}</textarea>
-                        <span>Survey By</span>
-                        <small class="field-help">Separate multiple names with commas. Press Enter to add another
-                            name.</small>
-                    </label>
+                    <div class="surveyor-field">
+                        <label class="field-floating">
+                            <textarea id="surveyor-names" name="surveyor_names" placeholder=" " rows="2"
+                                {% if active_site %}readonly{% endif %} required>{% if active_site %}{{ active_site.surveyor_names }}{% else %}{{ user_full_name }}{% endif %}</textarea>
+                            <span>Survey By</span>
+                            <small class="field-help">{% if active_site %}Manage tagged surveyors from the repository details page.{% else %}Separate surveyor names with commas.{% endif %}</small>
+                        </label>
+                        {% if not active_site %}
+                        {% include 'accounts/partials/_surveyor_tags.html' with names_input_id='surveyor-names' %}
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="coordinates-row">
@@ -487,38 +492,5 @@
 <script src="{% static 'js/upload_batch_analysis.js' %}?v=8"></script>
 <script src="{% static 'js/upload_batch_review.js' %}?v=4"></script>
 <script src="{% static 'js/upload_batch.js' %}?v=48"></script>
-<script>
-    // Auto-comma on Enter for surveyor names
-    document.addEventListener('DOMContentLoaded', function () {
-        const surveyorNameArea = document.getElementById('surveyor-names');
-        if (surveyorNameArea) {
-            surveyorNameArea.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
-                    e.preventDefault();
-                    const textarea = this;
-                    const start = textarea.selectionStart;
-                    const end = textarea.selectionEnd;
-                    const text = textarea.value;
-
-                    // Get the current line
-                    const beforeCursor = text.substring(0, start);
-                    const lastNewline = beforeCursor.lastIndexOf('\n');
-                    const currentLineStart = lastNewline === -1 ? 0 : lastNewline + 1;
-                    const currentLine = text.substring(currentLineStart, start).trim();
-
-                    // Add comma if the line doesn't end with one and isn't empty
-                    if (currentLine && !currentLine.endsWith(',')) {
-                        const newText = text.substring(0, start) + ',' + text.substring(start);
-                        textarea.value = newText;
-                        textarea.selectionStart = textarea.selectionEnd = start + 1;
-                    } else {
-                        const newText = text.substring(0, start) + '\n' + text.substring(start);
-                        textarea.value = newText;
-                        textarea.selectionStart = textarea.selectionEnd = start + 1;
-                    }
-                }
-            });
-        }
-    });
-</script>
+<script src="{% static 'js/surveyor_tags.js' %}?v=2"></script>
 {% endblock %}

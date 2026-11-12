@@ -2,6 +2,33 @@
 
 > Architecture reference for the Django project in this repository. Initial audit: 2026-09-29. Source corrections and project skill setup: 2026-10-10. Runtime verification is reported separately; source inspection is not proof of successful execution.
 
+## Surveyor account tags and shared repository access
+
+Migration `0020_repository_surveyor_accounts` adds `DataRepository.surveyors`, a
+many-to-many relation to user accounts, and expands `surveyor_names` to a text
+field to hold multiple full names. Existing recorded names remain stored as text.
+`SurveyorTagsForm` accepts approved, active researcher/admin accounts and rejects
+invalid or ineligible IDs. New uploads save the relationship inside the upload
+transaction. The uploader is selected initially in the account picker.
+
+Step 1 and the editable repository details page share `_surveyor_tags.html`,
+`static/js/surveyor_tags.js` and its CSS. Search matches name or email, choices
+become removable tags, and the existing names field and upload summary update.
+With JavaScript enabled, one Survey By field contains account tags, name-only
+tags and search. Enter adds a typed name. Account suggestions grant shared access.
+Pending typed names are committed when leaving the field or submitting the form.
+The underlying multiple select supports submission with JavaScript unavailable.
+Only account relationships grant shared access. Text names alone grant no access.
+
+`DataRepository.objects.viewable_by(user)` centralizes access for approved active
+users. Repository lists include owned/tagged records through a membership subquery
+that avoids duplicating image counts. Details, Excel, annotated images and private
+uploaded images check this access on every request. Tagged surveyors have viewing
+and download access. Owners and administrators manage metadata and tags, append
+transects, control map visibility and use Trash. Removing a tag revokes shared
+access. Trashing a repository suspends shared access until restoration. Older
+metadata submissions that omit tag fields preserve existing memberships.
+
 ## 1. Overview
 
 | Aspect | Value | Source |

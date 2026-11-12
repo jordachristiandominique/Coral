@@ -1,0 +1,18 @@
+<div class="surveyor-picker" data-surveyor-picker data-names-input="{{ names_input_id }}">
+    {{ surveyor_form.surveyor_tags_present }}
+    <label class="surveyor-fallback-label" for="surveyor-account-select">Tag account users</label>
+    {{ surveyor_form.surveyor_ids }}
+    <div class="surveyor-tag-controls" hidden>
+        <label class="surveyor-field-label" for="surveyor-account-search">Survey By</label>
+        <div class="surveyor-combined-field">
+            <div class="surveyor-tag-list" data-surveyor-tags aria-label="Surveyors"></div>
+            <input id="surveyor-account-search" type="search" autocomplete="off"
+                placeholder="Add a name or search accounts…" aria-label="Add a surveyor by name or email"
+                aria-describedby="surveyor-help" aria-controls="surveyor-account-results">
+        </div>
+        <div id="surveyor-account-results" class="surveyor-results" data-surveyor-results hidden></div>
+        <p class="surveyor-search-status" data-surveyor-status role="status"></p>
+    </div>
+    <p id="surveyor-help" class="surveyor-sharing-help">Select an account to share viewing access, or press Enter to add a name only.</p>
+    {{ surveyor_form.surveyor_ids.errors }}
+</div>

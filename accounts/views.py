@@ -24,6 +24,7 @@ from django.db.models.functions import TruncMonth
 from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
 from .forms import CustomUserCreationForm, LoginForm, CustomPasswordResetForm, CustomSetPasswordForm
+from .forms import SurveyorTagsForm, surveyor_names_with_tags
 from .models import (
     User, DataRepository, SurveyImage, Transect, Notification, POINT_CLASS_CODES,
     NATIONAL_HCC_AVERAGE, compute_coverage, classify_hcc, compute_site_hcc,
@@ -575,12 +576,7 @@ def batch_export_excel(request, batch_id):
     if request.user.is_superadmin():
         return redirect('admin:index')
 
-    # Admins can export any batch; researchers only their own (same rule as
-    # batch_detail).
-    if request.user.is_admin():
-        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id)
-    else:
-        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id, user=request.user)
+    batch = get_object_or_404(DataRepository.objects.viewable_by(request.user), id=batch_id)
 
     from .excel_export import build_batch_coverage_workbook, _safe_filename
 
@@ -860,6 +856,8 @@ def upload_batch(request):
     if request.user.is_pending():
         messages.info(request, 'Your account is still pending approval.')
         return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
 
     if request.method == 'POST':
         images = request.FILES.getlist('images')
@@ -900,6 +898,12 @@ def upload_batch(request):
             batch_name = request.POST.get('batch_name', '').strip()
             survey_date = request.POST.get('survey_date', '').strip()
             surveyor_names = request.POST.get('surveyor_names', '').strip()
+            surveyor_form = SurveyorTagsForm(request.POST)
+            if not surveyor_form.is_valid():
+                for field_errors in surveyor_form.errors.values():
+                    errors.extend(field_errors)
+            else:
+                surveyor_names = surveyor_names_with_tags(surveyor_names, surveyor_form.cleaned_data['surveyor_ids'])
             area_name = request.POST.get('area_name', '').strip()
             if not batch_name:
                 errors.append('Data repository name is required.')
@@ -948,7 +952,7 @@ def upload_batch(request):
         with transaction.atomic():
             if existing_batch is not None:
                 batch = get_object_or_404(
-                    DataRepository.objects.active().select_for_update(), pk=existing_batch.pk,
+                    DataRepository.objects.active().select_for_update(), **append_filter,
                 )
             else:
                 batch = DataRepository.objects.create(
@@ -960,6 +964,7 @@ def upload_batch(request):
                     latitude=latitude,
                     longitude=longitude,
                 )
+                batch.surveyors.set(surveyor_form.cleaned_data['surveyor_ids'])
 
             # One transect per submit, appended after any existing transects.
             # All transects in a site share the site's single location.
@@ -1033,6 +1038,7 @@ def upload_batch(request):
 
     context = {
         'active_site': active_site,
+        'surveyor_form': SurveyorTagsForm(initial={'surveyor_ids': [request.user.pk]}),
         'user': request.user,
         'generated_at': timezone.now(),
         'today': timezone.localdate(),
@@ -1055,13 +1061,19 @@ def upload_batch(request):
 
 @login_required(login_url='login')
 def batches(request):
-    """Render researcher's own batches list UI (My Batches)."""
+    """List repositories owned by or shared with the current researcher."""
     if request.user.is_pending():
         messages.info(request, 'Your account is still pending approval.')
         return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
 
-    # Always show only the logged-in user's batches
-    batches_qs = DataRepository.objects.active().filter(user=request.user)
+    # Include repositories shared with the researcher through account tags.
+    batches_qs = DataRepository.objects.viewable_by(request.user)
+    if request.user.is_admin():
+        batches_qs = batches_qs.filter(
+            Q(user=request.user) | Q(pk__in=request.user.shared_repositories.values('pk')),
+        )
     
     batches_qs = batches_qs.annotate(
         image_count=Count('images')
@@ -1313,10 +1325,9 @@ def batch_image_annotated(request, image_id):
     if request.user.is_pending():
         return HttpResponse('Account pending approval.', status=403)
 
-    if request.user.is_admin():
-        image = get_object_or_404(SurveyImage, batch__trashed_at__isnull=True, id=image_id)
-    else:
-        image = get_object_or_404(SurveyImage, batch__trashed_at__isnull=True, id=image_id, batch__user=request.user)
+    image = get_object_or_404(
+        SurveyImage, id=image_id, batch__in=DataRepository.objects.viewable_by(request.user),
+    )
 
     # ?w=<px> serves a downscaled render (thumbnails); ?plain=1 omits markers
     try:
@@ -1337,23 +1348,30 @@ def batch_image_annotated(request, image_id):
         return redirect(image.image.url)
 
     response = HttpResponse(payload, content_type='image/jpeg')
-    response['Cache-Control'] = 'private, max-age=300'
+    response['Cache-Control'] = 'private, no-store'
     return response
 
 
+@login_required(login_url='login')
 def batch_detail(request, batch_id):
     """Show uploaded images and metadata for a single batch."""
     if request.user.is_pending():
         messages.info(request, 'Your account is still pending approval.')
         return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
 
-    if request.user.is_admin():
-        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id)
-    else:
-        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id, user=request.user)
+    batch = get_object_or_404(DataRepository.objects.viewable_by(request.user), id=batch_id)
+    can_manage = request.user.is_admin() or batch.user_id == request.user.pk
+    surveyor_form = SurveyorTagsForm(
+        request.POST if request.method == 'POST' else None,
+        initial={'surveyor_ids': list(batch.surveyors.values_list('pk', flat=True))},
+    )
     images = batch.images.all()
 
     if request.method == 'POST':
+        if not can_manage:
+            return HttpResponse('You have viewing access to this repository.', status=403)
         batch_name = request.POST.get('name', '').strip()
         survey_date = request.POST.get('survey_date', '').strip()
         area_name = request.POST.get('area_name', '').strip()
@@ -1362,6 +1380,14 @@ def batch_detail(request, batch_id):
         longitude_raw = request.POST.get('longitude', '').strip()
 
         errors = []
+
+        tags_submitted = 'surveyor_tags_present' in request.POST or 'surveyor_ids' in request.POST
+        if tags_submitted:
+            if surveyor_form.is_valid():
+                surveyor_names = surveyor_names_with_tags(surveyor_names, surveyor_form.cleaned_data['surveyor_ids'])
+            else:
+                for field_errors in surveyor_form.errors.values():
+                    errors.extend(field_errors)
 
         if not batch_name:
             errors.append('Data repository name is required.')
@@ -1387,6 +1413,10 @@ def batch_detail(request, batch_id):
                 messages.error(request, error)
         else:
             with transaction.atomic():
+                editable = DataRepository.objects.active().filter(pk=batch.pk)
+                if not request.user.is_admin():
+                    editable = editable.filter(user=request.user)
+                batch = get_object_or_404(editable.select_for_update())
                 batch.name = batch_name
                 batch.survey_date = survey_date
                 batch.area_name = area_name
@@ -1401,6 +1431,8 @@ def batch_detail(request, batch_id):
                     'latitude',
                     'longitude',
                 ])
+                if tags_submitted:
+                    batch.surveyors.set(surveyor_form.cleaned_data['surveyor_ids'])
 
                 for image in images:
                     desc = request.POST.get(f'image_desc_{image.id}', '').strip()
@@ -1458,6 +1490,8 @@ def batch_detail(request, batch_id):
         'user': request.user,
         'generated_at': timezone.now(),
         'batch': batch,
+        'can_manage_repository': can_manage,
+        'surveyor_form': surveyor_form,
         'images': images,
         'transect_groups': transect_groups,
         'avg_coverage': site['site_percent'],

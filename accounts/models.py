@@ -205,13 +205,23 @@ class DataRepositoryQuerySet(models.QuerySet):
     def trashed(self):
         return self.filter(trashed_at__isnull=False)
 
+    def viewable_by(self, user):
+        if not user.is_authenticated or not user.is_active or user.role not in ('researcher', 'admin', 'superadmin'):
+            return self.none()
+        if user.is_admin() or user.is_superadmin():
+            return self.active()
+        return self.active().filter(
+            models.Q(user=user) | models.Q(pk__in=user.shared_repositories.values('pk')),
+        )
+
 
 class DataRepository(models.Model):
     objects = DataRepositoryQuerySet.as_manager()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='image_batches')
     name = models.CharField(max_length=160)
     survey_date = models.DateField()
-    surveyor_names = models.CharField(max_length=200, blank=True, default='')
+    surveyor_names = models.TextField(blank=True, default='')
+    surveyors = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='shared_repositories')
     area_name = models.CharField(max_length=160)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)

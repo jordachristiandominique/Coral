@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
 <link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=10">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/surveyor_tags.css' %}?v=3">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
 
@@ -92,37 +93,41 @@
             {% csrf_token %}
             <section class="surface-card batch-detail-header">
                 <p class="batch-detail-kicker">Data Repository Overview</p>
+                {% if not can_manage_repository %}<p class="field-help">Shared with you for viewing and downloading results.</p>{% endif %}
 
                 <!-- Editable survey metadata -->
                 <div class="batch-fields">
                     <label class="field field-full">
                         <span class="field-label">Data Repository Name</span>
-                        <input class="field-input field-title" type="text" name="name" value="{{ batch.name }}" required>
+                        <input class="field-input field-title" type="text" name="name" value="{{ batch.name }}" required{% if not can_manage_repository %} readonly{% endif %}>
                     </label>
                     <div class="field-row">
                         <label class="field">
                             <span class="field-label">Survey Date</span>
-                            <input class="field-input" type="date" name="survey_date" value="{{ batch.survey_date|date:'Y-m-d' }}" required>
+                            <input class="field-input" type="date" name="survey_date" value="{{ batch.survey_date|date:'Y-m-d' }}" required{% if not can_manage_repository %} readonly{% endif %}>
                         </label>
                         <label class="field">
                             <span class="field-label">Location</span>
-                            <input class="field-input" type="text" name="area_name" value="{{ batch.area_name }}" required>
+                            <input class="field-input" type="text" name="area_name" value="{{ batch.area_name }}" required{% if not can_manage_repository %} readonly{% endif %}>
                         </label>
                     </div>
                     <div class="field-row">
                         <label class="field">
                             <span class="field-label">Latitude</span>
-                            <input class="field-input" type="text" name="latitude" value="{{ batch.latitude }}" required>
+                            <input class="field-input" type="text" name="latitude" value="{{ batch.latitude }}" required{% if not can_manage_repository %} readonly{% endif %}>
                         </label>
                         <label class="field">
                             <span class="field-label">Longitude</span>
-                            <input class="field-input" type="text" name="longitude" value="{{ batch.longitude }}" required>
+                            <input class="field-input" type="text" name="longitude" value="{{ batch.longitude }}" required{% if not can_manage_repository %} readonly{% endif %}>
                         </label>
                     </div>
                     <label class="field field-full">
                         <span class="field-label">Survey By</span>
-                        <textarea class="field-input" name="surveyor_names" rows="2" required spellcheck="false">{{ batch.surveyor_names }}</textarea>
+                        <textarea class="field-input" id="detail-surveyor-names" name="surveyor_names" rows="2" required spellcheck="false"{% if not can_manage_repository %} readonly{% endif %}>{{ batch.surveyor_names }}</textarea>
                     </label>
+                    {% if can_manage_repository %}
+                    {% include 'accounts/partials/_surveyor_tags.html' with names_input_id='detail-surveyor-names' %}
+                    {% endif %}
                 </div>
 
                 <!-- Read-only analysis result -->
@@ -211,9 +216,9 @@
                         <span>Show substrate codes</span>
                     </label>
                     <div class="batch-overview-actions">
-                        <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline">Add transect</a>
+                        {% if can_manage_repository %}<a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline">Add transect</a>{% endif %}
                         <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline batch-download-btn">Download Excel</a>
-                        <button type="submit" class="primary-btn batch-save-btn">Save Changes</button>
+                        {% if can_manage_repository %}<button type="submit" class="primary-btn batch-save-btn">Save Changes</button>{% endif %}
                     </div>
                 </div>
             </section>
@@ -409,4 +414,5 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/batch_detail.js' %}?v=5"></script>
 <script src="{% static 'js/batch_visualization.js' %}?v=10"></script>
+<script src="{% static 'js/surveyor_tags.js' %}?v=2"></script>
 {% endblock %}

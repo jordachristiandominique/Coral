@@ -182,14 +182,18 @@
 
                 <div class="batch-actions">
                     <a href="{% url 'batch_detail' batch.id %}" class="action-primary">View details</a>
+                    {% if user.is_admin or batch.user == user %}
                     <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline"><i data-lucide="plus"></i> Add transect</a>
+                    {% endif %}
                     <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline"><i data-lucide="download"></i> Excel</a>
                     {% if batch.is_map_visible %}
                     <a href="{% url 'map_view' %}?site={{ batch.id }}" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
                     {% else %}
                     <button type="button" class="action-outline action-map" disabled title="Hidden from map. Choose Show on map to enable."><i data-lucide="map-pin"></i> Map</button>
                     {% endif %}
+                    {% if user.is_admin or batch.user == user %}
                     {% include 'accounts/partials/_repository_actions_menu.html' %}
+                    {% endif %}
                 </div>
             </article>
             {% endwith %}

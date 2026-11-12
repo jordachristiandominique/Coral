@@ -2,6 +2,42 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordResetForm, SetPasswordForm
 from .models import User
 
+
+class SurveyorSelectMultiple(forms.SelectMultiple):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if hasattr(value, 'instance'):
+            user = value.instance
+            option['attrs']['data-name'] = user.get_full_name() or user.username
+            option['attrs']['data-email'] = user.email
+        return option
+
+
+class SurveyorTagsForm(forms.Form):
+    surveyor_ids = forms.ModelMultipleChoiceField(
+        queryset=User.objects.none(), required=False, label='Tag account users',
+        widget=SurveyorSelectMultiple(attrs={'id': 'surveyor-account-select'}),
+        error_messages={'invalid_choice': 'Choose approved, active surveyor accounts.'},
+    )
+    surveyor_tags_present = forms.BooleanField(required=False, initial=True, widget=forms.HiddenInput)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['surveyor_ids'].queryset = User.objects.filter(
+            is_active=True, role__in=('researcher', 'admin'),
+        ).order_by('first_name', 'last_name', 'username')
+        self.fields['surveyor_ids'].label_from_instance = lambda user: user.get_full_name() or user.username
+
+
+def surveyor_names_with_tags(names, surveyors):
+    recorded = [part.strip() for part in names.replace('\n', ',').split(',') if part.strip()]
+    for user in surveyors:
+        name = user.get_full_name() or user.username
+        if name not in recorded:
+            recorded.append(name)
+    return ', '.join(recorded)
+
+
 class CustomUserCreationForm(UserCreationForm):
     """Form for user registration"""
     email = forms.EmailField(

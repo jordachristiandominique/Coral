@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404
 from django.shortcuts import redirect
 
-from .models import Report, SurveyImage, User
+from .models import DataRepository, Report, SurveyImage, User
 
 
 @login_required(login_url='login')
@@ -19,7 +19,7 @@ def uploaded_media(request, path):
     if path.startswith('batch_images/'):
         records = SurveyImage.objects.filter(image=path, batch__trashed_at__isnull=True)
         if not privileged:
-            records = records.filter(batch__user=request.user)
+            records = records.filter(batch__in=DataRepository.objects.viewable_by(request.user))
     elif path.startswith('profile_photos/'):
         records = User.objects.filter(profile_photo=path)
     elif path.startswith('reports/'):
