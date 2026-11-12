@@ -264,99 +264,11 @@
     font-size: 0.82rem;
 }
 
-.line-chart {
-    width: 100%;
-    height: 220px;
-    margin-top: 0.7rem;
-    overflow: visible;
-}
-
 .stacked-bar-chart {
     width: 100%;
     height: 250px;
     margin-top: 0.7rem;
     overflow: visible;
-}
-
-/* Axes and grid stay recessive so the data reads first */
-.line-grid {
-    stroke: #d7e5eb;
-    stroke-width: 1;
-}
-
-.line-tick {
-    stroke: #edf3f6;
-    stroke-width: 1;
-}
-
-.line-tick-label,
-.line-x-label {
-    fill: var(--public-muted);
-    font-size: 10px;
-    font-weight: 600;
-}
-
-.line-area {
-    fill: rgba(42, 120, 214, 0.10);
-    stroke: none;
-}
-
-.line-path {
-    fill: none;
-    stroke: var(--series-hard-coral);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-/* 2px surface ring keeps markers legible where they overlap the area fill */
-.line-point {
-    fill: var(--series-hard-coral);
-    stroke: #ffffff;
-    stroke-width: 2;
-}
-
-.line-hover {
-    stroke: var(--public-muted);
-    stroke-width: 1;
-    stroke-dasharray: 3 3;
-    opacity: 0;
-    transition: opacity 120ms ease;
-    pointer-events: none;
-}
-
-/* ===== Hover tooltip ===== */
-.chart-tooltip {
-    position: absolute;
-    z-index: 5;
-    transform: translate(-50%, -100%);
-    background: #0f2f3a;
-    color: #ffffff;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 11px;
-    line-height: 1.35;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 120ms ease;
-    box-shadow: 0 6px 16px rgba(15, 47, 58, 0.28);
-}
-
-.chart-tooltip.is-visible {
-    opacity: 1;
-}
-
-.chart-tooltip .tt-label {
-    display: block;
-    color: rgba(255, 255, 255, 0.72);
-    font-weight: 600;
-}
-
-.chart-tooltip .tt-value {
-    display: block;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
 }
 
 .stack-segment {
@@ -393,11 +305,7 @@
     flex: 0 0 auto;
 }
 
-.chart-caption {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--public-muted);
-}
+
 
 .donut-wrap {
     margin-top: 0.8rem;

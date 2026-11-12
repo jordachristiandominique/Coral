@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=5">
 {% endblock %}
 
 {% block content %}
@@ -14,7 +14,7 @@
     <div class="container">
         <header class="public-header">
             <p class="features-kicker">Public Monitoring Portal</p>
-            <h1>Davao Gulf Coral Coverage Public Dashboard</h1>
+            <h1>Surveyed Sites Public Dashboard</h1>
             <p>Last updated: {{ last_updated|date:"F d, Y"|default:"--" }}</p>
         </header>
 
@@ -67,22 +67,6 @@
             </div>
         </section>
 
-        <section class="charts-grid" aria-label="Hard Coral Cover trend">
-            <article class="chart-card">
-                <h2>Hard Coral Cover Trend</h2>
-                <p class="chart-sub">Line chart (last 6 months)</p>
-                <svg id="coverage-line-chart" class="line-chart" viewBox="0 0 600 220" role="img"
-                    aria-labelledby="coverage-chart-title">
-                    <title id="coverage-chart-title">Hard Coral Cover trend line chart</title>
-                    <line class="line-grid" x1="30" y1="20" x2="30" y2="190"></line>
-                    <line class="line-grid" x1="30" y1="190" x2="580" y2="190"></line>
-                    <path id="line-path" class="line-path" d=""></path>
-                </svg>
-                <p id="line-caption" class="chart-caption">Monthly mean site HCC for the selected survey records.</p>
-            </article>
-
-        </section>
-
         <section class="charts-grid" aria-label="HCC category and marker composition charts">
             <article class="chart-card">
                 <h2>HCC Category Distribution</h2>
@@ -99,7 +83,7 @@
             </article>
 
             <article class="chart-card">
-                <h2>Reviewed Marker Composition</h2>
+                <h2>Benthic Substrate Composition</h2>
                 <p class="chart-sub">Hard Coral (HC), Soft Coral (SC), and Other Substrate (OS)</p>
                 <div class="donut-wrap">
                     <div id="ecosystem-donut" class="donut donut-lg" aria-hidden="true"></div>
@@ -156,5 +140,5 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="{% static 'js/public_dashboard.js' %}?v=20261112visibility"></script>
+<script src="{% static 'js/public_dashboard.js' %}?v=20261112composition"></script>
 {% endblock %}

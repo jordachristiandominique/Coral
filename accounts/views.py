@@ -532,7 +532,7 @@ def analysis_results_export_pdf(request):
     pdf.setFont('Helvetica-Bold', 14)
     pdf.drawString(40, height - 40, 'CoralSense Analysis Results')
     pdf.setFont('Helvetica', 10)
-    pdf.drawString(40, height - 58, f"Generated: {timezone.now().strftime('%b %d, %Y %I:%M %p')}")
+    pdf.drawString(40, height - 58, f"Generated: {timezone.localtime().strftime('%b %d, %Y %I:%M %p')}")
 
     y = height - 90
     pdf.setFont('Helvetica-Bold', 9)

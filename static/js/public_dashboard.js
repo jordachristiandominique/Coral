@@ -47,9 +47,6 @@ const initializePublicDashboard = function () {
     const donut = document.getElementById('distribution-donut');
     const ecosystemDonut = document.getElementById('ecosystem-donut');
     const ecosystemLegend = document.getElementById('ecosystem-legend');
-    const linePath = document.getElementById('line-path');
-    const lineChart = document.getElementById('coverage-line-chart');
-    const lineCaption = document.getElementById('line-caption');
 
     const map = window.L ? L.map('public-survey-map', {
         zoomControl: true, scrollWheelZoom: false
@@ -125,7 +122,7 @@ const initializePublicDashboard = function () {
         }
 
         let html = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px;">';
-        html += '<strong style="display: block; margin-bottom: 8px;">Reviewed Marker Composition</strong>';
+        html += '<strong style="display: block; margin-bottom: 8px;">Benthic Substrate Composition</strong>';
 
         const classOrder = CLASS_ORDER;
         const classColors = CLASS_COLORS;
@@ -325,178 +322,6 @@ const initializePublicDashboard = function () {
         ecosystemLegend.innerHTML = legendHtml;
     }
 
-    function monthKey(d) {
-        const dt = parseDate(d);
-        return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
-    }
-
-    function renderLineChart(filtered) {
-        const sorted = filtered.filter(function (row) {
-            return row.coverage !== null;
-        }).slice().sort(function (a, b) {
-            return parseDate(a.date) - parseDate(b.date);
-        });
-
-        const monthBuckets = {};
-        sorted.forEach(function (row) {
-            const key = monthKey(row.date);
-            if (!monthBuckets[key]) {
-                monthBuckets[key] = [];
-            }
-            monthBuckets[key].push(row.coverage);
-        });
-
-        const keys = Object.keys(monthBuckets).sort().slice(-6);
-        if (!keys.length) {
-            linePath.setAttribute('d', '');
-            Array.from(lineChart.querySelectorAll('.line-point, .line-area, .line-tick, .line-tick-label, .line-x-label, .line-hover')).forEach(function (point) {
-                point.remove();
-            });
-            lineCaption.textContent = 'No survey data for the selected filters.';
-            return;
-        }
-
-        const values = keys.map(function (key) {
-            const points = monthBuckets[key];
-            return points.reduce(function (acc, n) { return acc + n; }, 0) / points.length;
-        });
-
-        // Round the scale outward to tidy tick values
-        const rawMin = Math.min.apply(null, values);
-        const rawMax = Math.max.apply(null, values);
-        const minY = Math.max(0, Math.floor((rawMin - 5) / 10) * 10);
-        const maxY = Math.min(100, Math.ceil((rawMax + 5) / 10) * 10);
-
-        const xStart = 44;
-        const xEnd = 580;
-        const yTop = 20;
-        const yBottom = 190;
-
-        const points = values.map(function (value, idx) {
-            const x = keys.length === 1 ? (xStart + xEnd) / 2 : xStart + (idx / (keys.length - 1)) * (xEnd - xStart);
-            const normalized = (value - minY) / (maxY - minY || 1);
-            const y = yBottom - normalized * (yBottom - yTop);
-            return { x: x, y: y, value: value, label: formatMonthLabel(keys[idx]) };
-        });
-
-        // Clear anything drawn by a previous render
-        Array.from(lineChart.querySelectorAll(
-            '.line-point, .line-tick, .line-tick-label, .line-x-label, .line-area, .line-hover'
-        )).forEach(function (node) { node.remove(); });
-
-        const svgNs = 'http://www.w3.org/2000/svg';
-        const addEl = function (tag, attrs, text) {
-            const el = document.createElementNS(svgNs, tag);
-            Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
-            if (text !== undefined) { el.textContent = text; }
-            lineChart.appendChild(el);
-            return el;
-        };
-
-        // Recessive horizontal gridlines + y tick labels
-        const tickCount = 4;
-        for (let i = 0; i <= tickCount; i += 1) {
-            const value = minY + ((maxY - minY) * i) / tickCount;
-            const y = yBottom - (i / tickCount) * (yBottom - yTop);
-            addEl('line', { class: 'line-tick', x1: xStart, y1: y.toFixed(1), x2: xEnd, y2: y.toFixed(1) });
-            addEl('text', {
-                class: 'line-tick-label', x: xStart - 8, y: (y + 3.5).toFixed(1), 'text-anchor': 'end'
-            }, Math.round(value) + '%');
-        }
-
-        // Area fill under the line gives the trend visual weight
-        const areaD = points.map(function (p, idx) {
-            return (idx === 0 ? 'M ' : 'L ') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
-        }).join(' ') + ' L ' + points[points.length - 1].x.toFixed(1) + ' ' + yBottom +
-            ' L ' + points[0].x.toFixed(1) + ' ' + yBottom + ' Z';
-        const area = document.createElementNS(svgNs, 'path');
-        area.setAttribute('class', 'line-area');
-        area.setAttribute('d', areaD);
-        lineChart.insertBefore(area, linePath);
-
-        const d = points.map(function (p, idx) {
-            return (idx === 0 ? 'M ' : 'L ') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
-        }).join(' ');
-        linePath.setAttribute('d', d);
-
-        points.forEach(function (p) {
-            addEl('text', {
-                class: 'line-x-label', x: p.x.toFixed(1), y: yBottom + 18, 'text-anchor': 'middle'
-            }, p.label);
-        });
-
-        points.forEach(function (p) {
-            addEl('circle', {
-                class: 'line-point', cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: '4.5'
-            });
-        });
-
-        attachLineHover(points, yTop, yBottom);
-
-        lineCaption.textContent = 'Showing monthly average coverage for the latest ' + keys.length + ' months.';
-    }
-
-    function formatMonthLabel(key) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthIndex = parseInt(String(key).substring(5, 7), 10) - 1;
-        const year = String(key).substring(2, 4);
-        return (months[monthIndex] || '') + " '" + year;
-    }
-
-    /** Crosshair + tooltip so each month's exact value is readable on hover. */
-    function attachLineHover(points, yTop, yBottom) {
-        if (!lineChart || !points.length) {
-            return;
-        }
-        const svgNs = 'http://www.w3.org/2000/svg';
-        const crosshair = document.createElementNS(svgNs, 'line');
-        crosshair.setAttribute('class', 'line-hover');
-        crosshair.setAttribute('y1', yTop);
-        crosshair.setAttribute('y2', yBottom);
-        crosshair.style.opacity = '0';
-        lineChart.appendChild(crosshair);
-
-        let tooltip = document.getElementById('line-tooltip');
-        if (!tooltip) {
-            tooltip = document.createElement('div');
-            tooltip.id = 'line-tooltip';
-            tooltip.className = 'chart-tooltip';
-            tooltip.setAttribute('role', 'status');
-            lineChart.parentNode.appendChild(tooltip);
-        }
-
-        const hide = function () {
-            crosshair.style.opacity = '0';
-            tooltip.classList.remove('is-visible');
-        };
-
-        lineChart.onmousemove = function (event) {
-            const box = lineChart.getBoundingClientRect();
-            // Map cursor position into the SVG's 600-wide viewBox
-            const svgX = ((event.clientX - box.left) / box.width) * 600;
-            let nearest = points[0];
-            points.forEach(function (p) {
-                if (Math.abs(p.x - svgX) < Math.abs(nearest.x - svgX)) {
-                    nearest = p;
-                }
-            });
-
-            crosshair.setAttribute('x1', nearest.x);
-            crosshair.setAttribute('x2', nearest.x);
-            crosshair.style.opacity = '1';
-
-            tooltip.innerHTML = '<span class="tt-label">' + escapeHtml(nearest.label) + '</span>' +
-                '<span class="tt-value">' + Math.round(nearest.value) + '% coverage</span>';
-            tooltip.classList.add('is-visible');
-            const left = (nearest.x / 600) * box.width;
-            const top = (nearest.y / 220) * box.height;
-            tooltip.style.left = left + 'px';
-            tooltip.style.top = Math.max(0, top - 12) + 'px';
-        };
-        lineChart.onmouseleave = hide;
-    }
-
     function buildMiniBarsHtml(classDistribution) {
         if (!classDistribution || Object.keys(classDistribution).length === 0) {
             return '<div style="color: #999; font-size: 12px;">No data</div>';
@@ -566,7 +391,6 @@ const initializePublicDashboard = function () {
         renderSummary(filtered);
         renderDonut(filtered);
         renderEcosystemDonut(filtered);
-        renderLineChart(filtered);
         renderFindings(filtered);
     }
 
