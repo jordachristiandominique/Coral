@@ -42,7 +42,6 @@ test('a map popup with 100% OS renders a complete ring and its label', () => {
     assert.match(svg, /100.0%/);
 });
 
-<<<<<<< HEAD
 test('repository map links focus the selected marker after startup, with safe overview fallback', () => {
     for (const search of ['?site=2', '', '?site=999', '?site=invalid']) {
         const context = visualizationContext('map_view.js');
@@ -76,7 +75,8 @@ test('repository map links focus the selected marker after startup, with safe ov
             assert.equal(overviewCalls, 1);
         }
     }
-=======
+});
+
 test('public map hides disabled surveys and fits bounds to visible markers, including older payloads', () => {
     const source = fs.readFileSync(path.join(__dirname, '../../static/js/public_dashboard.js'), 'utf8');
     const start = source.indexOf('    function renderMarkers(filtered)');
@@ -100,5 +100,4 @@ test('public map hides disabled surveys and fits bounds to visible markers, incl
     render([{ ...row, mapVisible: false }]);
     assert.equal(markers.length, 0);
     assert.equal(bounds.length, 1);
->>>>>>> apply-demo-analysis
 });
