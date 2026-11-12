@@ -601,6 +601,8 @@ an administrator. Repeated submissions preserve the requested state. Surveyed
 Sites filters hidden repositories server-side. Public dashboard payloads carry
 `mapVisible`, which filters markers and map bounds while retaining survey data
 for dashboard statistics. Trash/restore preserves the visibility setting.
+Both repository lists render a disabled Map button when the repository is hidden.
+Showing it on the map restores its link to `map_view?site=<repository ID>`.
 
 Both repository lists include a bottom-right vertical three-dot menu with a
 Move to trash action. The profile menu links to Trash below Settings.

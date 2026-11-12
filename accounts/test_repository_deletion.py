@@ -148,6 +148,8 @@ class RepositoryDeletionTests(TestCase):
         url = reverse('batch_map_visibility', args=[self.repository.pk])
         self.assertTrue(self.repository.is_map_visible)
         self.assertContains(self.client.get(reverse('batches')), 'Hide from map')
+        map_link = f'href="{reverse("map_view")}?site={self.repository.pk}"'
+        self.assertContains(self.client.get(reverse('batches')), map_link)
         for _ in range(2):
             self.assertRedirects(self.client.post(url, {'is_map_visible': 'false'}), reverse('batches'))
         self.repository.refresh_from_db()
@@ -156,6 +158,9 @@ class RepositoryDeletionTests(TestCase):
         self.assertEqual(json.loads(map_page.context['geojson_data'])['features'], [])
         self.assertEqual(map_page.context['total_batches'], 0)
         self.assertContains(self.client.get(reverse('batches')), 'Show on map')
+        hidden_page = self.client.get(reverse('batches'))
+        self.assertContains(hidden_page, 'class="action-outline action-map" disabled')
+        self.assertNotContains(hidden_page, map_link)
         public_rows = self.client.get(reverse('public_dashboard')).context['dashboard_surveys']
         self.assertEqual(len(public_rows), 1)
         self.assertFalse(public_rows[0]['mapVisible'])
@@ -164,6 +169,7 @@ class RepositoryDeletionTests(TestCase):
         self.client.post(url, {'is_map_visible': 'true'})
         self.assertEqual(self.client.get(reverse('map_view')).context['total_batches'], 1)
         self.assertContains(self.client.get(reverse('batches')), 'Hide from map')
+        self.assertContains(self.client.get(reverse('batches')), map_link)
 
     def test_map_visibility_permissions_post_and_csrf(self):
         url = reverse('batch_map_visibility', args=[self.repository.pk])
@@ -189,6 +195,7 @@ class RepositoryDeletionTests(TestCase):
             'is_map_visible': 'false', 'return_to': 'all_batches',
         }), reverse('all_batches'))
         self.assertContains(self.client.get(reverse('all_batches')), 'Show on map')
+        self.assertContains(self.client.get(reverse('all_batches')), 'class="action-outline action-map" disabled')
         self.client.post(self.url)
         self.assertEqual(self.client.post(url, {'is_map_visible': 'true'}).status_code, 404)
         self.client.post(reverse('repository_trash_action', args=[self.repository.pk]), {'action': 'restore'})

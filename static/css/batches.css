@@ -396,6 +396,12 @@
     color: #f0784f;
 }
 
+.batch-actions .action-map:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .repository-actions-menu {
     position: relative;
     margin-left: auto;
