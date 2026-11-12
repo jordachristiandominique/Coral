@@ -21,7 +21,7 @@ def landing_page(request):
 
 def public_dashboard(request):
     """Render the public dashboard page."""
-    batches = DataRepository.objects.select_related('user').order_by('-survey_date')
+    batches = DataRepository.objects.active().select_related('user').order_by('-survey_date')
 
     surveys = []
     for batch in batches:

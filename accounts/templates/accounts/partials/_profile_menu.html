@@ -53,6 +53,13 @@
                 <img src="{% static 'icons/setting.png' %}" alt="" aria-hidden="true" class="menu-icon">
                 <span>Settings</span>
             </a>
+            <a href="{% url 'repository_trash' %}" class="profile-dropdown-item" role="menuitem">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6" />
+                </svg>
+                <span>Trash</span>
+            </a>
             <a href="{% url 'logout' %}" class="profile-dropdown-item profile-dropdown-item-danger"
                 role="menuitem" data-logout-link>
                 <img src="{% static 'icons/logout.png' %}" alt="" aria-hidden="true" class="menu-icon">

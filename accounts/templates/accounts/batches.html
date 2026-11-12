@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=14">
 {% endblock %}
 
 {% block content %}
@@ -98,9 +98,10 @@
 
     <main class="researcher-main batches-main">
         <section class="surface-card batches-page-head" aria-label="My image batches header">
-            <h1><i data-lucide="folder"></i>My Data Repositories</h1>
+            <h1>{% block repository_heading %}<i data-lucide="folder"></i>My Data Repositories{% endblock %}</h1>
         </section>
 
+        {% block repository_content %}
         <section class="surface-card batches-filter-bar" aria-label="Batch filters">
             <label class="batch-filter-search" for="batch-search">
                 <i data-lucide="search" aria-hidden="true"></i>
@@ -184,6 +185,7 @@
                     <a href="{% url 'upload_batch' %}?site={{ batch.id }}" class="action-outline"><i data-lucide="plus"></i> Add transect</a>
                     <a href="{% url 'batch_export_excel' batch.id %}" class="action-outline"><i data-lucide="download"></i> Excel</a>
                     <a href="#" class="action-outline action-map"><i data-lucide="map-pin"></i> Map</a>
+                    {% include 'accounts/partials/_repository_actions_menu.html' %}
                 </div>
             </article>
             {% endwith %}
@@ -196,9 +198,11 @@
             </article>
             {% endfor %}
         </section>
+        {% endblock %}
     </main>
 </div>
 
+{% include 'accounts/partials/_repository_trash_modal.html' %}
 <div class="logout-modal" aria-hidden="true" data-logout-modal>
     <div class="logout-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title"
         aria-describedby="logout-desc">
@@ -215,5 +219,5 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/batches.js' %}?v=4"></script>
+<script src="{% static 'js/batches.js' %}?v=8"></script>
 {% endblock %}

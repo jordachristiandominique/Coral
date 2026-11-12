@@ -1,0 +1,11 @@
+<details class="repository-actions-menu">
+    <summary aria-label="More actions for {{ batch.name }}" title="More actions">
+        <i data-lucide="ellipsis-vertical" aria-hidden="true"></i>
+    </summary>
+    <form method="post" action="{% url 'batch_delete' batch.id %}" class="repository-delete-form" data-trash-action="move"
+        data-repository-name="{{ batch.name }}">
+        {% csrf_token %}
+        <input type="hidden" name="return_to" value="{{ batch_type }}">
+        <button type="submit"><i data-lucide="trash-2" aria-hidden="true"></i>Move to trash</button>
+    </form>
+</details>

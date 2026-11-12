@@ -198,7 +198,7 @@ def researcher_dashboard(request):
         return redirect('admin:index')
 
     # All users (admin and researchers) see all survey data
-    batches = DataRepository.objects.all().annotate(image_count=Count('images')).order_by('-survey_date')
+    batches = DataRepository.objects.active().annotate(image_count=Count('images')).order_by('-survey_date')
 
     # Reuse the image pass for the saved-marker composition chart.
     composition_points = Counter()
@@ -217,7 +217,7 @@ def researcher_dashboard(request):
         batches_with_coverage.append(batch)
 
     # Get total images count (all data)
-    total_images = SurveyImage.objects.count()
+    total_images = SurveyImage.objects.filter(batch__trashed_at__isnull=True).count()
 
     # Calculate overall average coverage
     all_coverages = [b.avg_coverage for b in batches_with_coverage if b.avg_coverage is not None]
@@ -303,7 +303,7 @@ def _parse_decimal(value):
 
 def _get_analysis_queryset(user):
     # All users (admin and researchers) see all survey data
-    return DataRepository.objects.all()
+    return DataRepository.objects.active()
 
 
 def _coverage_class(coverage_value):
@@ -578,9 +578,9 @@ def batch_export_excel(request, batch_id):
     # Admins can export any batch; researchers only their own (same rule as
     # batch_detail).
     if request.user.is_admin():
-        batch = get_object_or_404(DataRepository, id=batch_id)
+        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id)
     else:
-        batch = get_object_or_404(DataRepository, id=batch_id, user=request.user)
+        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id, user=request.user)
 
     from .excel_export import build_batch_coverage_workbook, _safe_filename
 
@@ -751,7 +751,7 @@ def manage_users(request):
     # Get all users (researcher and admin roles) ordered by most recent
     users = User.objects.filter(role__in=['researcher', 'admin']).order_by('-date_joined')
     
-    users = users.annotate(batch_count=Count('image_batches', distinct=True))
+    users = users.annotate(batch_count=Count('image_batches', filter=Q(image_batches__trashed_at__isnull=True), distinct=True))
 
     context = {
         'user': request.user,
@@ -872,7 +872,7 @@ def upload_batch(request):
             append_filter = {'id': existing_batch_id}
             if not request.user.is_admin():
                 append_filter['user'] = request.user
-            existing_batch = DataRepository.objects.filter(**append_filter).first()
+            existing_batch = DataRepository.objects.active().filter(**append_filter).first()
             if existing_batch is None:
                 messages.error(request, 'That site was not found. Please start a new site.')
                 return redirect('upload_batch')
@@ -947,7 +947,9 @@ def upload_batch(request):
 
         with transaction.atomic():
             if existing_batch is not None:
-                batch = existing_batch
+                batch = get_object_or_404(
+                    DataRepository.objects.active().select_for_update(), pk=existing_batch.pk,
+                )
             else:
                 batch = DataRepository.objects.create(
                     user=request.user,
@@ -1012,7 +1014,7 @@ def upload_batch(request):
         active_filter = {'id': site_id}
         if not request.user.is_admin():
             active_filter['user'] = request.user
-        site = DataRepository.objects.filter(**active_filter).first()
+        site = DataRepository.objects.active().filter(**active_filter).first()
         if site:
             next_number = (site.transects.aggregate(m=Max('number'))['m'] or 0) + 1
             # All transects share the site's single location, so the coordinates
@@ -1036,7 +1038,7 @@ def upload_batch(request):
         'today': timezone.localdate(),
         'user_full_name': request.user.get_full_name() or request.user.username,
         'survey_points': list(
-            DataRepository.objects.values(
+            DataRepository.objects.active().values(
                 'name',
                 'latitude',
                 'longitude',
@@ -1059,7 +1061,7 @@ def batches(request):
         return redirect('pending_approval')
 
     # Always show only the logged-in user's batches
-    batches_qs = DataRepository.objects.filter(user=request.user)
+    batches_qs = DataRepository.objects.active().filter(user=request.user)
     
     batches_qs = batches_qs.annotate(
         image_count=Count('images')
@@ -1093,7 +1095,7 @@ def all_batches(request):
         messages.error(request, 'You do not have permission to view all data repositories.')
         return redirect('batches')
     
-    batches_qs = DataRepository.objects.all()
+    batches_qs = DataRepository.objects.active()
     
     batches_qs = batches_qs.annotate(
         image_count=Count('images')
@@ -1116,6 +1118,88 @@ def all_batches(request):
 
 
 @login_required(login_url='login')
+@require_http_methods(['POST'])
+def batch_delete(request, batch_id):
+    """Move a repository to Trash while preserving its images and results."""
+    if request.user.is_pending():
+        messages.info(request, 'Your account is still pending approval.')
+        return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+
+    repositories = DataRepository.objects.active()
+    if not request.user.is_admin():
+        repositories = repositories.filter(user=request.user)
+    with transaction.atomic():
+        repository = get_object_or_404(repositories.select_for_update(), pk=batch_id)
+        name = repository.name
+        repository.trashed_at = timezone.now()
+        repository.save(update_fields=['trashed_at'])
+
+    messages.success(request, f'Data repository "{name}" moved to trash.')
+    destination = 'all_batches' if request.user.is_admin() and request.POST.get('return_to') == 'all_batches' else 'batches'
+    return redirect(destination)
+
+
+@login_required(login_url='login')
+def repository_trash(request):
+    if request.user.is_pending():
+        return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+    repositories = DataRepository.objects.trashed()
+    if not request.user.is_admin():
+        repositories = repositories.filter(user=request.user)
+    repositories = repositories.select_related('user').annotate(
+        image_count=Count('images', distinct=True),
+        transect_count=Count('transects', distinct=True),
+    ).order_by('-trashed_at')
+    return render(request, 'accounts/repository_trash.html', {'batches': repositories})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def repository_trash_action(request, batch_id):
+    if request.user.is_pending():
+        return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+    action = request.POST.get('action')
+    if action not in ('restore', 'delete'):
+        return HttpResponse('Unknown trash action.', status=400)
+    repositories = DataRepository.objects.trashed()
+    if not request.user.is_admin():
+        repositories = repositories.filter(user=request.user)
+    with transaction.atomic():
+        repository = get_object_or_404(repositories.select_for_update(), pk=batch_id)
+        name = repository.name
+        if action == 'restore':
+            repository.trashed_at = None
+            repository.save(update_fields=['trashed_at'])
+            messages.success(request, f'Data repository "{name}" restored.')
+            return redirect('repository_trash')
+
+        filenames = list(repository.images.values_list('image', flat=True).distinct())
+        storage = SurveyImage._meta.get_field('image').storage
+        repository.delete()
+
+        def delete_uploaded_files():
+            for filename in filenames:
+                if not filename or SurveyImage.objects.filter(image=filename).exists():
+                    continue
+                try:
+                    storage.delete(filename)
+                except OSError:
+                    logger.exception('Could not remove deleted repository image %s', filename)
+                    messages.warning(request, 'A deleted repository image could not be removed from storage.')
+
+        transaction.on_commit(delete_uploaded_files)
+
+    messages.success(request, f'Data repository "{name}" permanently deleted.')
+    return redirect('repository_trash')
+
+
+@login_required(login_url='login')
 def map_view(request):
     """Render interactive map view with survey locations."""
     if request.user.is_pending():
@@ -1123,7 +1207,7 @@ def map_view(request):
         return redirect('pending_approval')
 
     # All users (admin and researchers) see all survey data
-    batches_qs = DataRepository.objects.all()
+    batches_qs = DataRepository.objects.active()
     
     batches_qs = batches_qs.annotate(image_count=Count('images'))
 
@@ -1206,9 +1290,9 @@ def batch_image_annotated(request, image_id):
         return HttpResponse('Account pending approval.', status=403)
 
     if request.user.is_admin():
-        image = get_object_or_404(SurveyImage, id=image_id)
+        image = get_object_or_404(SurveyImage, batch__trashed_at__isnull=True, id=image_id)
     else:
-        image = get_object_or_404(SurveyImage, id=image_id, batch__user=request.user)
+        image = get_object_or_404(SurveyImage, batch__trashed_at__isnull=True, id=image_id, batch__user=request.user)
 
     # ?w=<px> serves a downscaled render (thumbnails); ?plain=1 omits markers
     try:
@@ -1240,9 +1324,9 @@ def batch_detail(request, batch_id):
         return redirect('pending_approval')
 
     if request.user.is_admin():
-        batch = get_object_or_404(DataRepository, id=batch_id)
+        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id)
     else:
-        batch = get_object_or_404(DataRepository, id=batch_id, user=request.user)
+        batch = get_object_or_404(DataRepository.objects.active(), id=batch_id, user=request.user)
     images = batch.images.all()
 
     if request.method == 'POST':

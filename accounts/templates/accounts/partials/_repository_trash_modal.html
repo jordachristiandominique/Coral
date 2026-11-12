@@ -1,0 +1,23 @@
+<dialog id="repository-trash-modal" class="repository-trash-modal"
+    aria-labelledby="repository-trash-title" aria-describedby="repository-trash-description">
+    <div class="repository-trash-modal-content">
+        <button type="button" class="repository-trash-close" aria-label="Close" data-trash-modal-cancel>
+            <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+        <span class="repository-trash-symbol"><i data-lucide="trash-2" aria-hidden="true"></i></span>
+        <h2 id="repository-trash-title">Move to trash</h2>
+        <p id="repository-trash-description"><span data-trash-description-prefix>Move </span><strong data-trash-repository-name></strong><span data-trash-description-suffix> to Trash? You can restore it from the Trash page.</span></p>
+        <p id="repository-trash-warning" class="repository-trash-warning" hidden>
+            <i data-lucide="triangle-alert" aria-hidden="true"></i>
+            <span>This action cannot be undone.</span>
+        </p>
+        <label class="repository-trash-confirm-label" for="repository-trash-confirm-name">
+            Type <strong data-trash-repository-name></strong> to confirm
+        </label>
+        <input id="repository-trash-confirm-name" type="text" autocomplete="off" spellcheck="false">
+        <div class="repository-trash-modal-actions">
+            <button type="button" class="repository-trash-cancel" data-trash-modal-cancel>Cancel</button>
+            <button type="button" class="repository-trash-confirm" id="repository-trash-confirm" disabled>Move to trash</button>
+        </div>
+    </div>
+</dialog>

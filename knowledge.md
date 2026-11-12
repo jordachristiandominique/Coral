@@ -590,3 +590,29 @@ Fullscreen review shows the active image's Hard Coral representative count besid
 the HCC percentage, for example `3/10 HC points`. It updates with review edits and
 undo and hides while results are pending. The review UI suppresses the
 `multiple_quadrats` sentence while retaining other warning messages.
+
+## Repository Trash
+
+Both repository lists include a bottom-right vertical three-dot menu with a
+Move to trash action. The profile menu links to Trash below Settings.
+`static/js/batches.js` closes menus on outside clicks or Escape. Move to trash
+opens a native dialog styled for CoralSense, with the repository name, restore
+reminder and name confirmation. Cancel, Close, Escape or the backdrop dismisses it.
+The confirmed action submits the existing CSRF-protected POST to `batch_delete`.
+Delete permanently uses the same styled dialog, with a red action, a warning that
+deletion cannot be undone and explicit deletion of transects, images and results.
+It requires a matching repository name before submitting the existing trash form.
+`accounts/views.py::batch_delete` permits the owner or an administrator and sets
+`DataRepository.trashed_at`, preserving transects, images and analysis results.
+Migration `0018_datarepository_trashed_at` adds the nullable indexed timestamp.
+`DataRepository.objects.active()` is used by lists, dashboards, analysis, maps,
+uploads and exports. Annotated image and authenticated media routes also exclude
+trashed repositories. `objects` retains all rows for audit and admin access.
+Upload appends recheck the active repository under a row lock.
+
+`repository_trash` lists the user's trashed repositories, or all trashed repositories
+for administrators. Its page provides Restore and Delete permanently forms posting
+to `repository_trash_action`. Restore clears the timestamp. Permanent deletion
+removes the repository and cascading transects/images in a transaction, then
+removes unreferenced uploaded files after commit. File removal errors are logged
+and shown as warnings. Repositories remain in Trash until an explicit action.

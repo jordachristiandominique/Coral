@@ -5,6 +5,95 @@ const initializeBatches = function () {
         window.lucide.createIcons();
     }
 
+    const actionMenus = document.querySelectorAll('.repository-actions-menu');
+    actionMenus.forEach(menu => {
+        menu.addEventListener('toggle', function () {
+            if (menu.open) actionMenus.forEach(other => {
+                if (other !== menu) other.open = false;
+            });
+        });
+    });
+    if (actionMenus.length) {
+        document.addEventListener('click', function (event) {
+            actionMenus.forEach(menu => {
+                if (!menu.contains(event.target)) menu.open = false;
+            });
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            actionMenus.forEach(menu => {
+                if (menu.open) {
+                    menu.open = false;
+                    menu.querySelector('summary').focus();
+                }
+            });
+        });
+    }
+    const trashModal = document.getElementById('repository-trash-modal');
+    const trashConfirmName = document.getElementById('repository-trash-confirm-name');
+    const trashConfirm = document.getElementById('repository-trash-confirm');
+    let pendingTrashForm = null;
+    if (trashModal) {
+        trashConfirmName.addEventListener('input', function () {
+            trashConfirm.disabled = !pendingTrashForm
+                || trashConfirmName.value !== pendingTrashForm.dataset.repositoryName;
+        });
+        trashModal.querySelectorAll('[data-trash-modal-cancel]').forEach(button => {
+            button.addEventListener('click', () => trashModal.close());
+        });
+        trashModal.addEventListener('click', function (event) {
+            if (event.target === trashModal) trashModal.close();
+        });
+        trashModal.addEventListener('close', function () {
+            if (pendingTrashForm) {
+                const trigger = pendingTrashForm.closest('details')?.querySelector('summary')
+                    || pendingTrashForm.querySelector('button');
+                trigger.focus();
+            }
+            pendingTrashForm = null;
+            trashConfirmName.value = '';
+            trashConfirm.disabled = true;
+        });
+        trashConfirm.addEventListener('click', function () {
+            if (!pendingTrashForm || trashConfirm.disabled) return;
+            const form = pendingTrashForm;
+            trashConfirm.disabled = true;
+            form.querySelector('button').disabled = true;
+            trashModal.close();
+            form.submit();
+        });
+    }
+    document.querySelectorAll('form[data-trash-action]').forEach(form => {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const name = form.dataset.repositoryName;
+            const permanent = form.dataset.trashAction === 'delete';
+            const label = permanent ? 'Delete permanently' : 'Move to trash';
+            pendingTrashForm = form;
+            trashModal.classList.toggle('is-permanent', permanent);
+            document.getElementById('repository-trash-title').textContent = label;
+            trashConfirm.textContent = label;
+            trashModal.querySelector('[data-trash-description-prefix]').textContent = permanent
+                ? 'Permanently delete ' : 'Move ';
+            trashModal.querySelector('[data-trash-description-suffix]').textContent = permanent
+                ? '? All its transects, uploaded images and analysis results will be permanently deleted.'
+                : ' to Trash? You can restore it from the Trash page.';
+            document.getElementById('repository-trash-warning').hidden = !permanent;
+            trashModal.setAttribute('aria-describedby', permanent
+                ? 'repository-trash-description repository-trash-warning' : 'repository-trash-description');
+            trashModal.querySelectorAll('[data-trash-repository-name]').forEach(node => {
+                node.textContent = name;
+            });
+            trashConfirmName.value = '';
+            trashConfirmName.placeholder = name;
+            trashConfirm.disabled = true;
+            const menu = form.closest('details');
+            if (menu) menu.open = false;
+            trashModal.showModal();
+            trashConfirmName.focus();
+        });
+    });
+
     // Fill each card's HCC bar from its data-width (kept off the inline style so
     // the template stays clean); a tick later so the width transition animates.
     const hccFills = document.querySelectorAll('.batch-hcc-bar > span[data-width]');
@@ -24,6 +113,7 @@ const initializeBatches = function () {
     const dateTo = document.getElementById('batch-date-to');
     const filterStatus = document.getElementById('batch-filter-status');
     const batchCards = document.querySelectorAll('.batch-card');
+    if (!dateFrom || !dateTo) return;
 
     // Filter functionality
     const applyFilters = function () {

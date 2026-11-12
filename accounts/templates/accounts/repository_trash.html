@@ -1,0 +1,46 @@
+{% extends 'accounts/batches.html' %}
+
+{% block title %}Trash | CoralSense{% endblock %}
+{% block repository_heading %}<i data-lucide="trash-2" aria-hidden="true"></i>Trash{% endblock %}
+
+{% block repository_content %}
+<p class="trash-description">Repositories stay here until you restore or permanently delete them.</p>
+<section class="batches-grid" aria-label="Trashed repositories">
+    {% for batch in batches %}
+    <article class="surface-card batch-card">
+        <div class="batch-card-head">
+            <h3 class="batch-card-name" title="{{ batch.name }}">{{ batch.name }}</h3>
+        </div>
+        <div class="batch-meta">
+            <span><i data-lucide="map-pin" aria-hidden="true"></i>{{ batch.area_name }}</span>
+            <span><i data-lucide="image" aria-hidden="true"></i>{{ batch.image_count }} image{{ batch.image_count|pluralize }}</span>
+            <span>{{ batch.transect_count }} transect{{ batch.transect_count|pluralize }}</span>
+        </div>
+        <div class="batch-people">
+            <span>Uploaded by {{ batch.user.get_full_name|default:batch.user.username }}</span>
+            <span>Moved to trash {{ batch.trashed_at|date:"M d, Y, g:i A" }}</span>
+        </div>
+        <div class="batch-actions">
+            <form method="post" action="{% url 'repository_trash_action' batch.id %}" class="trash-restore-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restore">
+                <button type="submit" class="action-primary"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Restore</button>
+            </form>
+            <form method="post" action="{% url 'repository_trash_action' batch.id %}"
+                class="trash-permanent-form" data-trash-action="delete" data-repository-name="{{ batch.name }}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <button type="submit" class="action-outline trash-permanent-button"><i data-lucide="trash-2" aria-hidden="true"></i>Delete permanently</button>
+            </form>
+        </div>
+    </article>
+    {% empty %}
+    <article class="surface-card batch-empty-card">
+        <i data-lucide="trash-2" aria-hidden="true"></i>
+        <h3>Trash is empty</h3>
+        <p>Repositories moved to trash will appear here.</p>
+        <a href="{% url 'batches' %}" class="action-primary">Back to repositories</a>
+    </article>
+    {% endfor %}
+</section>
+{% endblock %}

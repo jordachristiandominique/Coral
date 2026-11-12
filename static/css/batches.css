@@ -185,7 +185,7 @@
     border-radius: 16px;
     background: #ffffff;
     box-shadow: 0 6px 18px rgba(13, 43, 58, 0.06);
-    overflow: hidden;
+    overflow: visible;
     transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
@@ -395,6 +395,178 @@
 .batch-actions .action-map svg {
     color: #f0784f;
 }
+
+.repository-actions-menu {
+    position: relative;
+    margin-left: auto;
+    align-self: flex-end;
+}
+
+.batch-card:has(.repository-actions-menu[open]) {
+    position: relative;
+    z-index: 2;
+}
+
+.repository-actions-menu > summary {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid #c4dce1;
+    border-radius: 50%;
+    background: #fff;
+    color: #1c5f6d;
+    cursor: pointer;
+    list-style: none;
+}
+
+.repository-actions-menu > summary::-webkit-details-marker { display: none; }
+.repository-actions-menu > summary svg { width: 20px; height: 20px; }
+.repository-actions-menu > summary:hover,
+.repository-actions-menu[open] > summary { background: #edf7f8; }
+.repository-actions-menu > summary:focus-visible,
+.repository-delete-form button:focus-visible { outline: 3px solid #2a8793; outline-offset: 3px; }
+
+.repository-delete-form {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    min-width: 176px;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid #dce8ec;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(13, 43, 58, 0.16);
+}
+
+.repository-delete-form button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: #fff;
+    color: #b53030;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.repository-delete-form button:hover { background: #fff0f0; }
+.repository-delete-form button:disabled { opacity: .6; cursor: wait; }
+.repository-delete-form button svg { width: 16px; height: 16px; }
+
+.trash-description { margin: 0; color: #527580; }
+.trash-restore-form, .trash-permanent-form { margin: 0; }
+.trash-restore-form .action-primary { gap: 6px; cursor: pointer; }
+.trash-restore-form svg { width: 14px; height: 14px; }
+.batch-actions .trash-permanent-button {
+    color: #b53030;
+    border-color: #e8bebe;
+    background: #fff;
+    cursor: pointer;
+}
+.batch-actions .trash-permanent-button:hover { background: #fff0f0; }
+
+.repository-trash-modal {
+    box-sizing: border-box;
+    width: min(560px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 0;
+    border: 1px solid #dce5ea;
+    border-radius: 16px;
+    background: #fff;
+    color: #163a45;
+    box-shadow: 0 24px 80px rgba(13, 43, 58, .25);
+}
+
+.repository-trash-modal::backdrop { background: rgba(13, 43, 58, .45); }
+.repository-trash-modal-content { position: relative; padding: 32px; }
+
+.repository-trash-modal .repository-trash-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #6b8893;
+    cursor: pointer;
+}
+
+.repository-trash-close svg { width: 18px; height: 18px; }
+.repository-trash-symbol {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: #fff0f3;
+    color: #bd3151;
+}
+.repository-trash-symbol svg { width: 24px; height: 24px; }
+.repository-trash-modal h2 { margin: 0 0 20px; text-align: center; font-size: 21px; }
+.repository-trash-modal p { margin: 0 0 24px; color: #527580; line-height: 1.6; overflow-wrap: anywhere; }
+.repository-trash-confirm-label { display: block; margin-bottom: 8px; font-size: 14px; overflow-wrap: anywhere; }
+.repository-trash-confirm-label strong { color: #bd3151; }
+.repository-trash-modal input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 44px;
+    padding: 10px 12px;
+    border: 1px solid #c4d4dc;
+    border-radius: 8px;
+    background: #fff;
+    color: #163a45;
+    font: inherit;
+}
+.repository-trash-modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+.repository-trash-modal-actions button {
+    flex: 1;
+    margin: 0;
+    padding: 11px 14px;
+    border: 1px solid #c4d4dc;
+    border-radius: 8px;
+    background: #fff;
+    color: #1c5f6d;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.repository-trash-modal-actions .repository-trash-confirm { border-color: #bd3151; background: #bd3151; color: #fff; }
+.repository-trash-modal-actions .repository-trash-confirm:disabled { opacity: .45; cursor: not-allowed; }
+.repository-trash-modal input:focus-visible,
+.repository-trash-modal button:focus-visible { outline: 3px solid #2a8793; outline-offset: 3px; }
+
+.repository-trash-modal .repository-trash-warning:not([hidden]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #efc3c3;
+    border-radius: 8px;
+    background: #fff3f3;
+    color: #a52b2b;
+    font-size: 14px;
+    font-weight: 600;
+}
+.repository-trash-warning svg { width: 20px; height: 20px; flex-shrink: 0; }
+.repository-trash-modal.is-permanent .repository-trash-symbol { background: #fff0f0; color: #b53030; }
+.repository-trash-modal.is-permanent .repository-trash-confirm { background: #b53030; border-color: #b53030; }
+.repository-trash-modal.is-permanent .repository-trash-confirm:enabled:hover { background: #942727; }
 
 /* Empty state */
 .batch-empty-card {

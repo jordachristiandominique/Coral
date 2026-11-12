@@ -17,7 +17,7 @@ def uploaded_media(request, path):
         return redirect('pending_approval')
     privileged = request.user.is_admin() or request.user.is_superadmin()
     if path.startswith('batch_images/'):
-        records = SurveyImage.objects.filter(image=path)
+        records = SurveyImage.objects.filter(image=path, batch__trashed_at__isnull=True)
         if not privileged:
             records = records.filter(batch__user=request.user)
     elif path.startswith('profile_photos/'):

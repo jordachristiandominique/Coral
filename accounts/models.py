@@ -198,7 +198,16 @@ class User(AbstractUser):
         return self.role == 'superadmin'
 
 
+class DataRepositoryQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(trashed_at__isnull=True)
+
+    def trashed(self):
+        return self.filter(trashed_at__isnull=False)
+
+
 class DataRepository(models.Model):
+    objects = DataRepositoryQuerySet.as_manager()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='image_batches')
     name = models.CharField(max_length=160)
     survey_date = models.DateField()
@@ -207,6 +216,7 @@ class DataRepository(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
     created_at = models.DateTimeField(auto_now_add=True)
+    trashed_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
