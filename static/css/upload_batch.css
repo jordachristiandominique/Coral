@@ -1942,13 +1942,56 @@ body.analysis-progress-open .researcher-navbar {
 .detection-review { display: grid; gap: 10px; min-width: 0; }
 .detection-review[hidden] { display: none; }
 .review-check[hidden], .selected-box-editor[hidden], #selected-class-label[hidden] { display: none; }
-.review-toolbox { display: flex; flex-wrap: wrap; gap: 6px; }
-.review-toolbox button { border: 1px solid #b8cfd5; border-radius: 7px; padding: 7px 9px; color: #1c5f6d; background: #f4f9fa; cursor: pointer; font: inherit; font-size: 12px; }
+.review-toolbox { display: grid; gap: 10px; }
+.review-edit-tools, .review-history-tools {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+.review-coral-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.review-toolbox button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: 38px;
+    border: 1px solid #b8cfd5;
+    border-radius: 8px;
+    padding: 8px 6px;
+    color: #1c5f6d;
+    background: #f4f9fa;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.3;
+}
+.review-toolbox button:hover:not(:disabled) { border-color: #2a8793; }
+.review-toolbox button svg { width: 15px; height: 15px; flex-shrink: 0; }
+.review-coral-tools button { justify-content: flex-start; gap: 10px; padding: 11px 12px; }
+.review-coral-tools strong, .review-coral-tools small { display: block; text-align: left; }
+.review-coral-tools strong { font-size: 13px; }
+.review-coral-tools small { margin-top: 3px; font-size: 11px; }
+.review-toolbox [data-review-tool="hard"] { color: #69349c; background: #f5ebff; border-color: #d3b0ef; }
+.review-toolbox [data-review-tool="soft"] { color: #116c5e; background: #e6f8f3; border-color: #91d2c3; }
 .review-toolbox button[aria-pressed="true"] { color: #fff; background: #1c5f6d; border-color: #1c5f6d; }
+.review-toolbox [data-review-tool="hard"][aria-pressed="true"] { color: #fff; background: #773ab0; border-color: #773ab0; }
+.review-toolbox [data-review-tool="soft"][aria-pressed="true"] { color: #fff; background: #127867; border-color: #127867; }
+.review-toolbox button[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff, 0 0 0 3px currentColor; }
 .review-toolbox button:disabled { opacity: .45; cursor: not-allowed; }
 .review-toolbox button:focus-visible, .review-context-menu button:focus-visible { outline: 3px solid #65b9c8; outline-offset: 2px; }
-.review-visibility { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.review-display-settings { padding: 12px; border: 1px solid #e0ebee; border-radius: 10px; background: #f8fbfc; }
+.review-section-title { margin: 0 0 10px; color: #244d5a; font-size: 12px; font-weight: 700; }
+.review-visibility { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .review-visibility .review-check { margin: 0; }
+.review-display-settings > .review-check { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #e0ebee; }
+.review-check input { accent-color: #2a8793; }
+.review-image-shortcuts { display: flex; justify-content: center; align-items: center; gap: 5px; margin: 0; color: #587987; font-size: 11px; }
+.review-image-shortcuts kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border: 1px solid #d4e3e8; border-bottom-width: 2px; border-radius: 5px; background: #f7fafb; font: inherit; }
 .selected-box-label { font-size: 13px; color: #1c5f6d; font-weight: 700; }
 #review-box-selection, #selected-box-class, #review-quadrat-candidate { width: 100%; min-width: 0; border: 1px solid #bdd2da; border-radius: 6px; padding: 8px; background: white; color: #244d5a; }
 .selected-box-editor { padding: 10px; border: 1px solid #d8e5e9; border-radius: 8px; display: grid; gap: 8px; }
@@ -1999,6 +2042,12 @@ body.analysis-progress-open .researcher-navbar {
 .analysis-results-panel .ai-actions button:disabled { opacity: .55; cursor: not-allowed; }
 .quadrat-fs-side .analysis-results-panel { overflow-y: auto; }
 .quadrat-fs-side .analysis-results-panel .point-list { flex: 0 0 auto; overflow: visible; }
+
+@media (max-width: 860px) {
+    .quadrat-fs-side .analysis-results-panel { height: auto; overflow: visible; }
+    .quadrat-fs-side .review-panel-content { flex: 0 0 auto; overflow: visible; }
+    .quadrat-fs-side .review-panel-bottom { margin-top: 8px; }
+}
 .upload-batch-form, .upload-step-card, .quadrat-card { min-width: 0; }
 @media (max-width: 1100px) {
     .upload-shell { grid-template-columns: minmax(0, 1fr); }

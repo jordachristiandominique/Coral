@@ -1249,6 +1249,15 @@ const describeCoverageClass = function (code) {
         }
         if (event.key === 'Escape' && !contextMenu.hidden) { event.preventDefault(); event.stopImmediatePropagation(); closeContextMenu(); return; }
         if (event.target.closest('input,textarea,select,[contenteditable="true"]') || isAnalyzing || reviewDrag) return;
+        if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+            && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey
+            && activeResult() && selectedFiles.length > 1 && contextMenu.hidden
+            && !analyzeModal.classList.contains('is-visible')
+            && !analyzeConfirmModal.classList.contains('is-visible')) {
+            event.preventDefault();
+            setActiveFileIndex(activeFileIndex + (event.key === 'ArrowRight' ? 1 : -1));
+            return;
+        }
         const key = event.key.toLowerCase();
         if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
             event.preventDefault(); historyAction(key === 'y' || event.shiftKey);
