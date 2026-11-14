@@ -1250,7 +1250,7 @@ def map_view(request):
     # All users (admin and researchers) see all survey data
     batches_qs = DataRepository.objects.active().filter(is_map_visible=True)
     
-    batches_qs = batches_qs.annotate(image_count=Count('images'))
+    batches_qs = batches_qs.annotate(transect_count=Count('transects'))
 
     # Recalculate coverage from point_classes for each batch
     for batch in batches_qs:
@@ -1296,9 +1296,9 @@ def map_view(request):
                 'createdAt': batch.created_at.isoformat(),
                 'uploadedBy': batch.user.get_full_name() or batch.user.username,
                 'surveyors': batch.surveyor_names,
-                'imageCount': batch.image_count,
+                'transectCount': batch.transect_count,
                 'coverage': float(batch.avg_coverage) if batch.avg_coverage is not None else None,
-                'coverageClass': batch.coverage_class or 'Pending',
+                'coverageClass': batch.coverage_class or '',
                 'classBreakdown': batch.class_breakdown,
                 'dominantCoralType': batch.dominant_coral_type,
                 'hardCoralPct': batch.class_breakdown.get('Hard Coral', 0),

@@ -283,6 +283,15 @@
     align-items: center;
 }
 
+.popup-breakdown { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e9ec; }
+.popup-composition-title { margin-bottom: 8px; font-size: 12px; font-weight: 600; }
+.popup-composition-bar { display: flex; height: 12px; overflow: hidden; border-radius: 5px; background: #edf3f5; }
+.popup-composition-bar > span { height: 100%; }
+.popup-composition-legend { display: grid; gap: 5px; margin-top: 8px; }
+.popup-composition-row { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.popup-composition-row strong { margin-left: auto; white-space: nowrap; }
+.popup-composition-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 2px; }
+
 .popup-item {
     font-size: 13px;
     margin-bottom: 6px;

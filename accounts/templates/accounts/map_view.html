@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=5">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
@@ -114,7 +114,6 @@
                         <option value="B">Category B - HCC more than 33% up to 44%</option>
                         <option value="C">Category C - HCC more than 22% up to 33%</option>
                         <option value="D">Category D - HCC 0-22%</option>
-                        <option value="Pending">Pending</option>
                     </select>
                 </div>
 
@@ -215,5 +214,5 @@
 <script>
     window.mapData = JSON.parse('{{ geojson_data|default:"{\"type\":\"FeatureCollection\",\"features\":[]}"|escapejs }}');
 </script>
-<script src="{% static 'js/map_view.js' %}?v=11"></script>
+<script src="{% static 'js/map_view.js' %}?v=12"></script>
 {% endblock %}

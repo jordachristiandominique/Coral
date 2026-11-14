@@ -146,6 +146,9 @@ class RepositoryDeletionTests(TestCase):
 
     def test_map_visibility_persists_and_changes_map_data(self):
         url = reverse('batch_map_visibility', args=[self.repository.pk])
+        Transect.objects.create(batch=self.repository, number=2)
+        feature = json.loads(self.client.get(reverse('map_view')).context['geojson_data'])['features'][0]
+        self.assertEqual(feature['properties']['transectCount'], 2)
         self.assertTrue(self.repository.is_map_visible)
         self.assertContains(self.client.get(reverse('batches')), 'Hide from map')
         map_link = f'href="{reverse("map_view")}?site={self.repository.pk}"'

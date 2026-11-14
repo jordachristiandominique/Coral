@@ -33,10 +33,11 @@ test('repository graphs remain empty without stored classes', () => {
     assert.equal(Object.values(context.collectClassDistribution()).reduce((sum, count) => sum + count, 0), 0);
 });
 
-test('a map popup with 100% OS renders a complete ring and its label', () => {
+test('a map popup with 100% OS renders a compact full-width bar and its label', () => {
     const context = visualizationContext('map_view.js');
-    const svg = vm.runInContext('CoralSenseMap.prototype.createDonutChart.call({}, {"Other Substrate":100})', context);
-    assert.match(svg, /r="37.5"/);
+    const svg = vm.runInContext('Object.create(CoralSenseMap.prototype).createCompositionChart({"Other Substrate":100})', context);
+    assert.match(svg, /width:100%/);
+    assert.doesNotMatch(svg, /<svg|<circle/);
     assert.match(svg, /#d9a321/);
     assert.match(svg, /Other Substrate/);
     assert.match(svg, /100.0%/);

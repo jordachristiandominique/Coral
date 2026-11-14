@@ -2,7 +2,7 @@
  * Map View - Spatial visualization of coral survey sites
  * Uses Leaflet.js. Survey sites are drawn as proportional-symbol bubbles:
  *   - circle SIZE  = coral coverage %
- *   - circle COLOR = HCC category (A / B / C / D / Pending)
+ *   - circle COLOR = HCC category (A / B / C / D)
  * on a satellite basemap focused on the Davao Gulf.
  */
 
@@ -16,7 +16,6 @@ const CLASS_COLORS = {
     B: '#f2c11f',       // HCC more than 33% up to 44%
     C: '#e8820c',       // HCC more than 22% up to 33%
     D: '#d64545',       // HCC 0-22%
-    Pending: '#2a8793', // not analyzed
 };
 
 class CoralSenseMap {
@@ -118,7 +117,6 @@ class CoralSenseMap {
                 <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.B}"></span> Category B &mdash; HCC &gt;33&ndash;44%</div>
                 <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.C}"></span> Category C &mdash; HCC &gt;22&ndash;33%</div>
                 <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.D}"></span> Category D &mdash; HCC 0&ndash;22%</div>
-                <div class="map-legend-row"><span class="map-legend-dot" style="background:${CLASS_COLORS.Pending}"></span> Pending analysis</div>
                 <div class="map-legend-title" style="margin-top:8px;">Circle size = HCC %</div>
                 <div class="map-legend-sizes">
                     <span class="map-legend-size"><span class="map-legend-bubble" style="width:14px;height:14px;"></span>low</span>
@@ -160,7 +158,7 @@ class CoralSenseMap {
                 createdAt: props.createdAt,
                 uploadedBy: props.uploadedBy,
                 surveyors: props.surveyors,
-                imageCount: props.imageCount,
+                transectCount: props.transectCount,
                 coverage: props.coverage,
                 coverageClass: props.coverageClass,
                 classBreakdown: props.classBreakdown || {}
@@ -186,14 +184,14 @@ class CoralSenseMap {
         }
     }
 
-    /** Radius (px) proportional to coverage %. Pending sites get a small fixed dot. */
+    /** Radius (px) proportional to coverage %, with a small dot for missing results. */
     getRadius(batch) {
         if (batch.coverage === null || batch.coverage === undefined) return 7;
         return 8 + (Math.max(0, Math.min(100, batch.coverage)) / 100) * 16; // 8 - 24 px
     }
 
     getClassColor(coverageClass) {
-        return CLASS_COLORS[coverageClass] || CLASS_COLORS.Pending;
+        return CLASS_COLORS[coverageClass] || '#2a8793';
     }
 
     addMarker(batch) {
@@ -218,9 +216,9 @@ class CoralSenseMap {
         this.markers.set(batch.id, marker);
     }
 
-    createDonutChart(breakdown) {
+    createCompositionChart(breakdown) {
         /**
-         * Creates an SVG donut chart from class breakdown percentages
+         * Creates a compact stacked bar with class percentages
          * Shows saved HC/SC/OS composition and recorded historical classes
          */
         const colors = {
@@ -234,7 +232,7 @@ class CoralSenseMap {
             'Other Substrate': '#d9a321'
         };
 
-        // Prepare data - only show classes with > 0.5%
+        // Show every recorded substrate with a positive percentage.
         const data = Object.entries(breakdown)
             .filter(([cls, pct]) => pct > 0)
             .sort((a, b) => b[1] - a[1]);
@@ -243,51 +241,17 @@ class CoralSenseMap {
             return '<div style="text-align: center; color: #999; font-size: 11px;">No data available</div>';
         }
 
-        const radius = 45;
-        const centerX = 50;
-        const centerY = 50;
-        const innerRadius = 30;
-
-        let svg = `<svg viewBox="0 0 100 100" width="140" height="140" style="margin: 8px auto; display: block;">`;
-        let currentAngle = -90; // Start from top
-
-        data.forEach(([cls, pct]) => {
-            if (pct >= 99.999) {
-                svg += `<circle cx="50" cy="50" r="37.5" fill="none" stroke="${colors[cls] || '#7a8d96'}" stroke-width="15"/>`;
-                return;
-            }
-            const sliceAngle = (pct / 100) * 360;
-            const startAngle = currentAngle * Math.PI / 180;
-            const endAngle = (currentAngle + sliceAngle) * Math.PI / 180;
-
-            const x1 = centerX + radius * Math.cos(startAngle);
-            const y1 = centerY + radius * Math.sin(startAngle);
-            const x2 = centerX + radius * Math.cos(endAngle);
-            const y2 = centerY + radius * Math.sin(endAngle);
-            const x3 = centerX + innerRadius * Math.cos(endAngle);
-            const y3 = centerY + innerRadius * Math.sin(endAngle);
-            const x4 = centerX + innerRadius * Math.cos(startAngle);
-            const y4 = centerY + innerRadius * Math.sin(startAngle);
-
-            const largeArc = sliceAngle > 180 ? 1 : 0;
-
-            const pathData = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`;
-            svg += `<path d="${pathData}" fill="${colors[cls] || '#7a8d96'}" stroke="white" stroke-width="0.5" style="opacity: 0.85;"/>`;
-
-            currentAngle += sliceAngle;
-        });
-
-        svg += `<circle cx="${centerX}" cy="${centerY}" r="${innerRadius - 2}" fill="white"/>`;
-        svg += `</svg>`;
-
-        let legend = '<div style="margin-top: 8px; font-size: 10px; line-height: 1.4;">';
-        data.forEach(([cls, pct]) => {
-            const colorDot = `<span style="display: inline-block; width: 8px; height: 8px; background: ${colors[cls] || '#7a8d96'}; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>`;
-            legend += `<div style="margin: 2px 0;">${colorDot} ${cls}: <strong>${pct.toFixed(1)}%</strong></div>`;
-        });
-        legend += '</div>';
-
-        return svg + legend;
+        const segments = data.map(([cls, pct]) =>
+            `<span style="width:${pct}%;background:${colors[cls] || '#7a8d96'}"></span>`
+        ).join('');
+        const legend = data.map(([cls, pct]) => `
+            <div class="popup-composition-row">
+                <span class="popup-composition-dot" style="background:${colors[cls] || '#7a8d96'}"></span>
+                <span>${this.escapeHtml(cls)}</span><strong>${pct.toFixed(1)}%</strong>
+            </div>
+        `).join('');
+        return `<div class="popup-composition-bar" role="img" aria-label="Benthic substrate composition">${segments}</div>
+            <div class="popup-composition-legend">${legend}</div>`;
     }
 
     createPopupContent(batch) {
@@ -302,14 +266,14 @@ class CoralSenseMap {
             </div>`
             : `<div class="popup-item">
                 <span class="popup-label">HCC:</span>
-                <span class="coverage-badge pending">Pending Analysis</span>
+                <span class="popup-value">No analysis available</span>
             </div>`;
 
         const breakdown = batch.classBreakdown || {};
-        const donutChartHtml = Object.entries(breakdown).length > 0
-            ? `<div class="popup-breakdown" style="margin-top: 8px; border-top: 1px solid #e0e0e0; padding-top: 8px;">
-                <div style="font-weight: 600; font-size: 12px; color: #333; margin-bottom: 4px; text-align: center;">Benthic Substrate Composition</div>
-                ${this.createDonutChart(breakdown)}
+        const compositionHtml = Object.entries(breakdown).length > 0
+            ? `<div class="popup-breakdown">
+                <div class="popup-composition-title">Benthic Substrate Composition</div>
+                ${this.createCompositionChart(breakdown)}
             </div>`
             : '';
 
@@ -327,8 +291,8 @@ class CoralSenseMap {
                     <span class="popup-value">${new Date(batch.surveyDate).toLocaleDateString()}</span>
                 </div>
                 <div class="popup-item">
-                    <span class="popup-label">Images:</span>
-                    <span class="popup-value">${batch.imageCount}</span>
+                    <span class="popup-label">Transects:</span>
+                    <span class="popup-value">${batch.transectCount ?? 0}</span>
                 </div>
                 <div class="popup-item">
                     <span class="popup-label">Uploaded by:</span>
@@ -339,7 +303,7 @@ class CoralSenseMap {
                     <span class="popup-value">${this.escapeHtml(batch.surveyors || 'N/A')}</span>
                 </div>
                 ${coverageHtml}
-                ${donutChartHtml}
+                ${compositionHtml}
                 <div class="popup-item" style="margin-top: 10px;">
                     <a href="/accounts/researcher/batches/${batch.id}/"
                         style="color: #2a8793; font-weight: 600; text-decoration: none;">
@@ -422,12 +386,11 @@ class CoralSenseMap {
         };
 
         const total = batches.length;
-        const counts = { A: 0, B: 0, C: 0, D: 0, Pending: 0 };
+        const counts = { A: 0, B: 0, C: 0, D: 0 };
         let coverageSum = 0, coverageN = 0;
 
         batches.forEach(b => {
-            const cls = ['A', 'B', 'C', 'D'].includes(b.coverageClass) ? b.coverageClass : 'Pending';
-            counts[cls]++;
+            if (Object.hasOwn(counts, b.coverageClass)) counts[b.coverageClass]++;
             if (b.coverage !== null && b.coverage !== undefined) {
                 coverageSum += b.coverage;
                 coverageN++;
@@ -438,15 +401,17 @@ class CoralSenseMap {
         setText('summary-sites', total);
         setText('summary-avg', avg !== null ? avg.toFixed(1) + '%' : '—');
 
+        const classifiedTotal = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
         // Stacked distribution bar
         const bar = document.getElementById('summary-bar');
         if (bar) {
-            if (total === 0) {
-                bar.innerHTML = '<div class="summary-bar-empty">No sites match the current filters.</div>';
+            if (classifiedTotal === 0) {
+                bar.innerHTML = '<div class="summary-bar-empty">No classified sites match the current filters.</div>';
             } else {
-                bar.innerHTML = ['A', 'B', 'C', 'D', 'Pending'].map(cls => {
+                bar.innerHTML = ['A', 'B', 'C', 'D'].map(cls => {
                     if (counts[cls] === 0) return '';
-                    const pct = (counts[cls] / total) * 100;
+                    const pct = (counts[cls] / classifiedTotal) * 100;
                     return `<div class="summary-bar-seg" style="width:${pct}%;background:${CLASS_COLORS[cls]}"
                                 title="Category ${cls}: ${counts[cls]} site(s)"></div>`;
                 }).join('');
@@ -456,8 +421,8 @@ class CoralSenseMap {
         // Per-class counts legend
         const legend = document.getElementById('summary-legend');
         if (legend) {
-            const labels = { A: 'Category A (>44%)', B: 'Category B (>33-44%)', C: 'Category C (>22-33%)', D: 'Category D (0-22%)', Pending: 'Pending' };
-            legend.innerHTML = ['A', 'B', 'C', 'D', 'Pending'].map(cls => `
+            const labels = { A: 'Category A (>44%)', B: 'Category B (>33-44%)', C: 'Category C (>22-33%)', D: 'Category D (0-22%)' };
+            legend.innerHTML = ['A', 'B', 'C', 'D'].map(cls => `
                 <div class="summary-legend-row">
                     <span class="summary-legend-dot" style="background:${CLASS_COLORS[cls]}"></span>
                     <span class="summary-legend-label">${labels[cls]}</span>
