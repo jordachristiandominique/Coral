@@ -2367,7 +2367,29 @@ const describeCoverageClass = function (code) {
     }
 
     if (uploadForm) {
+        const requiredNameFields = [
+            [batchNameInput, 'Enter a data repository name.'],
+            [areaNameInput, 'Enter an area name.']
+        ];
+        requiredNameFields.forEach(function ([input, message]) {
+            if (!input || input.readOnly) return;
+            const validate = function () {
+                input.setCustomValidity(input.value.trim() ? '' : message);
+            };
+            input.addEventListener('input', validate);
+            validate();
+        });
+        uploadForm.addEventListener('invalid', function (event) {
+            const missingFields = requiredNameFields.filter(([input]) => input && !input.readOnly && !input.value.trim());
+            if (event.target === missingFields[0]?.[0]) {
+                Toast.show(missingFields.map(([, message]) => message).join(' '), 'warning', 6000);
+            }
+        }, true);
         uploadForm.addEventListener('submit', function (event) {
+            if (!uploadForm.reportValidity()) {
+                event.preventDefault();
+                return;
+            }
             // Double-check that all data is ready before submission
             if (!isReadyToAnalyze()) {
                 event.preventDefault();

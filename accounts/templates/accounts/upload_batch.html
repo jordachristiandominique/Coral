@@ -120,7 +120,7 @@
 
                 <div class="upload-form-grid">
                     <label class="field-floating">
-                        <input type="text" id="batch-name" name="batch_name" placeholder=" " value="{{ active_site.name|default:'' }}"{% if active_site %} readonly{% endif %}>
+                        <input type="text" id="batch-name" name="batch_name" placeholder=" " value="{{ active_site.name|default:'' }}" required pattern=".*\S.*"{% if active_site %} readonly{% endif %}>
                         <span>Data Repository Name</span>
                     </label>
 
@@ -130,7 +130,7 @@
                     </label>
 
                     <label class="field-floating">
-                        <input type="text" id="area-name" name="area_name" placeholder=" " value="{{ active_site.area_name|default:'' }}"{% if active_site %} readonly{% endif %}>
+                        <input type="text" id="area-name" name="area_name" placeholder=" " value="{{ active_site.area_name|default:'' }}" required pattern=".*\S.*"{% if active_site %} readonly{% endif %}>
                         <span>Area Name</span>
                     </label>
 
@@ -501,6 +501,6 @@
 <script src="{% static 'js/representative_points.js' %}?v=4"></script>
 <script src="{% static 'js/upload_batch_analysis.js' %}?v=8"></script>
 <script src="{% static 'js/upload_batch_review.js' %}?v=4"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=49"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=53"></script>
 <script src="{% static 'js/surveyor_tags.js' %}?v=2"></script>
 {% endblock %}
