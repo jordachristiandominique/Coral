@@ -7,7 +7,7 @@ const vm = require('node:vm');
 function repositories() {
     const controls = {};
     for (const id of ['batch-search', 'batch-date-filter', 'batch-class-filter', 'batch-clear-btn',
-        'batch-date-from', 'batch-date-to', 'batch-filter-status']) {
+        'batch-date-from', 'batch-date-to', 'batch-filter-status', 'batch-area-filter']) {
         controls[id] = {
             value: '', hidden: true, listeners: {},
             addEventListener(event, callback) { this.listeners[event] = callback; },
@@ -16,9 +16,9 @@ function repositories() {
         };
     }
     const cards = [
-        { dataset: { name: 'Reef Alpha', date: '2026-10-01', category: 'a' }, style: {} },
-        { dataset: { name: 'Reef Beta', date: '2026-10-15', category: 'b' }, style: {} },
-        { dataset: { name: 'Reef Gamma', date: '2026-10-31', category: 'a' }, style: {} },
+        { dataset: { name: 'Reef Alpha', area: 'Catagman', date: '2026-10-01', category: 'a' }, style: {} },
+        { dataset: { name: 'Reef Beta', area: 'Aundanao', date: '2026-10-15', category: 'b' }, style: {} },
+        { dataset: { name: 'Reef Gamma', area: 'Catagman', date: '2026-10-31', category: 'a' }, style: {} },
     ];
     const sorted = [];
     const context = {
@@ -78,4 +78,21 @@ test('reversed dates show validation feedback and recover when the range is corr
     r.set('batch-date-to', '2026-10-31');
     assert.equal(r.controls['batch-date-to'].validationMessage, '');
     assert.equal(r.visible().length, 1);
+});
+
+test('area filter combines with date, category and search, and Clear restores all areas', () => {
+    const r = repositories();
+    r.set('batch-area-filter', 'Catagman');
+    assert.equal(r.visible().length, 2);
+    r.set('batch-date-from', '2026-10-15');
+    assert.deepEqual(r.visible().map(card => card.dataset.name), ['Reef Gamma']);
+    r.set('batch-class-filter', 'B');
+    assert.equal(r.visible().length, 0);
+    assert.equal(r.controls['batch-filter-status'].hidden, false);
+    r.set('batch-class-filter', 'A');
+    r.set('batch-search', 'gamma', 'input');
+    assert.equal(r.visible().length, 1);
+    r.controls['batch-clear-btn'].listeners.click();
+    assert.equal(r.controls['batch-area-filter'].value, '');
+    assert.equal(r.visible().length, 3);
 });

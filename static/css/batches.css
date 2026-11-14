@@ -24,7 +24,7 @@
 
 .batches-filter-bar {
     display: grid;
-    grid-template-columns: minmax(180px, 1.2fr) minmax(290px, 1.6fr) 140px 70px;
+    grid-template-columns: minmax(160px, 1.2fr) minmax(260px, 1.6fr) repeat(2, minmax(110px, 0.8fr)) 70px;
     gap: 10px;
     align-items: end;
 }
@@ -625,13 +625,18 @@
     text-decoration: none;
 }
 
+@media (max-width: 1250px) {
+    .batches-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)) 70px; }
+    .batch-filter-search, .batch-date-range { grid-column: 1 / -1; }
+}
+
 @media (max-width: 1024px) {
     .batches-grid {
         grid-template-columns: 1fr;
     }
 
     .batches-filter-bar {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) 70px;
     }
 
     .batch-filter-search {

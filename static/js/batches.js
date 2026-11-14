@@ -109,6 +109,7 @@ const initializeBatches = function () {
     const batchSearch = document.getElementById('batch-search');
     const batchDateFilter = document.getElementById('batch-date-filter');
     const batchClassFilter = document.getElementById('batch-class-filter');
+    const batchAreaFilter = document.getElementById('batch-area-filter');
     const dateFrom = document.getElementById('batch-date-from');
     const dateTo = document.getElementById('batch-date-to');
     const filterStatus = document.getElementById('batch-filter-status');
@@ -120,6 +121,7 @@ const initializeBatches = function () {
         const searchTerm = batchSearch.value.toLowerCase();
         const dateFilter = batchDateFilter.value;
         const classFilter = batchClassFilter.value;
+        const areaFilter = batchAreaFilter ? batchAreaFilter.value : '';
         const startDate = dateFrom.value;
         const endDate = dateTo.value;
         dateFrom.max = endDate;
@@ -143,6 +145,7 @@ const initializeBatches = function () {
             }
 
             // Category filter
+            if (areaFilter) show = show && card.dataset.area === areaFilter;
             if (classFilter && show) {
                 show = show && (card.dataset.category === classFilter.toLowerCase());
             }
@@ -187,6 +190,9 @@ const initializeBatches = function () {
     if (batchClassFilter) {
         batchClassFilter.addEventListener('change', applyFilters);
     }
+    if (batchAreaFilter) {
+        batchAreaFilter.addEventListener('change', applyFilters);
+    }
 
     dateFrom.addEventListener('change', applyFilters);
     dateTo.addEventListener('change', applyFilters);
@@ -196,6 +202,7 @@ const initializeBatches = function () {
             batchSearch.value = '';
             batchDateFilter.value = '';
             batchClassFilter.value = '';
+            if (batchAreaFilter) batchAreaFilter.value = '';
             dateFrom.value = '';
             dateTo.value = '';
             applyFilters();

@@ -8,7 +8,7 @@ const initializeBatchDetail = function () {
     const codeToggle = document.getElementById('code-toggle');
     const batchImagesCard = document.querySelector('.batch-images-card');
 
-    // The quadrat box and point markers are rendered into the image server-side
+    // The quadrat, accepted coral boxes and point markers are rendered server-side
     // (see accounts/image_annotator.py), so no canvas overlay is drawn here.
     // The toggles pick which rendered variant each photo shows:
     //   overlay off                 -> plain photo (no markers)

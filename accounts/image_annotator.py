@@ -10,6 +10,7 @@ Rendering happens on demand so the output always reflects the current
 """
 
 import io
+import math
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -19,6 +20,7 @@ from .representative_points import normalize_marker_class
 QUADRAT_COLOR = (255, 138, 61)   # #ff8a3d, matches the on-screen overlay
 MARKER_COLOR = (255, 255, 255)
 HALO_COLOR = (0, 0, 0)
+CORAL_COLORS = {'Hard Coral': (181, 106, 255), 'Soft Coral': (50, 224, 191)}
 
 # Tried in order; falls back to Pillow's bundled bitmap font if none resolve.
 _FONT_CANDIDATES = ('arialbd.ttf', 'arial.ttf', 'segoeuib.ttf',
@@ -36,19 +38,23 @@ def _load_font(size):
 
 def _as_float(value, default=0.0):
     try:
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else default
     except (TypeError, ValueError):
         return default
 
 
 def render_annotated_image(batch_image, max_width=None, annotate=True,
-                           label_mode='number'):
+                           label_mode='number', show_coral_boxes=False):
     """Return a PIL Image of ``batch_image`` with quadrat + points drawn on.
 
     ``max_width`` downscales the photo *before* the markers are drawn, so
     thumbnails stay cheap to produce and their markers stay crisp rather than
     being shrunk along with the pixels. If the image has no quadrat data (or
     ``annotate`` is False) the plain photo is returned.
+
+    ``show_coral_boxes`` draws saved accepted HC/SC boxes, clipped to the quadrat.
+    Historical images without box review data retain their quadrat and markers.
 
     ``label_mode`` chooses the text drawn beside each cross: ``'number'`` (the
     1-based point index, the default) or ``'code'`` (the benthic substrate code
@@ -93,6 +99,42 @@ def render_annotated_image(batch_image, max_width=None, annotate=True,
     box_width = max(2, round(width / 400))
     draw.rectangle([rx, ry, rx + rw, ry + rh], outline=QUADRAT_COLOR, width=box_width)
 
+    if show_coral_boxes:
+        review = getattr(batch_image, 'analysis_review', None)
+        boxes = review.get('boxes', []) if isinstance(review, dict) else []
+        coral_draw = ImageDraw.Draw(image, 'RGBA')
+        coral_font = _load_font(max(11, round(width / 90)))
+        counts = dict.fromkeys(CORAL_COLORS, 0)
+        for region in boxes if isinstance(boxes, list) else []:
+            if not isinstance(region, dict) or region.get('class_name') not in CORAL_COLORS:
+                continue
+            class_name = region['class_name']
+            counts[class_name] += 1
+            box = region.get('box')
+            if not isinstance(box, dict):
+                continue
+            left = max(rx, 0, _as_float(box.get('x')) * width)
+            top = max(ry, 0, _as_float(box.get('y')) * height)
+            right = min(rx + rw, width, (_as_float(box.get('x')) + _as_float(box.get('w'))) * width)
+            bottom = min(ry + rh, height, (_as_float(box.get('y')) + _as_float(box.get('h'))) * height)
+            if right <= left or bottom <= top:
+                continue
+            color = CORAL_COLORS[class_name]
+            coral_draw.rectangle([round(left), round(top), round(right), round(bottom)], fill=(*color, 30),
+                                 outline=(*color, 255), width=box_width)
+            prefix = 'HC' if class_name == 'Hard Coral' else 'SC'
+            label = f'{prefix} {counts[class_name]}'
+            text_bounds = coral_draw.textbbox((0, 0), label, font=coral_font)
+            label_width = text_bounds[2] - text_bounds[0] + 6
+            label_height = text_bounds[3] - text_bounds[1] + 6
+            if label_width <= rw and label_height <= rh:
+                label_x = max(rx, min(left + 3, rx + rw - label_width))
+                label_y = max(ry, min(top + 3, ry + rh - label_height))
+                coral_draw.rectangle([label_x, label_y, label_x + label_width, label_y + label_height],
+                                     fill=(13, 43, 51, 220))
+                coral_draw.text((label_x + 3 - text_bounds[0], label_y + 3 - text_bounds[1]),
+                                label, font=coral_font, fill=(*color, 255))
+
     # Marker geometry scales with the photo so it looks the same on any resolution
     arm = max(6, round(width / 90))
     line_width = max(2, round(width / 500))
@@ -133,10 +175,10 @@ def render_annotated_image(batch_image, max_width=None, annotate=True,
 
 
 def render_annotated_bytes(batch_image, max_width=None, annotate=True, quality=88,
-                           label_mode='number'):
+                           label_mode='number', show_coral_boxes=False):
     """Return annotated JPEG bytes ready to serve or embed in a report."""
     image = render_annotated_image(batch_image, max_width=max_width, annotate=annotate,
-                                   label_mode=label_mode)
+                                   label_mode=label_mode, show_coral_boxes=show_coral_boxes)
     buffer = io.BytesIO()
     image.save(buffer, format='JPEG', quality=quality)
     return buffer.getvalue()

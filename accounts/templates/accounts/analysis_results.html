@@ -93,12 +93,6 @@
                 <h1>Data Repository Insights</h1>
                 <p class="page-sub">Showing {{ total_batches }} data repositories · {{ total_images }} images</p>
             </div>
-            <div class="analysis-export-actions">
-                <a href="{% url 'analysis_results_export_csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}"
-                    class="action-outline">Export CSV</a>
-                <a href="{% url 'analysis_results_export_pdf' %}{% if filter_query %}?{{ filter_query }}{% endif %}"
-                    class="action-outline">Export PDF</a>
-            </div>
         </section>
 
         <form class="surface-card analysis-filter-bar" method="get" aria-label="Analysis filters">

@@ -190,26 +190,10 @@
                 </div>
                 {% endif %}
 
-                <div class="coverage-computation" aria-label="Coverage computation">
-                    <span class="coverage-computation-label">How Hard Coral Cover is computed &mdash; CPCE point-intercept method</span>
-                    <div class="coverage-formula">
-                        Hard Coral Cover (HCC) = Hard Coral points &divide; Total points surveyed &times; 100
-                    </div>
-                    {% if batch_coverage.total %}
-                    <div class="coverage-substitution">
-                        = {{ batch_coverage.hard }} Hard Coral &divide; {{ batch_coverage.total }} points &times; 100
-                        = <strong class="coverage-result">{{ batch_coverage.percent }}%</strong>
-                        {% if batch_coverage.coverage_class %}&rarr; Category {{ batch_coverage.coverage_class }}{% endif %}
-                    </div>
-                    {% else %}
-                    <div class="coverage-substitution">No classified points yet.</div>
-                    {% endif %}
-                </div>
-
                 <div class="batch-overview-footer">
                     <label class="overlay-toggle">
                         <input type="checkbox" id="overlay-toggle" checked>
-                        <span>Show quadrat overlay</span>
+                        <span>Show quadrat, coral boxes and markers</span>
                     </label>
                     <label class="overlay-toggle">
                         <input type="checkbox" id="code-toggle">
@@ -227,7 +211,7 @@
             <section class="visualization-section">
                 <!-- Pie Chart Card -->
                 <div class="viz-card">
-                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Reviewed Marker Composition</h3>
+                    <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Benthic Substrate Composition</h3>
                     <div class="chart-container">
                         <canvas id="coralClassChart"></canvas>
                     </div>
@@ -336,17 +320,6 @@
                                         {% else %}Awaiting analysis{% endif %}
                                     </span>
                                 </p>
-
-                                <div class="coverage-computation coverage-computation-sm" aria-label="Coverage computation">
-                                    <span class="coverage-computation-label">Computation</span>
-                                    <div class="coverage-substitution">
-                                        {% if image.coverage_breakdown.total %}
-                                        {{ image.coverage_breakdown.hard }} Hard Coral &divide; {{ image.coverage_breakdown.total }} &times; 100
-                                        = <strong class="coverage-result">{{ image.coverage_breakdown.percent }}%</strong>
-                                        {% if image.coverage_breakdown.coverage_class %}&rarr; Category {{ image.coverage_breakdown.coverage_class }}{% endif %}
-                                        {% else %}No classified points.{% endif %}
-                                    </div>
-                                </div>
 
                                 <div class="point-legend" aria-label="Point classifications">
                                     <p class="point-legend-title">

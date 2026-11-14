@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=17">
+<link rel="stylesheet" href="{% static 'css/batches.css' %}?v=18">
 {% endblock %}
 
 {% block content %}
@@ -118,6 +118,16 @@
                 </label>
             </div>
 
+            <label class="batch-filter-select" for="batch-area-filter">
+                <span class="sr-only">Filter by area</span>
+                <select id="batch-area-filter" name="batch-area-filter">
+                    <option value="">All areas</option>
+                    {% for area in area_names %}
+                    <option value="{{ area }}">{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
             <label class="batch-filter-select" for="batch-class-filter">
                 <span class="sr-only">Filter by HCC category</span>
                 <select id="batch-class-filter" name="batch-class-filter">
@@ -150,7 +160,7 @@
             {% with cat=batch.coverage_class|default:'pending'|lower %}
             <article class="surface-card batch-card cat-{{ cat }}"
                 data-name="{{ batch.name }}" data-date="{{ batch.survey_date|date:'Y-m-d' }}"
-                data-category="{{ cat }}">
+                data-area="{{ batch.area_name }}" data-category="{{ cat }}">
                 <div class="batch-card-head">
                     <h3 class="batch-card-name" title="{{ batch.name }}">{{ batch.name }}</h3>
                     <span class="batch-class-badge class-{{ cat }}">
@@ -220,5 +230,5 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/batches.js' %}?v=8"></script>
+<script src="{% static 'js/batches.js' %}?v=9"></script>
 {% endblock %}

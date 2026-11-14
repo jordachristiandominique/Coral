@@ -1094,6 +1094,7 @@ def batches(request):
         'generated_at': timezone.now(),
         'batches': batches_qs,
         'batch_type': 'my_batches',
+        'area_names': sorted({batch.area_name for batch in batches_qs if batch.area_name}),
     }
     return render(request, 'accounts/batches.html', context)
 
@@ -1128,6 +1129,7 @@ def all_batches(request):
         'generated_at': timezone.now(),
         'batches': batches_qs,
         'batch_type': 'all_batches',
+        'area_names': sorted({batch.area_name for batch in batches_qs if batch.area_name}),
     }
     return render(request, 'accounts/all_batches.html', context)
 
@@ -1346,7 +1348,7 @@ def batch_image_annotated(request, image_id):
 
     try:
         payload = render_annotated_bytes(image, max_width=max_width, annotate=annotate,
-                                         label_mode=label_mode)
+                                         label_mode=label_mode, show_coral_boxes=True)
     except (FileNotFoundError, OSError):
         # Original file missing/unreadable — fall back to the stored image
         return redirect(image.image.url)
