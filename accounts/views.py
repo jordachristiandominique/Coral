@@ -1288,6 +1288,7 @@ def map_view(request):
                 'name': batch.name,
                 'area': batch.area_name,
                 'surveyDate': batch.survey_date.isoformat(),
+                'createdAt': batch.created_at.isoformat(),
                 'uploadedBy': batch.user.get_full_name() or batch.user.username,
                 'surveyors': batch.surveyor_names,
                 'imageCount': batch.image_count,

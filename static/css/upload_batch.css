@@ -1937,6 +1937,22 @@ body.analysis-progress-open .researcher-navbar {
     box-shadow: 0 1px 3px rgba(13, 43, 58, 0.35);
 }
 .leaflet-tooltip.transect-map-label::before { display: none; }
+.survey-location-popup { color: #244d5a; font-size: 12px; line-height: 1.5; }
+.survey-location-use {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px 12px;
+    border: 1px solid #1c5f6d;
+    border-radius: 7px;
+    background: #1c5f6d;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.survey-location-use:hover { background: #144a55; }
+.survey-location-use:focus-visible { outline: 3px solid #65b9c8; outline-offset: 2px; }
 
 /* Real detection suggestions and explicit image review. */
 .detection-review { display: grid; gap: 10px; min-width: 0; }

@@ -116,8 +116,28 @@ const initializeUploadBatch = function () {
                     const surveyorLabel = point.surveyor_names ? `Survey by: ${point.surveyor_names}` : null;
                     const researcherLabel = researcherName ? `Uploaded by: ${researcherName}` : null;
                     const title = point.name || 'Survey location';
-                    const lines = [title, dateLabel, surveyorLabel, researcherLabel].filter(Boolean).join('<br>');
-                    marker.bindPopup(lines);
+                    const popup = document.createElement('div');
+                    popup.className = 'survey-location-popup';
+                    [title, dateLabel, surveyorLabel, researcherLabel].filter(Boolean).forEach(function (text) {
+                        const line = document.createElement('div');
+                        line.textContent = text;
+                        popup.appendChild(line);
+                    });
+                    const useCoordinates = document.createElement('button');
+                    useCoordinates.type = 'button';
+                    useCoordinates.className = 'survey-location-use';
+                    useCoordinates.textContent = 'Use these coordinates';
+                    useCoordinates.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        setPin(marker.getLatLng(), false);
+                        latInput.value = String(point.latitude);
+                        lngInput.value = String(point.longitude);
+                        latInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        lngInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        map.closePopup();
+                    });
+                    popup.appendChild(useCoordinates);
+                    marker.bindPopup(popup);
                 });
             } catch (error) {
                 // Ignore malformed survey data.

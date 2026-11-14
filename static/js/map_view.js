@@ -37,7 +37,7 @@ class CoralSenseMap {
         }
 
         this.setupEventListeners();
-        this.renderSummary(this.allBatches);
+        this.renderSummary(this.filteredBatches);
     }
 
     initMap() {
@@ -132,6 +132,19 @@ class CoralSenseMap {
         legend.addTo(this.map);
     }
 
+    latestSurveysByLocation(batches) {
+        const newestFirst = [...batches].sort((a, b) =>
+            (b.surveyDate || '').localeCompare(a.surveyDate || '')
+            || (b.createdAt || '').localeCompare(a.createdAt || '')
+            || b.id - a.id);
+        const locations = new Map();
+        newestFirst.forEach(batch => {
+            const key = `${batch.latitude},${batch.longitude}`;
+            if (!locations.has(key)) locations.set(key, batch);
+        });
+        return [...locations.values()];
+    }
+
     loadBatches(features) {
         features.forEach(feature => {
             const props = feature.properties;
@@ -144,6 +157,7 @@ class CoralSenseMap {
                 latitude: coords[1],
                 longitude: coords[0],
                 surveyDate: props.surveyDate,
+                createdAt: props.createdAt,
                 uploadedBy: props.uploadedBy,
                 surveyors: props.surveyors,
                 imageCount: props.imageCount,
@@ -156,7 +170,8 @@ class CoralSenseMap {
             this.addMarker(batch);
         });
 
-        this.filteredBatches = [...this.allBatches];
+        this.filteredBatches = this.latestSurveysByLocation(this.allBatches);
+        this.updateMapVisibility();
         this.updateStats();
 
         if (this.allBatches.length > 0) {
@@ -355,7 +370,7 @@ class CoralSenseMap {
         const dateEnd = document.getElementById('filter-date-end').value;
         const coverageClass = document.getElementById('filter-coverage').value;
 
-        this.filteredBatches = this.allBatches.filter(batch => {
+        this.filteredBatches = this.latestSurveysByLocation(this.allBatches.filter(batch => {
             if (searchText && !batch.name.toLowerCase().includes(searchText) &&
                 !batch.area.toLowerCase().includes(searchText)) {
                 return false;
@@ -364,7 +379,7 @@ class CoralSenseMap {
             if (dateEnd && batch.surveyDate > dateEnd) return false;
             if (coverageClass && batch.coverageClass !== coverageClass) return false;
             return true;
-        });
+        }));
 
         this.updateMapVisibility();
         this.renderSummary(this.filteredBatches);
@@ -377,9 +392,9 @@ class CoralSenseMap {
         document.getElementById('filter-date-end').value = '';
         document.getElementById('filter-coverage').value = '';
 
-        this.filteredBatches = [...this.allBatches];
+        this.filteredBatches = this.latestSurveysByLocation(this.allBatches);
         this.updateMapVisibility();
-        this.renderSurveyList(this.filteredBatches);
+        this.renderSummary(this.filteredBatches);
         this.updateStats();
     }
 
@@ -477,9 +492,11 @@ class CoralSenseMap {
     }
 
     highlightSurvey(batchId) {
-        const marker = this.markers.get(batchId);
+        const requested = this.allBatches.find(batch => batch.id === batchId);
+        const batch = requested && this.filteredBatches.find(candidate =>
+            candidate.latitude === requested.latitude && candidate.longitude === requested.longitude);
+        const marker = batch && this.markers.get(batch.id);
         if (marker) {
-            const batch = this.allBatches.find(b => b.id === batchId);
             this.map.setView([batch.latitude, batch.longitude], 15, {
                 animate: true,
                 duration: 0.5
