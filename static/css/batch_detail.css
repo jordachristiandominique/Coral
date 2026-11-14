@@ -485,6 +485,28 @@
     display: none;
 }
 
+.batch-image-edit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    gap: 8px;
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 10px 16px;
+    border: 1px solid #1c5f6d;
+    border-radius: 9px;
+    background: #1c5f6d;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 2px 5px rgba(28, 95, 109, 0.15);
+}
+.batch-image-edit-button:hover { background: #144a55; border-color: #144a55; color: #fff; }
+.batch-image-edit-button:focus-visible { outline: 3px solid #65b9c8; outline-offset: 3px; }
+.batch-image-edit-button svg { width: 18px; height: 18px; }
+
 .batch-image-body h3 {
     margin: 0;
     font-size: 15px;

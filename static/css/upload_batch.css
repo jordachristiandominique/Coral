@@ -1955,6 +1955,11 @@ body.analysis-progress-open .researcher-navbar {
 .survey-location-use:focus-visible { outline: 3px solid #65b9c8; outline-offset: 2px; }
 
 /* Real detection suggestions and explicit image review. */
+.is-editing-result .upload-step-card[aria-label="Step 1 data repository information"],
+.is-editing-result .upload-step-note,
+.is-editing-result .dropzone,
+.is-editing-result .step-pill,
+.is-editing-result [data-remove-index] { display: none; }
 .detection-review { display: grid; gap: 10px; min-width: 0; }
 .detection-review[hidden] { display: none; }
 .review-check[hidden], .selected-box-editor[hidden], #selected-class-label[hidden] { display: none; }

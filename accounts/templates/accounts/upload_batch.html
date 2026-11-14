@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Upload New Data Repository | CoralSense{% endblock %}
+{% block title %}{% if editing_image %}Edit Image Results{% else %}Upload New Data Repository{% endif %} | CoralSense{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=33">
+<link rel="stylesheet" href="{% static 'css/upload_batch.css' %}?v=34">
 <link rel="stylesheet" href="{% static 'css/surveyor_tags.css' %}?v=3">
 {% endblock %}
 
@@ -88,26 +88,30 @@
         </nav>
     </aside>
 
-    <main class="researcher-main upload-page-main">
+    <main class="researcher-main upload-page-main{% if editing_image %} is-editing-result{% endif %}">
         <section class="surface-card upload-page-header">
-            <p class="upload-kicker">Image Ingestion Workflow</p>
-            <h1>Upload New Data Repository</h1>
-            <p>Add underwater photos for coral analysis</p>
+            <p class="upload-kicker">{% if editing_image %}Saved Image Review{% else %}Image Ingestion Workflow{% endif %}</p>
+            <h1>{% if editing_image %}Edit Image Results{% else %}Upload New Data Repository{% endif %}</h1>
+            <p>{% if editing_image %}Review the quadrat, coral boxes and representative markers for this saved image.{% else %}Add underwater photos for coral analysis{% endif %}</p>
         </section>
 
         <form id="upload-batch-form" class="upload-batch-form" method="post" enctype="multipart/form-data"
             data-analyze-url="{% url 'analyze_survey_image' %}">
             {% csrf_token %}
+            {% if editing_image %}
+            <input type="hidden" name="revision" value="{{ image_revision }}">
+            {{ saved_image_review|json_script:"saved-image-review" }}
+            {% endif %}
 
             {% if active_site %}
             <input type="hidden" name="existing_batch_id" value="{{ active_site.id }}">
             <section class="surface-card active-site-banner" aria-label="Active site">
                 <div class="active-site-info">
-                    <span class="active-site-kicker">Adding to site</span>
+                    <span class="active-site-kicker">{% if editing_image %}Editing saved image{% else %}Adding to site{% endif %}</span>
                     <h2>{{ active_site.name }}</h2>
-                    <p>{{ active_site.area_name }} · {{ active_site.transect_count }} transect{{ active_site.transect_count|pluralize }} saved · now adding <strong>Transect {{ active_site.next_number }}</strong></p>
+                    <p>{% if editing_image %}{{ active_site.area_name }} · {{ saved_image_review.filename }}{% else %}{{ active_site.area_name }} · {{ active_site.transect_count }} transect{{ active_site.transect_count|pluralize }} saved · now adding <strong>Transect {{ active_site.next_number }}</strong>{% endif %}</p>
                 </div>
-                <a href="{% url 'upload_batch' %}" class="action-outline">Start new site</a>
+                {% if editing_image %}<a href="{% url 'batch_detail' active_site.id %}" class="action-outline">Back to repository</a>{% else %}<a href="{% url 'upload_batch' %}" class="action-outline">Start new site</a>{% endif %}
             </section>
             {% endif %}
 
@@ -191,7 +195,7 @@
             <section class="surface-card upload-step-card" aria-label="Step 2 image upload">
                 <div class="step-title-row">
                     <span class="step-pill">Step 2</span>
-                    <h2>Image Upload & Analyze</h2>
+                    <h2>{% if editing_image %}Review Image{% else %}Image Upload & Analyze{% endif %}</h2>
                 </div>
 
                 <p class="upload-step-note">Add <strong>one transect at a time</strong>. Drag images or a transect folder onto the box,
@@ -230,7 +234,7 @@
                     <button type="button" class="primary-btn analyze-btn" id="analyze-all-btn" disabled
                         aria-disabled="true">
                        
-                        Analyze All Images
+                        {% if editing_image %}Re-analyze image{% else %}Analyze All Images{% endif %}
                     </button>
                     <button type="button" class="action-outline" id="retry-analysis-btn" hidden>Retry failed images</button>
                 </div>
@@ -388,7 +392,7 @@
             <section class="surface-card upload-step-card" aria-label="Step 3 review and submit">
                 <div class="step-title-row">
                     <span class="step-pill">Step 3</span>
-                    <h2>Review Results &amp; Submit</h2>
+                    <h2>{% if editing_image %}Save Reviewed Result{% else %}Review Results &amp; Submit{% endif %}</h2>
                 </div>
 
                 <div class="summary-box">
@@ -396,18 +400,18 @@
                     <p><strong>Survey by:</strong> <span id="summary-surveyors">Not set</span></p>
                     <p><strong>Location:</strong> <span id="summary-location">Not set</span></p>
                     <p><strong>Images Analyzed:</strong> <span id="summary-images">No files selected</span></p>
-                    <p><strong>Transect's Hard Coral Cover (HCC):</strong> <span id="summary-coverage">--</span></p>
-                    <p><strong>Transect's HCC Category:</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
+                    <p><strong>{% if editing_image %}Image Hard Coral Cover (HCC):{% else %}Transect's Hard Coral Cover (HCC):{% endif %}</strong> <span id="summary-coverage">--</span></p>
+                    <p><strong>{% if editing_image %}Image HCC Category:{% else %}Transect's HCC Category:{% endif %}</strong> <span id="summary-class" class="summary-class-badge class-pending">Pending</span></p>
                     <p><strong>Analysis:</strong> <span id="summary-review">Awaiting image analysis</span></p>
                 </div>
-                <p class="summary-box-note">This transect uses the mean HCC of its reviewed images. Each image uses ten representative markers; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.</p>
+                <p class="summary-box-note">{% if editing_image %}Saving updates this image and recalculates its transect and site results.{% else %}This transect uses the mean HCC of its reviewed images. Each image uses ten representative markers; only Hard Coral contributes to the numerator. Site HCC is calculated from transect means after saving.{% endif %}</p>
 
                 <p class="submit-hint" id="submit-hint">Choose images, run AI detection, and review the results before saving.
                 </p>
 
                 <div class="submit-actions">
-                    <a href="{% url 'researcher_dashboard' %}" class="action-outline">Cancel</a>
-                    <button type="submit" class="primary-btn" id="process-open-btn" disabled aria-disabled="true">Upload</button>
+                    <a href="{% if editing_image %}{% url 'batch_detail' active_site.id %}{% else %}{% url 'researcher_dashboard' %}{% endif %}" class="action-outline">Cancel</a>
+                    <button type="submit" class="primary-btn" id="process-open-btn" disabled aria-disabled="true">{% if editing_image %}Save changes{% else %}Upload{% endif %}</button>
                 </div>
             </section>
         </form>
@@ -508,6 +512,6 @@
 <script src="{% static 'js/representative_points.js' %}?v=4"></script>
 <script src="{% static 'js/upload_batch_analysis.js' %}?v=8"></script>
 <script src="{% static 'js/upload_batch_review.js' %}?v=4"></script>
-<script src="{% static 'js/upload_batch.js' %}?v=54"></script>
+<script src="{% static 'js/upload_batch.js' %}?v=55"></script>
 <script src="{% static 'js/surveyor_tags.js' %}?v=2"></script>
 {% endblock %}

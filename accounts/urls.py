@@ -26,6 +26,7 @@ urlpatterns = [
     path('researcher/batches/<int:batch_id>/export/excel/', views.batch_export_excel, name='batch_export_excel'),
     path('researcher/batch-images/<int:image_id>/annotated/', views.batch_image_annotated,
          name='batch_image_annotated'),
+    path('researcher/batch-images/<int:image_id>/edit/', views.edit_image_result, name='edit_image_result'),
     path('researcher/map-view/', views.map_view, name='map_view'),
     path('researcher/analysis-results/', views.analysis_results, name='analysis_results'),
     path('researcher/analysis-results/export/csv/', views.analysis_results_export_csv, name='analysis_results_export_csv'),

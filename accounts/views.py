@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 import logging
 from collections import Counter
@@ -1356,6 +1357,79 @@ def batch_image_annotated(request, image_id):
     response = HttpResponse(payload, content_type='image/jpeg')
     response['Cache-Control'] = 'private, no-store'
     return response
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def edit_image_result(request, image_id):
+    if request.user.is_pending():
+        return redirect('pending_approval')
+    if request.user.is_superadmin():
+        return redirect('admin:index')
+    image = get_object_or_404(SurveyImage.objects.select_related('batch'),
+                              pk=image_id, batch__trashed_at__isnull=True)
+    if not request.user.is_admin() and image.batch.user_id != request.user.pk:
+        return HttpResponse('Only the owner or an administrator can edit image results.', status=403)
+
+    def revision(photo):
+        data = [photo.quadrat_rect, photo.quadrat_points, photo.point_classes,
+                photo.analysis_review, photo.transect_id]
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+    if request.method == 'POST':
+        try:
+            payload = validate_quadrat_payload(json.loads(request.POST.get('image_quadrat_1', '')))
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'The edited results are incomplete or invalid. Review the quadrat and coral boxes.'}, status=400)
+        with transaction.atomic():
+            repositories = DataRepository.objects.active().select_for_update()
+            if not request.user.is_admin():
+                repositories = repositories.filter(user=request.user)
+            batch = get_object_or_404(repositories, pk=image.batch_id)
+            image = get_object_or_404(SurveyImage.objects.select_for_update(), pk=image_id, batch=batch)
+            if request.POST.get('revision') != revision(image):
+                return JsonResponse({'error': 'These results changed after this editor opened. Open the image again to load the latest results.'}, status=409)
+            coverage = compute_coverage(payload['point_classes'])
+            image.quadrat_rect = payload['rect']
+            image.quadrat_points = payload['points']
+            image.point_classes = payload['point_classes']
+            image.analysis_review = payload.get('analysis') or {}
+            image.coverage_percent = Decimal(str(coverage['percent'])).quantize(Decimal('0.01'))
+            image.coverage_category = coverage['coverage_class'] or ''
+            image.save(update_fields=['quadrat_rect', 'quadrat_points', 'point_classes',
+                                      'analysis_review', 'coverage_percent', 'coverage_category'])
+            site = compute_site_hcc(batch)
+            if image.transect_id:
+                transect = image.transect
+                result = next(row for row in site['transects'] if row['number'] == transect.number)
+                transect.coverage_percent = result['percent']
+                transect.coverage_category = result['coverage_class'] or ''
+                transect.save(update_fields=['coverage_percent', 'coverage_category'])
+        messages.success(request, 'Image results updated.')
+        return JsonResponse({'redirect_url': reverse('batch_detail', args=[batch.pk])})
+
+    batch = image.batch
+    review = image.analysis_review if isinstance(image.analysis_review, dict) else {}
+    saved_result = None
+    if isinstance(review, dict) and review.get('model') and isinstance(review.get('boxes'), list):
+        saved_result = {
+            'model': review['model'], 'detections': review['boxes'],
+            'quadrat_bbox': image.quadrat_rect, 'points': [
+                {**point, 'class': normalize_marker_class(class_name)}
+                for point, class_name in zip(image.quadrat_points or [], image.point_classes or [])
+            ], 'warnings': [], 'quadrat_confirmed': True, 'reviewed': False,
+        }
+    context = {
+        'user': request.user, 'editing_image': image, 'image_revision': revision(image),
+        'saved_image_review': {'url': image.image.url, 'filename': image.image.name.split('/')[-1],
+                              'result': saved_result, 'square_lock': bool(review.get('square_lock'))},
+        'active_site': {'id': batch.pk, 'name': batch.name, 'area_name': batch.area_name,
+                        'survey_date': batch.survey_date.isoformat(), 'surveyor_names': batch.surveyor_names,
+                        'latitude': batch.latitude, 'longitude': batch.longitude},
+        'user_full_name': request.user.get_full_name() or request.user.username,
+        'today': timezone.localdate(), 'survey_points': [],
+    }
+    return render(request, 'accounts/upload_batch.html', context)
 
 
 @login_required(login_url='login')

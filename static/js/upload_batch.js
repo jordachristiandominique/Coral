@@ -290,6 +290,10 @@ const initializeUploadBatch = function () {
     };
 
     const selectedFiles = [];
+    const savedReviewScript = document.getElementById('saved-image-review');
+    const editingSavedImage = Boolean(savedReviewScript);
+    let isSavingResult = false;
+    let savedReviewSnapshot = null;
     const thumbUrlByKey = {};
     // True once the form is actually being saved, so the beforeunload guard
     // doesn't prompt on the normal post-save redirect.
@@ -489,7 +493,9 @@ const describeCoverageClass = function (code) {
 
         if (submitHint) {
             if (ready) {
-                submitHint.textContent = 'All images ready. Upload to save this transect and its point-based HCC.';
+                submitHint.textContent = editingSavedImage
+                    ? 'Image ready. Save changes to update the repository results.'
+                    : 'All images ready. Upload to save this transect and its point-based HCC.';
                 submitHint.style.color = '#2a8793';
             } else {
                 submitHint.textContent = 'Run detection for all images and supply any missing quadrat boundaries.';
@@ -1268,7 +1274,7 @@ const describeCoverageClass = function (code) {
             finishEditorAction(); event.preventDefault(); event.stopImmediatePropagation(); return;
         }
         if (event.key === 'Escape' && !contextMenu.hidden) { event.preventDefault(); event.stopImmediatePropagation(); closeContextMenu(); return; }
-        if (event.target.closest('input,textarea,select,[contenteditable="true"]') || isAnalyzing || reviewDrag) return;
+        if (event.target.closest('input,textarea,select,[contenteditable="true"]') || isAnalyzing || reviewDrag || isSavingResult) return;
         if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight')
             && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey
             && activeResult() && selectedFiles.length > 1 && contextMenu.hidden
@@ -2357,6 +2363,38 @@ const describeCoverageClass = function (code) {
     updateSummary();
     updateSubmitState();
 
+    if (editingSavedImage) {
+        const loadSavedImage = async function () {
+            try {
+                const saved = JSON.parse(savedReviewScript.textContent);
+                const response = await fetch(saved.url, { credentials: 'same-origin' });
+                if (!response.ok || response.redirected) throw new Error('The saved image could not be loaded. Refresh the page and sign in again.');
+                const blob = await response.blob();
+                const file = new File([blob], saved.filename, { type: blob.type });
+                if (saved.result) {
+                    const preview = new Image();
+                    const url = URL.createObjectURL(file);
+                    try {
+                        preview.src = url;
+                        await preview.decode();
+                        saved.result.image = { width: preview.naturalWidth, height: preview.naturalHeight };
+                    } finally {
+                        URL.revokeObjectURL(url);
+                    }
+                    Editor.ensure(saved.result).square = saved.square_lock;
+                    aiResultsByFileKey[getFileKey(file)] = saved.result;
+                    if (Analysis.complete(saved.result)) savedReviewSnapshot = JSON.stringify(Analysis.payload(saved.result));
+                }
+                selectedFiles.push(file);
+                afterFilesAdded();
+                if (!saved.result) Toast.show('This image has no saved detection boxes. Run analysis to start editing.', 'info');
+            } catch (error) {
+                Toast.show(error.message || 'The saved image could not be loaded.', 'danger');
+            }
+        };
+        loadSavedImage();
+    }
+
     if (analyzeModal && analyzeCloseBtn) {
         analyzeCloseBtn.addEventListener('click', function () {
             closeAnalyzeModal();
@@ -2405,7 +2443,9 @@ const describeCoverageClass = function (code) {
                 Toast.show(missingFields.map(([, message]) => message).join(' '), 'warning', 6000);
             }
         }, true);
-        uploadForm.addEventListener('submit', function (event) {
+        uploadForm.addEventListener('submit', async function (event) {
+            if (editingSavedImage) event.preventDefault();
+            if (isSavingResult) return;
             if (!uploadForm.reportValidity()) {
                 event.preventDefault();
                 return;
@@ -2428,14 +2468,44 @@ const describeCoverageClass = function (code) {
                 return;
             }
 
+            if (editingSavedImage) {
+                isSavingResult = true;
+                uploadForm.inert = true;
+                processOpenBtn.disabled = true;
+                processOpenBtn.textContent = 'Saving…';
+                try {
+                    const body = new FormData(uploadForm);
+                    body.delete('images');
+                    const response = await fetch(uploadForm.action, {
+                        method: 'POST', body, credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (response.redirected) throw new Error('Your session expired. Sign in again before saving.');
+                    const result = await response.json();
+                    if (!response.ok || !result.redirect_url) throw new Error(result.error || 'The results could not be saved. Try again.');
+                    isSubmitting = true;
+                    window.location.assign(result.redirect_url);
+                } catch (error) {
+                    Toast.show(error.message || 'The results could not be saved. Try again.', 'danger');
+                } finally {
+                    isSavingResult = false;
+                    uploadForm.inert = false;
+                    processOpenBtn.textContent = 'Save changes';
+                    updateSubmitState();
+                }
+                return;
+            }
             // Saving now — allow the post-save navigation without the leave prompt.
             isSubmitting = true;
         });
     }
 
-    // Warn before losing an in-progress transect (images staged but not saved).
+    // Warn before losing staged uploads or changes to an existing result.
     window.addEventListener('beforeunload', function (event) {
-        if (selectedFiles.length && !isSubmitting) {
+        const result = activeResult();
+        const currentReview = result && Analysis.complete(result) ? JSON.stringify(Analysis.payload(result)) : null;
+        const hasChanges = editingSavedImage ? currentReview !== savedReviewSnapshot : selectedFiles.length > 0;
+        if (hasChanges && !isSubmitting) {
             event.preventDefault();
             event.returnValue = '';
         }

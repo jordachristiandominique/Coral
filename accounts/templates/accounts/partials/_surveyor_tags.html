@@ -8,11 +8,13 @@
             <div class="surveyor-tag-list" data-surveyor-tags aria-label="Surveyors"></div>
             <input id="surveyor-account-search" type="search" autocomplete="off"
                 placeholder="Add a name or search accounts…" aria-label="Add a surveyor by name or email"
-                aria-describedby="surveyor-help" aria-controls="surveyor-account-results">
+                {% if not hide_help %}aria-describedby="surveyor-help"{% endif %} aria-controls="surveyor-account-results">
         </div>
         <div id="surveyor-account-results" class="surveyor-results" data-surveyor-results hidden></div>
         <p class="surveyor-search-status" data-surveyor-status role="status"></p>
     </div>
+    {% if not hide_help %}
     <p id="surveyor-help" class="surveyor-sharing-help">Select an account to share viewing access, or press Enter to add a name only.</p>
+    {% endif %}
     {{ surveyor_form.surveyor_ids.errors }}
 </div>

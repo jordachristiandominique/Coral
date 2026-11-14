@@ -31,6 +31,14 @@ metadata submissions that omit tag fields preserve existing memberships.
 
 ## 1. Overview
 
+Saved image results can be edited from the repository's Uploaded Images section
+through `edit_image_result`. Owners and administrators use the upload review UI
+with the original image and saved boxes. The POST validates the shared review
+payload, locks the repository and image, checks a content revision, and updates
+image and transect HCC caches with the canonical calculation functions. A stale
+save returns HTTP 409 and retains the browser's edits. Images without saved
+detection review data require reanalysis before box editing.
+
 | Aspect | Value | Source |
 |---|---|---|
 | Framework | Django **5.2.6** (pinned) | `requirements.txt` |

@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
-<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=11">
 <link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
 <link rel="stylesheet" href="{% static 'css/surveyor_tags.css' %}?v=3">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -126,7 +126,7 @@
                         <textarea class="field-input" id="detail-surveyor-names" name="surveyor_names" rows="2" required spellcheck="false"{% if not can_manage_repository %} readonly{% endif %}>{{ batch.surveyor_names }}</textarea>
                     </label>
                     {% if can_manage_repository %}
-                    {% include 'accounts/partials/_surveyor_tags.html' with names_input_id='detail-surveyor-names' %}
+                    {% include 'accounts/partials/_surveyor_tags.html' with names_input_id='detail-surveyor-names' hide_help=True %}
                     {% endif %}
                 </div>
 
@@ -303,6 +303,12 @@
                                 {% endif %}
                             </div>
                             <div class="batch-image-body">
+                                {% if can_manage_repository %}
+                                <a href="{% url 'edit_image_result' image.id %}" class="batch-image-edit-button" aria-label="Edit results for {{ image.filename }}">
+                                    <i data-lucide="square-pen" aria-hidden="true"></i>
+                                    Edit result
+                                </a>
+                                {% endif %}
                                 <h3>{{ image.filename }}</h3>
                                 {% if image.transect_label %}
                                 <p class="batch-image-transect"><i data-lucide="git-branch"></i> {{ image.transect_label }}</p>
