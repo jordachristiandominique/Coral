@@ -217,8 +217,7 @@ def researcher_dashboard(request):
         batch.avg_coverage = compute_site_hcc(batch)['site_percent']
         batches_with_coverage.append(batch)
 
-    # Get total images count (all data)
-    total_images = SurveyImage.objects.filter(batch__trashed_at__isnull=True).count()
+    total_surveys = len(batches_with_coverage)
 
     # Calculate overall average coverage
     all_coverages = [b.avg_coverage for b in batches_with_coverage if b.avg_coverage is not None]
@@ -267,7 +266,7 @@ def researcher_dashboard(request):
     context = {
         'user': request.user,
         'generated_at': timezone.now(),
-        'total_images': total_images,
+        'total_surveys': total_surveys,
         'avg_coverage': avg_coverage,
         'healthy_reefs': healthy_reefs,
         'locations': locations,

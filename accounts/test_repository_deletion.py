@@ -121,7 +121,7 @@ class RepositoryDeletionTests(TestCase):
     def test_trashed_repository_is_excluded_from_active_pages_and_downloads(self):
         self.client.post(self.url)
         self.assertEqual(list(self.client.get(reverse('batches')).context['batches']), [])
-        self.assertEqual(self.client.get(reverse('researcher_dashboard')).context['total_images'], 0)
+        self.assertEqual(self.client.get(reverse('researcher_dashboard')).context['total_surveys'], 0)
         self.assertEqual(self.client.get(reverse('analysis_results')).context['total_batches'], 0)
         self.assertEqual(self.client.get(reverse('map_view')).context['total_batches'], 0)
         self.assertEqual(self.client.get(reverse('public_dashboard')).context['dashboard_surveys'], [])
@@ -164,7 +164,7 @@ class RepositoryDeletionTests(TestCase):
         public_rows = self.client.get(reverse('public_dashboard')).context['dashboard_surveys']
         self.assertEqual(len(public_rows), 1)
         self.assertFalse(public_rows[0]['mapVisible'])
-        self.assertEqual(self.client.get(reverse('researcher_dashboard')).context['total_images'], 1)
+        self.assertEqual(self.client.get(reverse('researcher_dashboard')).context['total_surveys'], 1)
         self.assertEqual(self.client.get(reverse('analysis_results')).context['total_batches'], 1)
         self.client.post(url, {'is_map_visible': 'true'})
         self.assertEqual(self.client.get(reverse('map_view')).context['total_batches'], 1)
