@@ -130,8 +130,15 @@
                     </label>
 
                     <label class="field-floating">
-                        <input type="text" id="area-name" name="area_name" placeholder=" " value="{{ active_site.area_name|default:'' }}" required pattern=".*\S.*"{% if active_site %} readonly{% endif %}>
+                        <input type="text" id="area-name" name="area_name" placeholder=" " value="{{ active_site.area_name|default:'' }}" required pattern=".*\S.*"{% if active_site %} readonly{% else %} list="area-name-options" autocomplete="off"{% endif %}>
                         <span>Area Name</span>
+                        {% if not active_site %}
+                        <datalist id="area-name-options">
+                            {% for area in area_names %}
+                            <option value="{{ area }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        {% endif %}
                     </label>
 
                     <div class="surveyor-field">

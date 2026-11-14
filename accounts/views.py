@@ -1042,6 +1042,10 @@ def upload_batch(request):
         'generated_at': timezone.now(),
         'today': timezone.localdate(),
         'user_full_name': request.user.get_full_name() or request.user.username,
+        'area_names': (
+            DataRepository.objects.active().exclude(area_name='').order_by('area_name')
+            .values_list('area_name', flat=True).distinct()
+        ),
         'survey_points': list(
             DataRepository.objects.active().values(
                 'name',
