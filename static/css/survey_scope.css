@@ -1,0 +1,31 @@
+.welcome-header.survey-scope-header,
+.analysis-page-head.survey-scope-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.survey-scope-header > div:first-child { flex: 1 1 240px; min-width: 0; }
+.survey-scope-control { display: grid; justify-items: end; gap: 5px; margin-left: auto; }
+.survey-scope-control .survey-scope-description { margin: 0; max-width: 240px; text-align: right; font-size: 12px; line-height: 1.5; color: #587987; }
+.survey-scope-options { display: flex; gap: 4px; padding: 4px; background: #edf4f5; border-radius: 8px; }
+.survey-scope-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 7px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #365e6b;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.survey-scope-option:hover { background: #dcebee; }
+.survey-scope-option.is-active { background: #1c5f6d; color: #fff; }
+.survey-scope-option:focus-visible { outline: 3px solid #2a8793; outline-offset: 2px; }

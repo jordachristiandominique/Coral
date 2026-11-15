@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=17">
+<link rel="stylesheet" href="{% static 'css/survey_scope.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -59,7 +60,7 @@
             </a>
             {% endif %}
 
-            <a href="{% url 'analysis_results' %}">
+            <a href="{% url 'analysis_results' %}?scope={{ survey_scope.value }}">
                 <img src="{% static 'icons/analysis-result.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
                 <span>Analysis Results</span>
             </a>
@@ -92,10 +93,13 @@
             <p>{{ generated_at|date:"M d, Y h:i A" }}</p>
         </div>
 
-        <section class="welcome-header surface-card">
-            <p class="welcome-kicker">Coral Monitoring Workspace</p>
-            <h1>Welcome back, {{ user.get_full_name|default:user.username }}</h1>
-            <p>Last activity snapshot captured on {{ generated_at|date:"M d, Y h:i A" }}.</p>
+        <section class="welcome-header surface-card survey-scope-header">
+            <div>
+                <p class="welcome-kicker">Coral Monitoring Workspace</p>
+                <h1>Welcome back, {{ user.get_full_name|default:user.username }}</h1>
+                <p>Last activity snapshot captured on {{ generated_at|date:"M d, Y h:i A" }}.</p>
+            </div>
+            {% include 'accounts/partials/survey_scope_filter.html' %}
         </section>
 
         <section class="stats-grid" aria-label="Monitoring summary">
@@ -170,7 +174,7 @@
         <section class="surface-card recent-batches">
             <div class="card-header">
                 <h2>Latest Transactions</h2>
-                <a href="#" class="ghost-link">View all</a>
+                <a href="{% url 'analysis_results' %}?scope={{ survey_scope.value }}" class="ghost-link">View all</a>
             </div>
 
             {% include 'accounts/partials/coverage_class_key.html' %}
@@ -238,6 +242,5 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="{% static 'js/custom.js' %}?v=4"></script>
 <script src="{% static 'js/researcher_dashboard.js' %}?v=2"></script>
 {% endblock %}

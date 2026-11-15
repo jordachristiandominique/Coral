@@ -6,6 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=17">
 <link rel="stylesheet" href="{% static 'css/analysis_results.css' %}?v=7">
+<link rel="stylesheet" href="{% static 'css/survey_scope.css' %}?v=2">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
 
@@ -27,7 +28,7 @@
 <div class="container researcher-shell">
     <aside class="researcher-sidebar" aria-label="Research sidebar">
         <nav class="sidebar-nav">
-            <a href="{% url 'researcher_dashboard' %}">
+            <a href="{% url 'researcher_dashboard' %}?scope={{ survey_scope.value }}">
                 <img src="{% static 'icons/dashboard.png' %}" alt="" aria-hidden="true" class="sidebar-icon">
                 <span>Overview</span>
             </a>
@@ -82,15 +83,17 @@
     </aside>
 
     <main class="researcher-main analysis-main">
-        <section class="surface-card analysis-page-head">
+        <section class="surface-card analysis-page-head survey-scope-header">
             <div>
                 <p class="page-kicker">Analysis Results</p>
                 <h1>Data Repository Insights</h1>
                 <p class="page-sub">Showing {{ total_batches }} data repositories · {{ total_images }} images</p>
             </div>
+            {% include 'accounts/partials/survey_scope_filter.html' %}
         </section>
 
         <form class="surface-card analysis-filter-bar" method="get" aria-label="Analysis filters">
+            <input type="hidden" name="scope" value="{{ survey_scope.value }}">
             <label class="filter-field">
                 <span>From</span>
                 <input type="date" name="start_date" value="{{ filter_state.start_date }}">
@@ -126,7 +129,7 @@
             </label>
             <div class="filter-actions">
                 <button type="submit" class="action-primary">Apply</button>
-                <a href="{% url 'analysis_results' %}" class="action-outline">Clear</a>
+                <a href="{% url 'analysis_results' %}?scope={{ survey_scope.value }}" class="action-outline">Clear</a>
             </div>
         </form>
 

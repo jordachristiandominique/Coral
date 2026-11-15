@@ -31,6 +31,19 @@ metadata submissions that omit tag fields preserve existing memberships.
 
 ## 1. Overview
 
+Researcher Dashboard and Analysis Results offer `scope=overall` (default) and
+`scope=mine`. My surveys selects active repositories uploaded by the current
+account or related through `DataRepository.surveyors`; free-text surveyor names
+do not grant membership. Administrators use the same personal rule for My surveys.
+Filtering happens before HCC/composition aggregation, including latest transactions,
+analysis rows, area options, category charts and monthly summaries. Both views
+prefetch images and transect images for their existing aggregation passes.
+Scope links preserve other query filters, analysis Apply/Clear retain scope, and
+dashboard-to-analysis links carry the selected scope. The default overall view,
+private repository permissions, public dashboards and canonical HCC math remain
+unchanged. The shared UI is `partials/survey_scope_filter.html` and
+`static/css/survey_scope.css`; behavior tests live in `accounts/test_survey_scope.py`.
+
 Saved image results can be edited from the repository's Uploaded Images section
 through `edit_image_result`. Owners and administrators use the upload review UI
 with the original image and saved boxes. The POST validates the shared review

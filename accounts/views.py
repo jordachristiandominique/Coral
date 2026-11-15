@@ -189,6 +189,32 @@ def password_reset_done(request):
     return render(request, 'accounts/password_reset_done.html')
 
 
+def _filter_survey_scope(request, queryset):
+    """My surveys means uploaded by or explicitly tagged to the current account."""
+    if request.GET.get('scope') == 'mine':
+        return queryset.filter(
+            Q(user=request.user)
+            | Q(pk__in=request.user.shared_repositories.values('pk'))
+        )
+    return queryset
+
+
+def _survey_scope_context(request):
+    selected = 'mine' if request.GET.get('scope') == 'mine' else 'overall'
+    links = []
+    for value, label in (('overall', 'Overall'), ('mine', 'My surveys')):
+        query = request.GET.copy()
+        query['scope'] = value
+        links.append({'label': label, 'active': selected == value,
+                      'url': f'{request.path}?{query.urlencode()}'})
+    return {
+        'value': selected,
+        'description': ('Surveys you uploaded or are tagged in.' if selected == 'mine'
+                        else 'All active surveys across CoralSense.'),
+        'links': links,
+    }
+
+
 @login_required(login_url='login')
 def researcher_dashboard(request):
     """Render the researcher monitoring workspace."""
@@ -199,8 +225,9 @@ def researcher_dashboard(request):
     if request.user.is_superadmin():
         return redirect('admin:index')
 
-    # All users (admin and researchers) see all survey data
-    batches = DataRepository.objects.active().annotate(image_count=Count('images')).order_by('-survey_date')
+    batches = (_filter_survey_scope(request, DataRepository.objects.active())
+               .annotate(image_count=Count('images'))
+               .prefetch_related('images', 'transects__images').order_by('-survey_date', '-pk'))
 
     # Reuse the image pass for the saved-marker composition chart.
     composition_points = Counter()
@@ -268,6 +295,7 @@ def researcher_dashboard(request):
         'user': request.user,
         'generated_at': timezone.now(),
         'total_surveys': total_surveys,
+        'survey_scope': _survey_scope_context(request),
         'avg_coverage': avg_coverage,
         'healthy_reefs': healthy_reefs,
         'locations': locations,
@@ -315,6 +343,7 @@ def _coverage_class(coverage_value):
 
 
 def _apply_analysis_filters(request, queryset):
+    queryset = _filter_survey_scope(request, queryset)
     start_date = _parse_date(request.GET.get('start_date', '').strip())
     end_date = _parse_date(request.GET.get('end_date', '').strip())
     area = request.GET.get('area', '').strip()
@@ -351,7 +380,7 @@ def _apply_analysis_filters(request, queryset):
     filter_state['_min_coverage'] = min_coverage
     filter_state['_max_coverage'] = max_coverage
 
-    return queryset.order_by('-survey_date'), filter_state
+    return queryset.prefetch_related('images', 'transects__images').order_by('-survey_date', '-pk'), filter_state
 
 
 def _build_analysis_rows(queryset):
@@ -403,7 +432,7 @@ def analysis_results(request):
 
     base_queryset = _get_analysis_queryset(request.user)
     area_options = list(
-        base_queryset.order_by('area_name').values_list('area_name', flat=True).distinct()
+        _filter_survey_scope(request, base_queryset).order_by('area_name').values_list('area_name', flat=True).distinct()
     )
 
     batches_queryset, filter_state = _apply_analysis_filters(request, base_queryset)
@@ -451,6 +480,7 @@ def analysis_results(request):
         'generated_at': timezone.now(),
         'rows': rows,
         'total_batches': total_batches,
+        'survey_scope': _survey_scope_context(request),
         'total_images': total_images,
         'distribution': distribution,
         'monthly_stats': monthly_stats,

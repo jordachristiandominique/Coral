@@ -1,0 +1,8 @@
+<div class="survey-scope-control">
+    <div class="survey-scope-options" role="group" aria-label="Survey view">
+        {% for option in survey_scope.links %}
+        <a href="{{ option.url }}" class="survey-scope-option{% if option.active %} is-active{% endif %}"{% if option.active %} aria-current="page"{% endif %}>{{ option.label }}</a>
+        {% endfor %}
+    </div>
+    <p class="survey-scope-description">{{ survey_scope.description }}</p>
+</div>
