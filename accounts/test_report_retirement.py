@@ -59,8 +59,32 @@ class ReportRetirementTests(TestCase):
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         workbook = load_workbook(BytesIO(response.content), data_only=True)
         rows = {row[0].value: row for row in workbook.active.iter_rows()}
+        category_rows = [label for label in rows
+                         if isinstance(label, str) and label.isupper() and label.endswith(')')]
+        self.assertEqual(category_rows, ['HARD CORAL (HC)', 'SOFT CORAL (SC)', 'OTHER SUBSTRATE (OS)'])
         self.assertEqual(rows['OTHER SUBSTRATE (OS)'][1].value, 40)
-        self.assertEqual(rows['Sum (excluding tape+shadow+wand)'][1].value, 100)
+        self.assertEqual(rows['Sum'][1].value, 100)
+
+    def test_excel_groups_historical_categories_under_other_substrate(self):
+        image = self.repository.images.get()
+        classes = ['Hard Coral'] * 3 + ['Soft Coral'] * 2 + [
+            'Macroalgae', 'Halimeda', 'Algae Assemblage', 'Abiotic', 'Other Biota']
+        image.point_classes = classes
+        image.save(update_fields=['point_classes'])
+        url = reverse('batch_export_excel', args=[self.repository.pk])
+        for legacy_without_transect in (False, True):
+            if legacy_without_transect:
+                image.transect = None
+                image.save(update_fields=['transect'])
+                self.repository.transects.all().delete()
+            workbook = load_workbook(BytesIO(self.client.get(url).content), data_only=True)
+            rows = {row[0].value: row for row in workbook.active.iter_rows()}
+            self.assertEqual(rows['HARD CORAL (HC)'][1].value, 30)
+            self.assertEqual(rows['SOFT CORAL (SC)'][1].value, 20)
+            self.assertEqual(rows['OTHER SUBSTRATE (OS)'][1].value, 50)
+            self.assertEqual(rows['Sum'][1].value, 100)
+        image.refresh_from_db()
+        self.assertEqual(image.point_classes, classes)
 
     def test_retired_bookmark_follows_role_guards(self):
         for role, destination in (('pending', 'pending_approval'), ('superadmin', 'admin:index')):

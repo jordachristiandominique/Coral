@@ -4,7 +4,7 @@
 {% block title %}Surveyed Sites | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=15">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=17">
 <link rel="stylesheet" href="{% static 'css/map_view.css' %}?v=5">
 <!-- Leaflet Map Library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -18,11 +18,6 @@
             <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
             <span></span>
         </a>
-
-        <label class="nav-search" aria-label="Search dashboard">
-            <i data-lucide="search" aria-hidden="true"></i>
-            <input type="text" placeholder="Search here">
-        </label>
 
         <div class="nav-profile">
             {% include 'accounts/partials/_profile_menu.html' %}

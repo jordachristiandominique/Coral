@@ -4,7 +4,7 @@
 {% block title %}Researcher Dashboard | CoralSense{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=16">
+<link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=17">
 {% endblock %}
 
 {% block content %}
@@ -15,11 +15,6 @@
             <img src="{% static 'images/logo.png' %}" alt="CoralSense logo" class="nav-brand-logo">
             <span></span>
         </a>
-
-        <label class="nav-search" aria-label="Search dashboard">
-            <i data-lucide="search" aria-hidden="true"></i>
-            <input type="text" placeholder="Search here">
-        </label>
 
         <div class="nav-profile">
             {% include 'accounts/partials/_profile_menu.html' %}

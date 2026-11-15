@@ -6,7 +6,7 @@ column, and every cell is that category's mean percentage across the transect's
 images. MEAN, STD. DEV. (sample, n-1) and STD. ERROR columns summarize across
 the transects.
 
-Uses the project's benthic classes and the Other Substrate remainder. The
+Shows Hard Coral, Soft Coral and the Other Substrate remainder. The
 "Total points (minus tape+wand+shadow)" row and the Subcategories section from
 the original CPCE sheet are intentionally out of scope for now.
 """
@@ -24,18 +24,10 @@ from .representative_points import normalize_marker_class
 
 # Benthic categories and the derived remainder, shown in the CPCE style
 # (UPPER CASE with the code in parentheses) to match the sample sheet.
-CLASS_ORDER = [
-    'Hard Coral', 'Soft Coral', 'Macroalgae', 'Halimeda',
-    'Algae Assemblage', 'Abiotic', 'Other Biota', 'Other Substrate',
-]
+CLASS_ORDER = ['Hard Coral', 'Soft Coral', 'Other Substrate']
 CATEGORY_DISPLAY = {
     'Hard Coral': 'HARD CORAL (HC)',
     'Soft Coral': 'SOFT CORAL (SC)',
-    'Macroalgae': 'MACROALGAE (MA)',
-    'Halimeda': 'HALIMEDA (HA)',
-    'Algae Assemblage': 'ALGAE ASSEMBLAGE (AA)',
-    'Abiotic': 'ABIOTIC (AB)',
-    'Other Biota': 'OTHER BIOTA (OB)',
     'Other Substrate': 'OTHER SUBSTRATE (OS)',
 }
 
@@ -69,8 +61,10 @@ def _pct_series(images):
         pcs = [normalize_marker_class(name) for name in image.point_classes or []]
         total = len(pcs)
         totals.append(total)
+        counts = {name: pcs.count(name) for name in ('Hard Coral', 'Soft Coral')}
+        counts['Other Substrate'] = total - sum(counts.values())
         for name in CLASS_ORDER:
-            count = sum(1 for p in pcs if p == name)
+            count = counts[name]
             series[name].append((count / total * 100) if total else 0.0)
     return series, totals
 
@@ -95,22 +89,14 @@ def _transect_series(batch):
     infos = []
     for transect in transects:
         images = list(transect.images.all())
-        per_image = {name: [] for name in CLASS_ORDER}
-        total_points = 0
-        for image in images:
-            pcs = [normalize_marker_class(name) for name in image.point_classes or []]
-            total = len(pcs)
-            total_points += total
-            for name in CLASS_ORDER:
-                count = sum(1 for p in pcs if p == name)
-                per_image[name].append((count / total * 100) if total else 0.0)
+        per_image, totals = _pct_series(images)
         for name in CLASS_ORDER:
             vals = per_image[name]
             series[name].append((_mean(vals) if vals else 0.0))
         infos.append({
             'label': transect.label or f'Transect {transect.number}',
             'frames': len(images),
-            'points': total_points,
+            'points': sum(totals),
         })
     return series, infos
 
@@ -214,7 +200,7 @@ def build_batch_coverage_workbook(batch):
         r += 1
 
     # ---- Sum row includes the Other Substrate remainder. ----
-    cell(r, 1, 'Sum (excluding tape+shadow+wand)', font=_LABEL, border=True)
+    cell(r, 1, 'Sum', font=_LABEL, border=True)
     for i in range(n):
         col_sum = sum(series[name][i] for name in CLASS_ORDER)
         cell(r, first_frame + i, col_sum, font=_LABEL, align=_CENTER, fmt=NUM_FMT, border=True)

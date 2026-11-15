@@ -194,7 +194,7 @@ class ReviewedUploadTests(TestCase):
         workbook = load_workbook(build_batch_coverage_workbook(image.batch), data_only=True)
         rows = {row[0].value: row for row in workbook.active.iter_rows()}
         self.assertEqual(rows['OTHER SUBSTRATE (OS)'][1].value, 20)
-        self.assertEqual(rows['Sum (excluding tape+shadow+wand)'][1].value, 100)
+        self.assertEqual(rows['Sum'][1].value, 100)
         self.assertEqual(Transect.objects.get().coverage_percent, 50)
 
     def test_unreviewed_upload_is_rejected_before_any_rows_or_files_are_saved(self):
