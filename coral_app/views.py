@@ -1,8 +1,12 @@
 from django.shortcuts import render
 from django.db import connection, DatabaseError
+from django.db.models import Count
 from django.http import JsonResponse
 
-from accounts.models import DataRepository, compute_site_hcc
+from accounts.models import (
+    DataRepository, compute_site_hcc, COVERAGE_CLASS_LABELS,
+    COVERAGE_CLASS_RANGES, COVERAGE_CLASS_DESCRIPTIONS,
+)
 from accounts.visualization_data import composition_summary
 
 
@@ -21,11 +25,14 @@ def landing_page(request):
 
 def public_dashboard(request):
     """Render the public dashboard page."""
-    batches = DataRepository.objects.active().select_related('user').order_by('-survey_date')
+    batches = (DataRepository.objects.active().select_related('user')
+               .annotate(transect_count=Count('transects'))
+               .prefetch_related('images', 'transects__images')
+               .order_by('-survey_date', '-created_at', '-pk'))
 
     surveys = []
     for batch in batches:
-        # Recalculate coverage from point_classes (HC+SC only)
+        # Reuse saved classes for composition; HCC uses the canonical site calculation.
         all_point_classes = []
         for image in batch.images.all():
             if image.point_classes:
@@ -45,6 +52,10 @@ def public_dashboard(request):
                               for item in composition_summary(all_point_classes)}
 
         surveys.append({
+            'id': batch.pk,
+            'name': batch.name,
+            'createdAt': batch.created_at.isoformat(),
+            'transectCount': batch.transect_count,
             'mapVisible': batch.is_map_visible,
             'area': batch.area_name,
             'surveyors': batch.surveyor_names or 'Not set',
@@ -61,6 +72,11 @@ def public_dashboard(request):
     context = {
         'dashboard_surveys': surveys,
         'last_updated': last_updated,
+        'coverage_guide': [
+            {'code': code, 'label': label, 'range': COVERAGE_CLASS_RANGES[code],
+             'description': COVERAGE_CLASS_DESCRIPTIONS[code]}
+            for code, label in COVERAGE_CLASS_LABELS.items()
+        ],
     }
 
     return render(request, 'public_dashboard.html', context)

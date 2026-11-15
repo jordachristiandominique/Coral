@@ -4,7 +4,7 @@ import json
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from .models import DataRepository, SurveyImage, Transect, User
+from .models import DataRepository, SurveyImage, Transect, User, COVERAGE_CLASS_DESCRIPTIONS
 from .visualization_data import composition_summary
 
 
@@ -77,3 +77,26 @@ class DashboardVisualizationTests(TestCase):
         response = self.client.get(reverse('analysis_results'))
         self.assertEqual(response.context['rows'], [])
         self.assertEqual(response.context['monthly_stats'], [])
+
+    def test_public_map_payload_matches_researcher_hcc_and_exposes_only_public_summary(self):
+        site = self.site('Reviewed reef', [[['Hard Coral'] * 10], [['Other Substrate'] * 10]])
+        hidden = self.site('Map hidden', [])
+        hidden.is_map_visible = False
+        hidden.save(update_fields=['is_map_visible'])
+        researcher = self.client.get(reverse('map_view'))
+        feature = next(item for item in json.loads(researcher.context['geojson_data'])['features']
+                       if item['properties']['id'] == site.pk)
+        self.client.logout()
+        public = self.client.get(reverse('public_dashboard'))
+        self.assertEqual(public.status_code, 200)
+        record = next(row for row in public.context['dashboard_surveys'] if row['id'] == site.pk)
+        self.assertEqual(record['coverage'], feature['properties']['coverage'])
+        self.assertEqual(record['classCode'], feature['properties']['coverageClass'])
+        self.assertEqual(record['transectCount'], 2)
+        self.assertEqual(record['createdAt'], feature['properties']['createdAt'])
+        self.assertEqual(record['name'], site.name)
+        self.assertFalse(next(row for row in public.context['dashboard_surveys'] if row['id'] == hidden.pk)['mapVisible'])
+        self.assertNotContains(public, 'batch_images/chart.png')
+        self.assertNotContains(public, 'window.alert')
+        self.assertEqual([row['description'] for row in public.context['coverage_guide']],
+                         list(COVERAGE_CLASS_DESCRIPTIONS.values()))

@@ -130,7 +130,10 @@ test('public map hides disabled surveys and fits bounds to visible markers, incl
     const markers = [], bounds = [];
     const render = vm.runInNewContext(`${source.slice(start, end)}\nrenderMarkers;`, {
         markerLayer: { clearLayers() { markers.length = 0; }, addLayer(marker) { markers.push(marker); } },
-        map: { fitBounds(value) { bounds.push(value); } },
+        publicMarkers: new Map(),
+        publicSurveyLocations: vm.runInContext('publicSurveyLocations', visualizationContext('public_dashboard.js')),
+        document: {getElementById() { return null; }},
+        map: { fitBounds(value) { bounds.push(value); }, getSize() { return {y: 500}; } },
         L: {
             circleMarker(coordinates) { return { coordinates, bindPopup() {} }; },
             latLngBounds: coordinates => coordinates,
@@ -145,4 +148,54 @@ test('public map hides disabled surveys and fits bounds to visible markers, incl
     render([{ ...row, mapVisible: false }]);
     assert.equal(markers.length, 0);
     assert.equal(bounds.length, 1);
+});
+
+test('public and researcher maps select the same newest survey at overlapping coordinates', () => {
+    const publicContext = visualizationContext('public_dashboard.js');
+    const publicLocations = vm.runInContext('publicSurveyLocations', publicContext);
+    const researcher = vm.runInContext('Object.create(CoralSenseMap.prototype)', visualizationContext('map_view.js'));
+    const rows = [
+        {id: 1, lat: 7, lng: 125, date: '2026-10-01', createdAt: '2026-11-04'},
+        {id: 2, lat: 7, lng: 125, date: '2026-11-01', createdAt: '2026-11-02'},
+        {id: 3, lat: 7, lng: 125, date: '2026-11-01', createdAt: '2026-11-03'},
+        {id: 4, lat: 7, lng: 125, date: '2026-11-01', createdAt: '2026-11-03', coverage: null},
+        {id: 5, lat: 7.1, lng: 125, date: '2026-10-01'},
+        {id: 6, lat: 7, lng: 125, date: '2026-12-01', mapVisible: false},
+        {id: 7, lat: null, lng: 125, date: '2026-12-01'},
+    ];
+    for (const end of ['', '2026-10-31']) {
+        const filtered = rows.filter(row => !end || row.date <= end);
+        const publicIds = Array.from(publicLocations(filtered), row => row.id);
+        const researcherIds = Array.from(researcher.latestSurveysByLocation(filtered
+            .filter(row => row.mapVisible !== false && Number.isFinite(row.lat) && Number.isFinite(row.lng))
+            .map(row => ({...row, latitude: row.lat, longitude: row.lng, surveyDate: row.date}))), row => row.id);
+        assert.deepEqual(publicIds, researcherIds);
+        assert.deepEqual(publicIds, end ? [1, 5] : [4, 5]);
+    }
+});
+
+test('public map popups escape survey text and preserve missing analysis as a neutral marker', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../../static/js/public_dashboard.js'), 'utf8');
+    const start = source.indexOf('    function renderMarkers(filtered)');
+    const end = source.indexOf('    function renderSummary', start);
+    const helperContext = visualizationContext('public_dashboard.js');
+    const calls = [];
+    const render = vm.runInNewContext(`${source.slice(start, end)}\nrenderMarkers;`, {
+        markerLayer: {clearLayers() {}, addLayer() {}}, publicMarkers: new Map(),
+        publicSurveyLocations: vm.runInContext('publicSurveyLocations', helperContext),
+        document: {getElementById() {return null;}},
+        map: {fitBounds() {}, getSize() {return {y: 500};}},
+        L: {latLngBounds: rows => rows, circleMarker(coordinates, options) {
+            return {bindPopup(html) {calls.push({options, html});}};
+        }},
+        formatCoverage: value => value == null ? '--' : String(value),
+        escapeHtml: value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+        formatSurveyorText: String, colorForClass: () => '#2a8793', buildClassDistributionHtml: () => '',
+    });
+    render([{id: 1, lat: 7, lng: 125, coverage: null, area: '<img>', surveyors: '<script>', date: '2026-11-01'}]);
+    assert.equal(calls[0].options.radius, 7);
+    assert.equal(calls[0].options.fillColor, '#2a8793');
+    assert.match(calls[0].html, /No analysis available/);
+    assert.doesNotMatch(calls[0].html, /<img>|<script>|Category D/);
+    assert.match(calls[0].html, /&lt;script&gt;/);
 });

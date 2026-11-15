@@ -4,17 +4,18 @@ const CLASS_COLORS = {
     'Macroalgae': '#e87ba4', 'Halimeda': '#eda100', 'Algae Assemblage': '#1baf7a',
     'Abiotic': '#eb6834', 'Other Biota': '#4a3aa7'
 };
-// Reef health is a status scale, not a series — these are reserved colours
-// and always ship alongside the "Class A/B/C" label, never colour alone.
+// HCC category colors match the researcher map and always accompany a label.
 const STATUS_COLORS = { A: '#1e8e5a', B: '#f2c11f', C: '#e8820c', D: '#d64545' };
-const COVERAGE_CLASS_LABELS = {
-    A: 'HCC more than 44%',
-    B: 'HCC more than 33% up to 44%',
-    C: 'HCC more than 22% up to 33%',
-    D: 'HCC 0-22%'
-};
-function describeCoverageClass(code) {
-    return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
+function publicSurveyLocations(rows) {
+    const locations = new Map();
+    [...rows].filter(row => row.mapVisible !== false && Number.isFinite(row.lat) && Number.isFinite(row.lng))
+        .sort((a, b) => (b.date || '').localeCompare(a.date || '')
+            || (b.createdAt || '').localeCompare(a.createdAt || '') || (b.id || 0) - (a.id || 0))
+        .forEach(row => {
+            const key = `${row.lat},${row.lng}`;
+            if (!locations.has(key)) locations.set(key, row);
+        });
+    return [...locations.values()];
 }
 
 const initializePublicDashboard = function () {
@@ -47,22 +48,38 @@ const initializePublicDashboard = function () {
     const donut = document.getElementById('distribution-donut');
     const ecosystemDonut = document.getElementById('ecosystem-donut');
     const ecosystemLegend = document.getElementById('ecosystem-legend');
+    const detailsDialog = document.getElementById('public-survey-details');
+    const locationButton = document.getElementById('survey-details-map');
+    const publicMarkers = new Map();
+    let detailSurvey = null;
 
     const map = window.L ? L.map('public-survey-map', {
         zoomControl: true, scrollWheelZoom: false
-    }).setView([6.86, 125.86], 8) : null;
+    }).setView([6.85, 125.65], 10) : null;
     const markerLayer = map ? L.layerGroup().addTo(map) : null;
     if (map) {
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19, attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
         }).addTo(map);
+        const ocean = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 13, attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, and other contributors'
+        });
+        const street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
+        });
+        const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, opacity: 0.9
+        }).addTo(map);
+        L.control.layers({Satellite: satellite, 'Ocean (depth)': ocean, Street: street},
+            {'Survey Sites': markerLayer, 'Place Labels': labels}, {position: 'topright'}).addTo(map);
     }
 
     function colorForClass(classCode) {
         if (classCode === 'A') return STATUS_COLORS.A;
         if (classCode === 'B') return STATUS_COLORS.B;
         if (classCode === 'C') return STATUS_COLORS.C;
-        return STATUS_COLORS.D;
+        if (classCode === 'D') return STATUS_COLORS.D;
+        return '#2a8793';
     }
 
     function parseDate(value) {
@@ -86,7 +103,7 @@ const initializePublicDashboard = function () {
         if (value === null || value === undefined || Number.isNaN(Number(value))) {
             return '--';
         }
-        return String(Math.round(Number(value)));
+        return Number(value).toFixed(1);
     }
 
     function formatSurveyorChips(value) {
@@ -121,26 +138,21 @@ const initializePublicDashboard = function () {
             return '<p style="font-size: 12px; margin: 8px 0; color: #666;">No class data</p>';
         }
 
-        let html = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px;">';
-        html += '<strong style="display: block; margin-bottom: 8px;">Benthic Substrate Composition</strong>';
+        let html = '<div class="public-composition"><strong>Benthic Substrate Composition</strong>';
 
         const classOrder = CLASS_ORDER;
         const classColors = CLASS_COLORS;
 
-        classOrder.forEach(function (className) {
+        const recorded = classOrder.filter(className => Number(classDistribution[className]?.percentage) > 0);
+        html += '<div class="public-composition-bar" aria-hidden="true">' + recorded.map(className =>
+            '<span style="flex:' + Number(classDistribution[className].percentage) + ';background:' + (classColors[className] || '#7a8d96') + '"></span>'
+        ).join('') + '</div>';
+        recorded.forEach(function (className) {
             const data = classDistribution[className];
             if (data && data.percentage > 0) {
                 const color = classColors[className] || '#ccc';
-                const barWidth = data.percentage;
-                html += '<div style="margin-bottom: 6px;">';
-                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 2px;">';
-                html += '<span>' + escapeHtml(className) + '</span>';
-                html += '<span style="font-weight: bold;">' + data.percentage + '%</span>';
-                html += '</div>';
-                html += '<div style="background: #e0e0e0; height: 6px; border-radius: 3px; overflow: hidden;">';
-                html += '<div style="background: ' + color + '; height: 100%; width: ' + barWidth + '%; border-radius: 3px;"></div>';
-                html += '</div>';
-                html += '</div>';
+                html += '<div class="public-composition-row"><span class="public-composition-dot" style="background:' + color + '"></span>' +
+                    '<span>' + escapeHtml(className) + '</span><strong>' + Number(data.percentage).toFixed(1) + '%</strong></div>';
             }
         });
 
@@ -171,37 +183,41 @@ const initializePublicDashboard = function () {
     function renderMarkers(filtered) {
         if (!markerLayer) return;
         markerLayer.clearLayers();
+        publicMarkers.clear();
 
-        const mapped = filtered.filter(row => row.mapVisible !== false
-            && row.lat !== null && row.lng !== null && row.coverage !== null);
+        const mapped = publicSurveyLocations(filtered);
         mapped.forEach(function (row) {
             const coverageLabel = formatCoverage(row.coverage);
             const marker = L.circleMarker([row.lat, row.lng], {
-                radius: 8,
-                color: '#0f3744',
-                weight: 1,
+                radius: row.coverage == null ? 7 : 8 + Math.max(0, Math.min(100, row.coverage)) / 100 * 16,
+                color: '#ffffff',
+                weight: 2,
                 fillColor: colorForClass(row.classCode),
-                fillOpacity: 0.92
+                fillOpacity: 0.8
             });
 
             const popupHtml = 
-                '<strong>' + escapeHtml(row.area) + '</strong><br>' +
-                'Survey by: ' + formatSurveyorText(row.surveyors) + '<br>' +
-                'Date: ' + row.date + '<br>' +
-                'HCC: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '<br>' +
-                'Category: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode) +
-                buildClassDistributionHtml(row.classDistribution);
+                '<div class="public-map-popup"><h3>' + escapeHtml(row.name || row.area) + '</h3>' +
+                '<dl><div><dt>Area</dt><dd>' + escapeHtml(row.area) + '</dd></div>' +
+                '<div><dt>Survey by</dt><dd>' + escapeHtml(formatSurveyorText(row.surveyors)) + '</dd></div>' +
+                '<div><dt>Date</dt><dd>' + escapeHtml(row.date) + '</dd></div>' +
+                '<div><dt>Transects</dt><dd>' + (Number(row.transectCount) || 0) + '</dd></div>' +
+                '<div><dt>HCC</dt><dd>' + (coverageLabel === '--' ? 'No analysis available' : coverageLabel + '% · Category ' + escapeHtml(row.classCode)) +
+                '</dd></div></dl>' + buildClassDistributionHtml(row.classDistribution) + '</div>';
 
-            marker.bindPopup(popupHtml);
+            marker.bindPopup(popupHtml, {maxWidth: 280, maxHeight: Math.max(160, map.getSize().y - 80)});
 
             markerLayer.addLayer(marker);
+            publicMarkers.set(row.id, marker);
         });
+        const count = document.getElementById('public-map-count');
+        if (count) count.textContent = mapped.length + (mapped.length === 1 ? ' location shown.' : ' locations shown.');
 
         if (mapped.length) {
             const bounds = L.latLngBounds(mapped.map(function (item) {
                 return [item.lat, item.lng];
             }));
-            map.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
         }
     }
 
@@ -222,7 +238,7 @@ const initializePublicDashboard = function () {
             return row.classCode === 'A';
         }).length;
 
-        statSurveys.textContent = String(total);
+        statSurveys.textContent = String(filtered.length);
         statCoverage.textContent = total ? String(avg) + '%' : '--';
         statSites.textContent = String(sites);
         statClassA.textContent = total ? Math.round((classACount / total) * 100) + '%' : '--';
@@ -250,10 +266,10 @@ const initializePublicDashboard = function () {
             STATUS_COLORS.D + ' ' + (aDeg + bDeg + cDeg).toFixed(1) + 'deg ' + (aDeg + bDeg + cDeg + dDeg).toFixed(1) + 'deg)';
 
         if (!total) donut.style.background = '#e5ecee';
-        legendA.textContent = aCount + (aCount === 1 ? ' site' : ' sites');
-        legendB.textContent = bCount + (bCount === 1 ? ' site' : ' sites');
-        legendC.textContent = cCount + (cCount === 1 ? ' site' : ' sites');
-        if (legendD) legendD.textContent = dCount + (dCount === 1 ? ' site' : ' sites');
+        legendA.textContent = aCount + (aCount === 1 ? ' survey' : ' surveys');
+        legendB.textContent = bCount + (bCount === 1 ? ' survey' : ' surveys');
+        legendC.textContent = cCount + (cCount === 1 ? ' survey' : ' surveys');
+        if (legendD) legendD.textContent = dCount + (dCount === 1 ? ' survey' : ' surveys');
     }
 
     function renderEcosystemDonut(filtered) {
@@ -369,16 +385,22 @@ const initializePublicDashboard = function () {
                 '<td>' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '</td>' +
                 '<td><span class="class-badge class-' + row.classCode.toLowerCase() + '">Category ' + row.classCode + '</span></td>' +
                 '<td>' + miniBarsHtml + '</td>' +
-                '<td><button class="btn btn-outline" type="button">View Details</button></td>';
+                '<td><button class="public-details-button" type="button" aria-haspopup="dialog">View details <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></td>';
 
             tr.querySelector('button').addEventListener('click', function () {
-                window.alert(
-                    'Area: ' + row.area + '\n' +
-                    'Survey by: ' + formatSurveyorText(row.surveyors) + '\n' +
-                    'Date: ' + row.date + '\n' +
-                    'HCC: ' + coverageLabel + (coverageLabel === '--' ? '' : '%') + '\n' +
-                    'Category: ' + row.classCode + ' - ' + describeCoverageClass(row.classCode)
-                );
+                detailSurvey = row;
+                document.getElementById('survey-details-title').textContent = row.name || row.area;
+                document.getElementById('survey-details-area').textContent = row.area;
+                document.getElementById('survey-details-date').textContent = row.date;
+                document.getElementById('survey-details-surveyors').textContent = formatSurveyorText(row.surveyors);
+                document.getElementById('survey-details-transects').textContent = row.transectCount ?? 0;
+                document.getElementById('survey-details-hcc').textContent = coverageLabel + '%';
+                const badge = document.getElementById('survey-details-category');
+                badge.textContent = 'Category ' + row.classCode;
+                badge.className = 'class-badge class-' + row.classCode.toLowerCase();
+                document.getElementById('survey-details-composition').innerHTML = buildClassDistributionHtml(row.classDistribution);
+                locationButton.hidden = !map || !publicSurveyLocations([row]).length;
+                detailsDialog.showModal();
             });
 
             findingsBody.appendChild(tr);
@@ -396,6 +418,28 @@ const initializePublicDashboard = function () {
 
     [classFilter, startDateInput, endDateInput].forEach(function (el) {
         el.addEventListener('change', renderAll);
+    });
+
+    document.getElementById('clear-filters').addEventListener('click', function () {
+        classFilter.value = 'ALL';
+        startDateInput.value = '';
+        endDateInput.value = '';
+        renderAll();
+    });
+    document.getElementById('close-survey-details').addEventListener('click', () => detailsDialog.close());
+    detailsDialog.addEventListener('click', event => {
+        const rect = detailsDialog.getBoundingClientRect();
+        if (event.target === detailsDialog && (event.clientX < rect.left || event.clientX > rect.right
+            || event.clientY < rect.top || event.clientY > rect.bottom)) detailsDialog.close();
+    });
+    locationButton.addEventListener('click', function () {
+        const current = publicSurveyLocations(applyFilters()).find(row => row.lat === detailSurvey.lat && row.lng === detailSurvey.lng);
+        if (!current || !map) return;
+        detailsDialog.close();
+        document.getElementById('public-survey-map').scrollIntoView({block: 'center'});
+        if (!map.hasLayer(markerLayer)) map.addLayer(markerLayer);
+        map.setView([current.lat, current.lng], 15);
+        publicMarkers.get(current.id)?.openPopup();
     });
 
     renderAll();

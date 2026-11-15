@@ -23,8 +23,8 @@
         <p class="landing-eyebrow">Coral Reef Monitoring Platform</p>
         <h1>Coral Insights for<br>Davao Gulf</h1>
         <p class="landing-subtitle">
-            Monitor coral cover, map reef health across survey sites, and support conservation planning through field
-            surveys and image analysis.
+            Analyze underwater images, review coral detections, and map Hard Coral Cover (HCC) across survey sites
+            to support reef monitoring in the Davao Gulf.
         </p>
         <a href="{% url 'public_dashboard' %}" class="btn btn-outline landing-hero-cta">View Public Dashboard</a>
     </div>
@@ -37,10 +37,11 @@
         <div>
             <h2>Our Approach</h2>
             <p>
-                This project helps researchers monitor the Davao Gulf with one connected workflow. Teams upload
-                geotagged reef images, assess coral cover and reef health, and track long-term reef condition through
-                clear, evidence-based reporting.
+                CoralSense brings survey records, image analysis, and location mapping into one workspace. Researchers
+                upload underwater images with survey details, review detected Hard Coral and Soft Coral boxes, and
+                save coverage results for comparison and Excel export.
             </p>
+            <p>Results support coral cover monitoring. They do not assess coral health, bleaching, or water quality.</p>
             <a href="#about-project" class="btn btn-outline">Read More</a>
         </div>
         <div class="landing-intro-card">
@@ -56,8 +57,8 @@
             <p class="features-kicker">Platform Capabilities</p>
             <h2>Key Features Built for Coral Fieldwork</h2>
             <p>
-                A focused toolkit for collecting evidence, mapping reef locations, and turning observations into
-                practical conservation decisions.
+                Organize underwater survey images, review AI-assisted results, and explore coral cover across
+                recorded survey locations.
             </p>
         </div>
 
@@ -69,7 +70,8 @@
                 <p class="feature-index">01</p>
                 <h3>Upload & Analyze</h3>
                 <p>
-                    Upload geotagged images and automatically assess Hard Coral Cover and assign an HCC category.
+                    Upload underwater images with survey details. Detect Hard Coral and Soft Coral, then review
+                    the quadrat, coral boxes, and representative markers before saving.
                 </p>
             </article>
 
@@ -80,7 +82,8 @@
                 <p class="feature-index">02</p>
                 <h3>GIS Mapping</h3>
                 <p>
-                    Visualize reef health points across Davao Gulf with map-ready location context for field teams.
+                    Locate recorded surveys on an interactive map using entered coordinates and view their HCC
+                    results and categories.
                 </p>
             </article>
 
@@ -91,7 +94,8 @@
                 <p class="feature-index">03</p>
                 <h3>Analytics</h3>
                 <p>
-                    Compare historical survey results and monitor long-term reef changes using clear trend summaries.
+                    View HCC summaries and benthic substrate composition, explore saved surveys, and download
+                    Excel results for further analysis.
                 </p>
             </article>
         </div>
@@ -102,8 +106,8 @@
             <!-- <p class="workflow-kicker">Section 4</p> -->
             <h2>How It Works</h2>
             <p>
-                From underwater field capture to decision-ready insights, CoralSense follows a clear end-to-end
-                workflow designed for research teams in the Davao Gulf.
+                From field photographs to reviewed survey results, CoralSense helps researchers organize each
+                stage of coral cover analysis.
             </p>
         </div>
 
@@ -120,8 +124,8 @@
 
             <article class="workflow-item right">
                 <div class="workflow-panel">
-                    <h3>Upload & Tag</h3>
-                    <p>Images are uploaded with GPS coordinates to preserve exact survey locations.</p>
+                    <h3>Upload & Organize</h3>
+                    <p>Create a survey repository with its area, date, surveyors, and coordinates, then upload images by transect.</p>
                     <span class="workflow-pill">Step 02</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -130,8 +134,8 @@
 
             <article class="workflow-item left">
                 <div class="workflow-panel">
-                    <h3>Automatic Analysis</h3>
-                    <p>AI detection classifies the coral and benthic classes at sample points and computes Hard Coral Cover (HCC) using the point-intercept (CPCE) method.</p>
+                    <h3>AI-Assisted Detection</h3>
+                    <p>The model detects Hard Coral, Soft Coral, and the quadrat area. Coral boxes within the quadrat support estimated areas and ten representative markers.</p>
                     <span class="workflow-pill">Step 03</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -140,9 +144,8 @@
 
             <article class="workflow-item right">
                 <div class="workflow-panel">
-                    <h3>Instant Classification</h3>
-                    <p>An HCC category (A, B, C, or D) is assigned from the Hard Coral Cover as soon as the analysis
-                        finishes.</p>
+                    <h3>Review & Save</h3>
+                    <p>Check and edit the quadrat, coral boxes, and markers. HCC is the percentage of markers assigned to Hard Coral; saved results use Categories A–D.</p>
                     <span class="workflow-pill">Step 04</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -152,7 +155,7 @@
             <article class="workflow-item left">
                 <div class="workflow-panel">
                     <h3>Dashboard Insights</h3>
-                    <p>Teams review trends and distribution maps to support conservation and monitoring decisions.</p>
+                    <p>Explore survey summaries, benthic substrate composition, and mapped HCC results. Download Excel files for further analysis.</p>
                     <span class="workflow-pill">Step 05</span>
                 </div>
                 <div class="workflow-marker" aria-hidden="true"><span></span></div>
@@ -178,8 +181,8 @@
                 <p class="about-label">SDG Alignment</p>
                 <h3>SDG 14: Life Below Water</h3>
                 <p>
-                    This platform aligns with United Nations SDG 14 by helping teams measure reef condition,
-                    coral cover trends, and conservation priorities.
+                    CoralSense supports the aims of SDG 14 by helping researchers organize coral cover observations
+                    and make survey results available for reef monitoring.
                 </p>
                 <span class="sdg-badge">SDG 14 Aligned</span>
             </article>
@@ -207,39 +210,41 @@
 
     <section class="cta-banner" id="cta-banner" aria-label="Call to action">
         <div class="cta-card cta-public">
-            <p class="cta-kicker">For Public</p>
-            <h3>Explore Open Coral Trends</h3>
-            <p>Access the latest coral health summaries and mapped reef observations.</p>
-            <a href="{% url 'public_dashboard' %}" class="btn btn-outline">View Coral Health Dashboard</a>
+            <p class="cta-kicker">For the Public</p>
+            <h3>Explore Coral Cover Results</h3>
+            <p>View recorded HCC summaries, benthic substrate composition, and mapped survey sites.</p>
+            <a href="{% url 'public_dashboard' %}" class="btn btn-outline">View Public Dashboard</a>
         </div>
 
         <div class="cta-card cta-research">
             <p class="cta-kicker">For Researchers</p>
             <h3>Join the Research Workspace</h3>
-            <p>Request account access to upload field data, run analysis, and generate reports.</p>
+            <p>Register for an account. Once approved, upload survey images, review detections, and download Excel results.</p>
             <a href="{% url 'register' %}" class="btn">Request Access</a>
         </div>
     </section>
 
 
-    <!-- Biodiversity Classes Section -->
+    <!-- Hard Coral Cover Categories -->
     <hr>
 
-    <section class="biodiversity-section" id="hcc-scale" aria-label="Biodiversity classification">
+    <section class="biodiversity-section" id="hcc-scale" aria-label="Hard Coral Cover categories">
         <div class="biodiversity-header text-center">
             <p class="features-kicker">Hard Coral Cover Guide</p>
             <h2>HCC Assessment Scale</h2>
             <p class="biodiversity-subtitle"><a href="https://doi.org/10.31398/tpjf/27.2.2020-0008" target="_blank"
                     rel="noopener noreferrer" class="citation-link">Licuanan (2020)</a> scale, benchmarked to the Philippine national average
                 (22.8%) and the Tubbataha Reefs benchmark.</p>
+            <p>HCC counts Hard Coral markers only. Soft Coral and Other Substrate are excluded from the numerator.
+                Site HCC is the mean of the transect means.</p>
         </div>
 
         <div class="biodiversity-grid biodiversity-grid-4">
             <article class="biodiversity-card biodiversity-card-a">
                 <p class="biodiversity-label">Category A</p>
                 <h3>HCC: more than 44%</h3>
-                <p>Reef coral cover is more than double the national average &mdash; comparable to or exceeding
-                    Tubbataha Reefs.</p>
+                <p>Reef coral cover is more than double the Philippine national average — comparable to or exceeding
+                    Tubbataha Reefs, one of the country's healthiest reef systems.</p>
             </article>
 
             <article class="biodiversity-card biodiversity-card-b">
@@ -269,7 +274,7 @@
     <section class="public-dashboard-callout text-center" aria-label="Public dashboard call to action">
         <p class="public-callout-kicker">Public Access</p>
         <h3>Want to view the public dashboard?</h3>
-        <p>Browse coral health data and reef maps without creating an account.</p>
+        <p>Browse coral cover summaries and survey maps without creating an account.</p>
         <a href="{% url 'public_dashboard' %}" class="btn btn-outline">View Public Dashboard</a>
     </section>
     {% endif %}

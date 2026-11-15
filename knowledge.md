@@ -628,6 +628,18 @@ undo and hides while results are pending. The review UI suppresses the
 
 ## Repository Trash
 
+The public dashboard map (`static/js/public_dashboard.js`) uses the researcher
+map's satellite/ocean/street layers, HCC colors and proportional marker sizes.
+It selects the latest matching survey per coordinate after date/category filters,
+breaking same-date ties by creation time then ID, and excludes map-hidden surveys
+from markers and bounds. Missing analysis uses a neutral marker. Public summaries,
+charts and Recent Findings retain historical matching surveys. View details opens
+a public summary dialog, with Show location focusing the latest displayed survey
+at those coordinates; it does not grant access to private images or edit routes.
+The public view prefetches images and transect images for its existing composition
+and canonical HCC passes. The educational guide reads category wording from the
+model constants and illustrates ten representative markers.
+
 Repository Map buttons link to `map_view?site=<repository ID>` from both lists.
 `static/js/map_view.js` uses that ID after marker initialization to center at zoom
 15 and open the selected repository's popup. Missing, invalid or unavailable IDs

@@ -6,36 +6,37 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=5">
+<link rel="stylesheet" href="{% static 'css/public_dashboard.css' %}?v=6">
 {% endblock %}
 
 {% block content %}
-<section class="public-dashboard" aria-label="Public coral health dashboard">
+<section class="public-dashboard" aria-label="Public coral cover dashboard">
     <div class="container">
         <header class="public-header">
             <p class="features-kicker">Public Monitoring Portal</p>
             <h1>Surveyed Sites Public Dashboard</h1>
-            <p>Last updated: {{ last_updated|date:"F d, Y"|default:"--" }}</p>
+            <p>Latest survey date: {{ last_updated|date:"F d, Y"|default:"No surveys recorded" }}</p>
         </header>
 
         <section class="summary-grid" aria-label="Summary statistics">
             <article class="summary-card">
                 <p>Total Surveys</p>
-                <h3 id="stat-surveys">45</h3>
+                <h3 id="stat-surveys">0</h3>
             </article>
             <article class="summary-card">
                 <p>Average HCC</p>
-                <h3 id="stat-coverage">52%</h3>
+                <h3 id="stat-coverage">--</h3>
             </article>
             <article class="summary-card">
-                <p>Sites Monitored</p>
-                <h3 id="stat-sites">12</h3>
+                <p>Survey Areas</p>
+                <h3 id="stat-sites">0</h3>
             </article>
             <article class="summary-card">
                 <p>Category A Share</p>
-                <h3 id="stat-class-a">33%</h3>
+                <h3 id="stat-class-a">--</h3>
             </article>
         </section>
+        <p class="map-caption">Summaries and charts include all surveys matching the filters. The map shows the latest matching survey per coordinate.</p>
 
         <section class="map-panel" aria-label="Interactive map and filters">
             <div class="map-toolbar">
@@ -55,9 +56,12 @@
                 <label for="end-date">To
                     <input id="end-date" name="end-date" type="date">
                 </label>
+                <button type="button" class="public-clear" id="clear-filters">Clear filters</button>
             </div>
 
             <div id="public-survey-map" class="public-map" aria-label="Survey locations map"></div>
+            <p class="map-caption">Latest matching survey at each coordinate. Circle size represents HCC; color represents its category.
+                <span id="public-map-count" aria-live="polite"></span></p>
 
             <div class="legend-row" aria-label="Map legend">
                 <span class="legend-chip"><span class="legend-dot" style="background: var(--class-a);"></span>Category A - HCC &gt;44%</span>
@@ -70,14 +74,14 @@
         <section class="charts-grid" aria-label="HCC category and marker composition charts">
             <article class="chart-card">
                 <h2>HCC Category Distribution</h2>
-                <p class="chart-sub">Category A/B/C/D breakdown</p>
+                <p class="chart-sub">Survey counts by Category A, B, C, and D</p>
                 <div class="donut-wrap">
                     <div id="distribution-donut" class="donut" aria-hidden="true"></div>
                     <div class="donut-legend" aria-live="polite">
-                        <div><strong>Category A <em class="class-desc">HCC &gt;44%</em></strong><span id="legend-a">0 sites</span></div>
-                        <div><strong>Category B <em class="class-desc">HCC &gt;33-44%</em></strong><span id="legend-b">0 sites</span></div>
-                        <div><strong>Category C <em class="class-desc">HCC &gt;22-33%</em></strong><span id="legend-c">0 sites</span></div>
-                        <div><strong>Category D <em class="class-desc">HCC 0-22%</em></strong><span id="legend-d">0 sites</span></div>
+                        <div><strong>Category A <em class="class-desc">HCC &gt;44%</em></strong><span id="legend-a">0 surveys</span></div>
+                        <div><strong>Category B <em class="class-desc">HCC &gt;33-44%</em></strong><span id="legend-b">0 surveys</span></div>
+                        <div><strong>Category C <em class="class-desc">HCC &gt;22-33%</em></strong><span id="legend-c">0 surveys</span></div>
+                        <div><strong>Category D <em class="class-desc">HCC 0-22%</em></strong><span id="legend-d">0 surveys</span></div>
                     </div>
                 </div>
             </article>
@@ -112,33 +116,73 @@
             </div>
         </section>
 
-        <section class="edu-panel" aria-label="Educational panel">
-            <h2>What do these numbers mean?</h2>
-            <p class="edu-formula">
-                <strong>Hard Coral Cover (HCC)</strong> uses ten representative markers allocated from reviewed coral boxes in each quadrat. The calculation is
-                <em>HCC = Hard Coral markers &divide; 10 &times; 100</em>.
-                Only scleractinian (stony) hard coral counts toward HCC. Categories are benchmarked against the
-                Philippine national average of 22.8% and the Tubbataha Reefs benchmark.
-            </p>
-            <p>
-                <strong>Category A (more than 44%)</strong> &mdash; reef coral cover is more than double the national
-                average, comparable to or exceeding Tubbataha Reefs. <strong>Category B (more than 33% up to 44%)</strong>
-                &mdash; coral cover exceeds both the national average and the Tubbataha benchmark.
-                <strong>Category C (more than 22% up to 33%)</strong> &mdash; coral cover is above the national average,
-                though below the Tubbataha benchmark. <strong>Category D (0-22%)</strong> &mdash; coral cover is at or
-                below the national average; this reef may still provide meaningful ecosystem services and habitat.
-            </p>
+        <section class="edu-panel" aria-labelledby="coverage-guide-title">
+            <header class="edu-heading">
+                <p class="edu-kicker">Reading the survey</p>
+                <h2 id="coverage-guide-title">A guide to Hard Coral Cover</h2>
+                <p>What is counted, how results are combined, and what the category tells you.</p>
+            </header>
+            <div class="edu-layout">
+                <div class="edu-method">
+                    <h3>Start with one quadrat</h3>
+                    <p>Each image has ten representative markers allocated from reviewed coral boxes. Markers represent Hard Coral, Soft Coral, or Other Substrate.</p>
+                    <figure class="edu-example">
+                        <figcaption>Example image <strong>4 Hard Coral markers out of 10</strong></figcaption>
+                        <div class="edu-marker-strip" aria-hidden="true">
+                            <span class="is-hc">1</span><span class="is-hc">2</span><span class="is-hc">3</span><span class="is-hc">4</span>
+                            <span class="is-sc">5</span><span class="is-sc">6</span>
+                            <span>7</span><span>8</span><span>9</span><span>10</span>
+                        </div>
+                        <p class="edu-example-key"><span>HC 4</span><span>SC 2</span><span>OS 4</span></p>
+                        <p class="edu-formula">4 &divide; 10 &times; 100 <strong>= 40% HCC</strong></p>
+                        <p>Only Hard Coral markers count toward HCC. Soft Coral and Other Substrate remain part of the composition.</p>
+                    </figure>
+                    <h3>From image to survey site</h3>
+                    <p>Image HCC values are averaged within each transect. The site result is the mean of those transect averages, so each transect has equal weight.</p>
+                    <p class="edu-caution">HCC describes hard coral cover. It does not measure coral health, bleaching, water quality, or biodiversity.</p>
+                </div>
+                <div class="edu-scale">
+                    <h3>The four HCC categories</h3>
+                    <dl class="edu-category-list">
+                        {% for category in coverage_guide %}
+                        <div class="edu-category">
+                            <dt><span class="edu-category-letter class-{{ category.code|lower }}">{{ category.code }}</span>
+                                <span>{{ category.label }}<small>HCC {{ category.range }}</small></span></dt>
+                            <dd>{{ category.description }}</dd>
+                        </div>
+                        {% endfor %}
+                    </dl>
+                    <p class="edu-source">Category reference: <a href="https://doi.org/10.31398/tpjf/27.2.2020-0008" target="_blank" rel="noopener noreferrer">Licuanan (2020)</a>, using the Philippine national average and Tubbataha Reefs benchmarks.</p>
+                </div>
+            </div>
         </section>
+
+        <dialog id="public-survey-details" class="survey-dialog" aria-labelledby="survey-details-title">
+            <div class="survey-dialog-heading">
+                <div><p class="edu-kicker">Survey record</p><h2 id="survey-details-title"></h2></div>
+                <button type="button" class="survey-dialog-close" id="close-survey-details" aria-label="Close survey details">&times;</button>
+            </div>
+            <dl class="survey-details-meta">
+                <div><dt>Area</dt><dd id="survey-details-area"></dd></div>
+                <div><dt>Survey date</dt><dd id="survey-details-date"></dd></div>
+                <div><dt>Survey by</dt><dd id="survey-details-surveyors"></dd></div>
+                <div><dt>Transects</dt><dd id="survey-details-transects"></dd></div>
+            </dl>
+            <div class="survey-details-hcc"><span>Hard Coral Cover</span><strong id="survey-details-hcc"></strong><span id="survey-details-category" class="class-badge"></span></div>
+            <div id="survey-details-composition"></div>
+            <div class="survey-dialog-actions"><button type="button" id="survey-details-map" class="public-details-button">Show location on map <span aria-hidden="true">↗</span></button></div>
+        </dialog>
 
         <section class="back-link" aria-label="Return to landing page">
             <a href="{% url 'landing_page' %}" class="btn btn-outline">Back to Landing Page</a>
         </section>
         {{ dashboard_surveys|json_script:"public-surveys-data" }}
+    </div>
 </section>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="{% static 'js/public_dashboard.js' %}?v=20261112composition"></script>
+<script src="{% static 'js/public_dashboard.js' %}?v=20261115map"></script>
 {% endblock %}

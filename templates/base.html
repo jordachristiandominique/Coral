@@ -12,7 +12,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/custom.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}?v=8">
     {% block extra_css %}{% endblock %}
     <script>
         // Apply the saved sidebar-collapsed state before the body paints so the
@@ -53,7 +53,10 @@
         <div class="container footer-shell">
             <div class="footer-grid">
                 <div class="footer-col footer-col-brand">
-                    <p class="footer-logo-text">CoralSense</p>
+                    <a href="{% url 'landing_page' %}" class="footer-app-brand" aria-label="CoralSense home">
+                        <img src="{% static 'images/logo.png' %}" alt="" class="footer-app-logo" width="48" height="48">
+                        <span class="footer-logo-text">CoralSense</span>
+                    </a>
                     <p class="footer-note">AI-assisted coral reef monitoring for the Davao Gulf.</p>
                     <div class="footer-brand">
                         <img src="{% static 'images/landing/dnsc-logo.png' %}" alt="DNSC logo" class="footer-dnsc-logo">
@@ -62,8 +65,7 @@
                             <p class="footer-team">Developed by Christian Jorda, Kyla Samson, Queenie Sumalinog</p>
                         </div>
                     </div>
-                    {# TODO: replace the placeholder with the project's contact email #}
-                    <p class="footer-note">Contact: <a href="jorda.christiandominique@dnsc.edu.ph">jorda.christiandominique@dnsc.edu.ph</a></p>
+                    <p class="footer-note">Contact: <a href="mailto:jorda.christiandominique@dnsc.edu.ph">jorda.christiandominique@dnsc.edu.ph</a></p>
                 </div>
 
                 <nav class="footer-col" aria-label="Footer navigation">
@@ -89,7 +91,7 @@
                         <li><a href="https://doi.org/10.31398/tpjf/27.2.2020-0008" target="_blank"
                                 rel="noopener noreferrer">HCC scale: Licuanan (2020), Philippine Journal of Fisheries</a></li>
                         <li><a href="https://sdgs.un.org/goals/goal14" target="_blank" rel="noopener noreferrer">UN SDG 14: Life Below Water</a></li>
-                        <li><span>Point-intercept (CPCE) method for Hard Coral Cover</span></li>
+                        <li><span>Ten representative markers per image for reviewed HCC results</span></li>
                     </ul>
                 </div>
 
@@ -105,7 +107,6 @@
 
             <div class="footer-bottom">
                 <p class="footer-copy">&copy; {% now "Y" %} CoralSense &middot; A DNSC capstone project</p>
-                <span class="footer-sdg-pill">SDG 14 Aligned</span>
             </div>
         </div>
     </footer>
