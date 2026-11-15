@@ -293,10 +293,11 @@
                             <td>
                                 <div class="table-actions">
                                     <a href="{% url 'batch_detail' row.id %}" class="action-outline">Details</a>
-                                    <a href="{% url 'analysis_results_export_csv' %}?batch_id={{ row.id }}"
-                                        class="action-outline">CSV</a>
-                                    <a href="{% url 'analysis_results_export_pdf' %}?batch_id={{ row.id }}"
-                                        class="action-outline">PDF</a>
+                                    {% if row.id in excel_repository_ids %}
+                                    <a href="{% url 'batch_export_excel' row.id %}" class="action-outline">Excel</a>
+                                    {% else %}
+                                    <button type="button" class="action-outline" disabled title="Repository access is required to download Excel results.">Excel</button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

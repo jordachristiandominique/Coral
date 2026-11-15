@@ -272,6 +272,7 @@ def researcher_dashboard(request):
         'healthy_reefs': healthy_reefs,
         'locations': locations,
         'recent_submissions': recent_submissions,
+        'excel_repository_ids': set(DataRepository.objects.viewable_by(request.user).values_list('pk', flat=True)),
         'insight_total': round(avg_coverage, 1) if avg_coverage is not None else None,
         'insight_items': insight_items,
         'benthic_distribution': benthic_distribution,
@@ -461,6 +462,7 @@ def analysis_results(request):
         'filter_state': filter_state,
         'area_options': area_options,
         'filter_query': request.GET.urlencode(),
+        'excel_repository_ids': set(DataRepository.objects.viewable_by(request.user).values_list('pk', flat=True)),
     }
     return render(request, 'accounts/analysis_results.html', context)
 

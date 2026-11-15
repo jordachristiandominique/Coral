@@ -198,7 +198,11 @@
 
                         <div class="batch-actions">
                             <a href="{% url 'batch_detail' row.id %}" class="action-outline">Details</a>
-                            <a href="#" class="action-outline">Export</a>
+                            {% if row.id in excel_repository_ids %}
+                            <a href="{% url 'batch_export_excel' row.id %}" class="action-outline">Excel</a>
+                            {% else %}
+                            <button type="button" class="action-outline" disabled title="Repository access is required to download Excel results.">Excel</button>
+                            {% endif %}
                         </div>
                     </div>
                 </article>
