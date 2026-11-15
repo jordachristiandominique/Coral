@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/researcher_dashboard.css' %}?v=17">
 <link rel="stylesheet" href="{% static 'css/batch_detail.css' %}?v=11">
-<link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/batch_detail_visualization.css' %}?v=3">
 <link rel="stylesheet" href="{% static 'css/surveyor_tags.css' %}?v=3">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
@@ -213,8 +213,20 @@
                     <div class="class-legend" id="classLegend"></div>
                 </div>
 
+                <div class="viz-card site-hcc-card">
+                    <h3>Site Hard Coral Cover</h3>
+                    <p class="site-hcc-subtitle">Site mean ± SE · thresholds 22/33/44% · national avg {{ site_hcc_chart.national_hcc_average }}%</p>
+                    <div class="chart-container">
+                        <canvas id="batchSiteHccChart" role="img" aria-label="Site Hard Coral Cover for {{ batch.name }}{% if avg_coverage is not None %}, {{ avg_coverage|floatformat:1 }} percent{% endif %}"></canvas>
+                    </div>
+                    {% if avg_coverage is not None %}
+                    <p class="site-hcc-summary">{{ avg_coverage|floatformat:1 }}% HCC · Category {{ coverage_class }} · {{ site_hcc.n_transects }} transect{{ site_hcc.n_transects|pluralize }}{% if site_hcc.n_transects > 1 %} · SE {{ site_hcc.se|floatformat:2 }} percentage points{% else %} · SE requires at least two transects{% endif %}</p>
+                    {% endif %}
+                    {{ site_hcc_chart|json_script:"batch-site-hcc-data" }}
+                </div>
+
                 <!-- Map & Statistics Card -->
-                <div class="viz-card">
+                <div class="viz-card viz-location-card">
                     <h3 style="margin-bottom: 1rem; color: #1c5f6d;">Survey Location & Summary</h3>
                     <div id="coralMap"></div>
                     <div class="stats-grid" id="statsGrid">
@@ -386,7 +398,8 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'js/site_hcc_chart.js' %}?v=1"></script>
 <script src="{% static 'js/batch_detail.js' %}?v=5"></script>
-<script src="{% static 'js/batch_visualization.js' %}?v=10"></script>
+<script src="{% static 'js/batch_visualization.js' %}?v=11"></script>
 <script src="{% static 'js/surveyor_tags.js' %}?v=2"></script>
 {% endblock %}

@@ -58,6 +58,12 @@ class DashboardVisualizationTests(TestCase):
         self.assertEqual(feature['properties']['coverage'], 50)
         response = self.client.get(reverse('batch_detail', args=[site.pk]))
         self.assertEqual(response.context['avg_coverage'], 50)
+        chart = response.context['site_hcc_chart']
+        self.assertEqual(chart['sites'][0]['avg_coverage'], 50)
+        self.assertEqual(chart['sites'][0]['se'], 50)
+        self.assertEqual(chart['sites'][0]['n_transects'], 2)
+        self.assertEqual(chart['national_hcc_average'], 22.8)
+        self.assertContains(response, 'id="batchSiteHccChart"')
         self.assertNotContains(response, 'id="coralCoveragePercentValue"')
 
     def test_category_filters_apply_to_composition_categories_and_monthly_summary(self):

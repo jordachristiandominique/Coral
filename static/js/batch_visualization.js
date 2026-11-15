@@ -59,6 +59,11 @@ const CORAL_TOTAL = '#1c5f6d';
 const CORAL_INK_MUTED = '#6b8893';
 
 function initializeVisualization() {
+    const siteChartData = document.getElementById('batch-site-hcc-data');
+    if (siteChartData) {
+        const payload = JSON.parse(siteChartData.textContent);
+        renderSiteHccChart(document.getElementById('batchSiteHccChart'), payload.sites, payload.national_hcc_average);
+    }
     // Extract batch data from page
     const batchName = document.querySelector('.batch-edit-name')?.value || 'Batch';
     const latitudeInput = document.querySelector('input[name="latitude"]');

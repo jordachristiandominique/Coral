@@ -1,6 +1,6 @@
 .visualization-section {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 2rem;
     margin-bottom: 2rem;
 }
@@ -19,6 +19,12 @@
     height: 400px;
     width: 100%;
 }
+
+.viz-location-card { grid-column: 1 / -1; }
+.site-hcc-card h3 { margin: 0; color: #1c5f6d; }
+.site-hcc-subtitle { margin: 6px 0 16px; font-size: 12px; color: #587987; line-height: 1.6; }
+.site-hcc-summary { margin: 16px 0 0; font-size: 13px; color: #365e6b; line-height: 1.6; }
+.site-hcc-empty { padding: 2rem 0; color: #587987; font-size: 14px; }
 
 #coralMap {
     height: 400px;
@@ -280,7 +286,7 @@
 }
 
 /* Responsive design */
-@media (max-width: 1400px) {
+@media (max-width: 1100px) {
     .visualization-section {
         grid-template-columns: 1fr;
         gap: 1.5rem;

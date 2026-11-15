@@ -1609,6 +1609,14 @@ def batch_detail(request, batch_id):
         'avg_coverage': site['site_percent'],
         'coverage_class': site['coverage_class'],
         'site_hcc': site,
+        'site_hcc_chart': {
+            'sites': [{
+                'name': batch.name, 'avg_coverage': site['site_percent'],
+                'coverage_class': site['coverage_class'], 'se': site['se'],
+                'n_transects': site['n_transects'],
+            }],
+            'national_hcc_average': NATIONAL_HCC_AVERAGE,
+        },
         'point_classes_json': json.dumps({f'image-{img.id}': [normalize_marker_class(name) for name in img.point_classes or []] for img in images}),
         'coral_coverage': coral_coverage,
         'batch_coverage': batch_coverage,
