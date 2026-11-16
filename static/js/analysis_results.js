@@ -9,6 +9,19 @@ function describeCoverageClass(code) {
     return COVERAGE_CLASS_LABELS[code] || 'Awaiting analysis';
 }
 
+function latestAnalysisSurveys(rows) {
+    const locations = new Map();
+    const visibleRows = rows.filter(row => row.is_map_visible !== false
+        && Number.isFinite(row.latitude) && Number.isFinite(row.longitude));
+    visibleRows.sort((a, b) => (b.survey_date || '').localeCompare(a.survey_date || '')
+        || (b.created_at || '').localeCompare(a.created_at || '') || b.id - a.id);
+    visibleRows.forEach(row => {
+        const location = `${row.latitude},${row.longitude}`;
+        if (!locations.has(location)) locations.set(location, row);
+    });
+    return [...locations.values()];
+}
+
 const initializeAnalysisResults = function () {
     const chartScript = document.getElementById('analysis-chart-data');
     let classValues = [0, 0, 0, 0, 0];
@@ -158,27 +171,38 @@ const initializeAnalysisResults = function () {
             attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
         }).addTo(map);
 
-        // Add markers for each batch
+        // The server has already applied the selected survey scope and filters.
         const batchScript = document.getElementById('analysis-batch-data');
         if (batchScript) {
             try {
-                const batches = JSON.parse(batchScript.textContent || '[]');
+                const batches = latestAnalysisSurveys(JSON.parse(batchScript.textContent || '[]'));
+                const colors = {A: '#1e8e5a', B: '#f2c11f', C: '#e8820c', D: '#d64545'};
                 batches.forEach(batch => {
-                    if (batch.latitude && batch.longitude) {
-                        L.circleMarker([batch.latitude, batch.longitude], {
-                            radius: 8,
-                            fillColor:
-                                batch.coverage_class === 'A' ? '#1e8e5a' :
-                                    batch.coverage_class === 'B' ? '#f2c11f' :
-                                        batch.coverage_class === 'C' ? '#e8820c' :
-                                            batch.coverage_class === 'D' ? '#d64545' : '#6a8893',
-                            color: '#fff',
-                            weight: 2,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        }).bindPopup(`<strong>${batch.name}</strong><br>Area: ${batch.area_name}<br>Category: ${batch.coverage_class} &mdash; ${describeCoverageClass(batch.coverage_class)}`).addTo(map);
-                    }
+                    const reviewed = Object.hasOwn(colors, batch.coverage_class);
+                    const popup = document.createElement('div');
+                    const title = document.createElement('strong');
+                    title.textContent = batch.name;
+                    popup.appendChild(title);
+                    const metadata = [
+                        `Area: ${batch.area_name}`,
+                        `Survey date: ${batch.survey_date}`,
+                        reviewed ? `HCC: ${batch.avg_coverage.toFixed(1)}% · Category ${batch.coverage_class}` : 'No analysis available',
+                    ];
+                    metadata.forEach(text => {
+                        const line = document.createElement('p');
+                        line.textContent = text;
+                        popup.appendChild(line);
+                    });
+                    L.circleMarker([batch.latitude, batch.longitude], {
+                        radius: reviewed ? 8 + Math.max(0, Math.min(100, batch.avg_coverage)) / 100 * 16 : 7,
+                        fillColor: colors[batch.coverage_class] || '#2a8793',
+                        color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.8,
+                    }).bindPopup(popup).addTo(map);
                 });
+                if (batches.length) {
+                    const bounds = L.latLngBounds(batches.map(batch => [batch.latitude, batch.longitude]));
+                    map.fitBounds(bounds, {padding: [40, 40], maxZoom: 13});
+                }
             } catch (error) {
                 console.error('Error initializing map markers:', error);
             }

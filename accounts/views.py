@@ -405,6 +405,8 @@ def _build_analysis_rows(queryset):
             'id': batch.id,
             'name': batch.name,
             'survey_date': batch.survey_date,
+            'created_at': batch.created_at.isoformat(),
+            'is_map_visible': batch.is_map_visible,
             'area_name': batch.area_name,
             'surveyor_names': batch.surveyor_names,
             'surveyor_display': surveyor_display,

@@ -431,7 +431,7 @@ class CoralSenseMap {
             `).join('');
         }
 
-        // Healthiest / needs-attention highlights (analyzed sites only)
+        // Highest / lowest HCC highlights (analyzed sites only)
         const extremes = document.getElementById('summary-extremes');
         if (extremes) {
             const analyzed = batches.filter(b => b.coverage !== null && b.coverage !== undefined);
@@ -442,12 +442,12 @@ class CoralSenseMap {
                 const worst = analyzed.reduce((a, b) => (b.coverage < a.coverage ? b : a));
                 extremes.innerHTML = `
                     <div class="summary-extreme" onclick="mapInstance.highlightSurvey(${best.id})">
-                        <span class="summary-extreme-tag good">Healthiest</span>
+                        <span class="summary-extreme-tag good">Highest HCC</span>
                         <span class="summary-extreme-name">${this.escapeHtml(best.name)}</span>
                         <span class="summary-extreme-val">${best.coverage.toFixed(1)}%</span>
                     </div>
                     <div class="summary-extreme" onclick="mapInstance.highlightSurvey(${worst.id})">
-                        <span class="summary-extreme-tag bad">Needs attention</span>
+                        <span class="summary-extreme-tag bad">Lowest HCC</span>
                         <span class="summary-extreme-name">${this.escapeHtml(worst.name)}</span>
                         <span class="summary-extreme-val">${worst.coverage.toFixed(1)}%</span>
                     </div>

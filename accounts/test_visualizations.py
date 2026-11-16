@@ -50,6 +50,8 @@ class DashboardVisualizationTests(TestCase):
         self.assertEqual(survey['classDistribution']['Other Substrate']['count'], 10)
         response = self.client.get(reverse('analysis_results'))
         self.assertEqual(response.context['rows'][0]['benthic']['Other Substrate'], 33.3)
+        self.assertTrue(response.context['rows'][0]['is_map_visible'])
+        self.assertEqual(response.context['rows'][0]['created_at'], site.created_at.isoformat())
         self.assertEqual(response.context['monthly_stats'][0]['avg_coverage'], 50)
         self.assertNotContains(response, 'analysisCoralClassChart')
         response = self.client.get(reverse('map_view'))

@@ -150,6 +150,55 @@ test('public map hides disabled surveys and fits bounds to visible markers, incl
     assert.equal(bounds.length, 1);
 });
 
+test('analysis map selects the latest visible survey per coordinate with deterministic ties', () => {
+    const context = visualizationContext('analysis_results.js');
+    const select = vm.runInContext('latestAnalysisSurveys', context);
+    const rows = [
+        {id: 1, latitude: 7, longitude: 125, survey_date: '2026-10-01'},
+        {id: 2, latitude: 7, longitude: 125, survey_date: '2026-11-01', created_at: '2026-11-02'},
+        {id: 3, latitude: 7, longitude: 125, survey_date: '2026-11-01', created_at: '2026-11-03'},
+        {id: 4, latitude: 7, longitude: 125, survey_date: '2026-11-01', created_at: '2026-11-03'},
+        {id: 5, latitude: 7, longitude: 125, survey_date: '2026-12-01', is_map_visible: false},
+        {id: 6, latitude: 0, longitude: 0, survey_date: '2026-10-02'},
+        {id: 7, latitude: null, longitude: 125, survey_date: '2026-12-01'},
+    ];
+    assert.deepEqual(Array.from(select(rows), row => row.id), [4, 6]);
+    assert.deepEqual(Array.from(select([...rows].reverse()), row => row.id), [4, 6]);
+    assert.deepEqual(Array.from(select(rows.filter(row => row.survey_date <= '2026-10-31')), row => row.id), [6, 1]);
+    assert.equal(rows.length, 7);
+});
+
+test('analysis bubbles encode HCC category and size and keep missing analysis neutral', () => {
+    const context = visualizationContext('analysis_results.js');
+    const rows = [
+        {id: 1, latitude: 7, longitude: 125, survey_date: '2026-11-01', name: '<img onerror=bad>', area_name: 'Area', avg_coverage: 100, coverage_class: 'A'},
+        {id: 2, latitude: 8, longitude: 125, survey_date: '2026-11-01', name: 'Zero', avg_coverage: 0, coverage_class: 'D'},
+        {id: 3, latitude: 9, longitude: 125, survey_date: '2026-11-01', name: 'Awaiting review', avg_coverage: 0, coverage_class: 'Pending'},
+    ];
+    const markers = [], bounds = [];
+    const map = {setView() {return this;}, fitBounds(value) {bounds.push(value);}};
+    const L = {
+        map() {return map;}, tileLayer() {return {addTo() {}};}, latLngBounds: points => points,
+        circleMarker(coordinates, options) {
+            const marker = {coordinates, options, bindPopup(popup) {this.popup = popup;return this;}, addTo() {markers.push(this);return this;}};
+            return marker;
+        },
+    };
+    context.L = L;
+    context.window.L = L;
+    context.document.getElementById = id => id === 'analysisMap' ? {}
+        : id === 'analysis-batch-data' ? {textContent: JSON.stringify(rows)} : null;
+    context.document.createElement = () => ({children: [], appendChild(node) {this.children.push(node);}});
+    vm.runInContext('initializeAnalysisResults()', context);
+    assert.deepEqual(markers.map(marker => marker.options.fillColor), ['#2a8793', '#d64545', '#1e8e5a']);
+    assert.deepEqual(markers.map(marker => marker.options.radius), [7, 8, 24]);
+    const hardCoral = markers.find(marker => marker.options.fillColor === '#1e8e5a');
+    assert.equal(hardCoral.popup.children[0].textContent, '<img onerror=bad>');
+    assert.equal(hardCoral.popup.innerHTML, undefined);
+    assert.match(markers[0].popup.children[3].textContent, /No analysis available/);
+    assert.equal(bounds[0].length, 3);
+});
+
 test('public and researcher maps select the same newest survey at overlapping coordinates', () => {
     const publicContext = visualizationContext('public_dashboard.js');
     const publicLocations = vm.runInContext('publicSurveyLocations', publicContext);
